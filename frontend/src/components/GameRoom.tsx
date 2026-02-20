@@ -139,13 +139,7 @@ export default function GameRoom() {
           </button>
         </div>
 
-        {/* Messages */}
-        {message && (
-          <div className="bg-primary-500/20 border border-primary-500 rounded-lg p-3 mb-4 text-center">
-            {message}
-          </div>
-        )}
-
+        {/* Inline error (layout-impacting intentionally — user needs to see it) */}
         {error && (
           <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 mb-4 text-center text-red-200">
             {error}
@@ -196,6 +190,24 @@ export default function GameRoom() {
           />
         )}
       </div>
+
+      {/* Non-layout-shifting toast for transient messages */}
+      {message && (
+        <div
+          key={message}
+          className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
+          style={{
+            background: 'rgba(20,12,0,0.92)',
+            border: '1px solid rgba(196,168,107,0.5)',
+            color: '#F0E6C8',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+          }}
+        >
+          {message}
+        </div>
+      )}
     </div>
   );
 }

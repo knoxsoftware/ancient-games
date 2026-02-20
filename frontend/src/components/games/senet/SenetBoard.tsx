@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -8,19 +9,170 @@ interface SenetBoardProps {
   isMyTurn: boolean;
 }
 
+// Ivory cone piece (Player 0) - historical Egyptian senet piece shape
+function ConePiece({ size = 28 }: { size?: number }) {
+  const h = Math.round(size * 1.25);
+  return (
+    <svg viewBox="0 0 32 40" width={size} height={h} style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.45))' }}>
+      <ellipse cx="16" cy="36" rx="13" ry="4" fill="rgba(0,0,0,0.3)" />
+      <path d="M 3,35 Q 16,4 29,35 Z" fill="#F2E6C8" stroke="#C4A870" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M 3,35 Q 8,7 13,5 Q 9,18 5,35 Z" fill="rgba(255,255,255,0.28)" />
+      <ellipse cx="16" cy="35" rx="13" ry="4" fill="#D4B483" stroke="#A48050" strokeWidth="1" />
+    </svg>
+  );
+}
+
+// Dark ebony spool piece (Player 1) - second type of historical senet piece
+function SpoolPiece({ size = 28 }: { size?: number }) {
+  const h = Math.round(size * 1.25);
+  return (
+    <svg viewBox="0 0 32 40" width={size} height={h} style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.55))' }}>
+      <ellipse cx="16" cy="37" rx="13" ry="3.5" fill="rgba(0,0,0,0.4)" />
+      {/* Bottom flange */}
+      <ellipse cx="16" cy="34" rx="13" ry="4.5" fill="#0E0600" />
+      <ellipse cx="16" cy="32" rx="13" ry="4.5" fill="#3A1A00" />
+      {/* Cylinder body */}
+      <rect x="7" y="17" width="18" height="15" rx="2" fill="#4A2800" />
+      {/* Center groove */}
+      <ellipse cx="16" cy="24" rx="8" ry="2.5" fill="#0E0600" />
+      {/* Top flange */}
+      <ellipse cx="16" cy="19" rx="13" ry="4.5" fill="#0E0600" />
+      <ellipse cx="16" cy="17" rx="13" ry="4.5" fill="#3A1A00" />
+      <ellipse cx="16" cy="15" rx="9" ry="3" fill="#5A3200" />
+      <ellipse cx="14" cy="14" rx="5" ry="1.5" fill="rgba(255,255,255,0.08)" />
+    </svg>
+  );
+}
+
+// Ankh symbol for House of Rebirth (position 14)
+function AnkhIcon({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 20 28" width={16} height={22}>
+      <ellipse cx="10" cy="9" rx="5" ry="6.5" fill="none" stroke={color} strokeWidth="2.5" />
+      <line x1="10" y1="15" x2="10" y2="27" stroke={color} strokeWidth="2.5" />
+      <line x1="3.5" y1="19" x2="16.5" y2="19" stroke={color} strokeWidth="2.5" />
+    </svg>
+  );
+}
+
+// Wave symbol for House of Water (position 26)
+function WaveIcon({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 26 18" width={20} height={14}>
+      <path d="M 2,5 Q 7.5,0 13,5 Q 18.5,10 24,5" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path d="M 2,12 Q 7.5,7 13,12 Q 18.5,17 24,12" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// 5-pointed star for House of Beauty (position 25)
+function StarIcon({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 22 22" width={16} height={16}>
+      <polygon
+        points="11,1 13.5,8 21,8 15,13 17.5,20 11,15.5 4.5,20 7,13 1,8 8.5,8"
+        fill={color}
+        stroke="rgba(0,0,0,0.3)"
+        strokeWidth="0.5"
+      />
+    </svg>
+  );
+}
+
+// Sun/Ra symbol for end squares 27-29
+function SunIcon({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 22 22" width={16} height={16}>
+      <circle cx="11" cy="11" r="4.5" fill={color} />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+        const r = (deg * Math.PI) / 180;
+        return (
+          <line
+            key={deg}
+            x1={11 + 6 * Math.cos(r)}
+            y1={11 + 6 * Math.sin(r)}
+            x2={11 + 9 * Math.cos(r)}
+            y2={11 + 9 * Math.sin(r)}
+            stroke={color}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+// 4 throwing sticks display — light side = flat/scored, dark = round side
+function ThrowingSticks({ result }: { result: number }) {
+  const flatCount = result === 5 ? 0 : result;
+  return (
+    <div className="flex items-end justify-center gap-2 py-1">
+      {Array.from({ length: 4 }, (_, i) => {
+        const isFlat = i < flatCount;
+        return (
+          <div
+            key={i}
+            style={{
+              width: '11px',
+              height: '52px',
+              borderRadius: '5.5px',
+              background: isFlat
+                ? 'linear-gradient(to right, #E8D5A0, #F5EDD5, #E8D5A0)'
+                : 'linear-gradient(to right, #3D1800, #5A2E00, #3D1800)',
+              border: `1px solid ${isFlat ? '#A89060' : '#1A0800'}`,
+              boxShadow: isFlat
+                ? '1px 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3)'
+                : '1px 2px 4px rgba(0,0,0,0.6)',
+              transform: `rotate(${(i - 1.5) * 7}deg)`,
+              transformOrigin: 'bottom center',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+type SpecialSquare = {
+  name: string;
+  bg: string;
+  border: string;
+  iconType: 'ankh' | 'wave' | 'star' | 'sun';
+};
+
+const SPECIAL_SQUARES: Record<number, SpecialSquare> = {
+  14: { name: 'Rebirth', bg: '#2D1800', border: '#C4860A', iconType: 'ankh' },
+  25: { name: 'Beauty', bg: '#0C280C', border: '#5A9A30', iconType: 'star' },
+  26: { name: 'Water', bg: '#081C2E', border: '#2A7AA8', iconType: 'wave' },
+  27: { name: '', bg: '#1E1430', border: '#7860A0', iconType: 'sun' },
+  28: { name: '', bg: '#1E1430', border: '#7860A0', iconType: 'sun' },
+  29: { name: '', bg: '#1E1430', border: '#7860A0', iconType: 'sun' },
+};
+
+function SpecialIcon({ type, color }: { type: SpecialSquare['iconType']; color: string }) {
+  if (type === 'ankh') return <AnkhIcon color={color} />;
+  if (type === 'wave') return <WaveIcon color={color} />;
+  if (type === 'star') return <StarIcon color={color} />;
+  return <SunIcon color={color} />;
+}
+
 export default function SenetBoard({ session, gameState, playerId, isMyTurn }: SenetBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
-  const SPECIAL_SQUARES = {
-    14: 'House of Rebirth',
-    25: 'House of Beauty',
-    26: 'House of Water',
-  };
+  const [hoveredPiece, setHoveredPiece] = useState<PiecePosition | null>(null);
+
+  // Compute which board square the hovered piece would land on (null = no highlight)
+  const hoveredLanding = (() => {
+    if (!hoveredPiece || !isMyTurn || hoveredPiece.playerNumber !== playerNumber) return null;
+    if (gameState.board.diceRoll === null) return null;
+    const to = hoveredPiece.position + gameState.board.diceRoll;
+    return to < 30 ? to : null; // 99+ (exiting) has no board square to highlight
+  })();
 
   const handleRollDice = () => {
     if (!isMyTurn || gameState.board.diceRoll !== null) return;
-
     const socket = socketService.getSocket();
     if (socket) {
       socket.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId });
@@ -50,143 +202,217 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn }: S
     }
   };
 
-  const getPiecesAtPosition = (position: number): PiecePosition[] => {
-    return gameState.board.pieces.filter((p) => p.position === position);
-  };
+  const getPiecesAtPosition = (position: number): PiecePosition[] =>
+    gameState.board.pieces.filter((p) => p.position === position);
+
+  const finishedPieces = (playerNum: number) =>
+    gameState.board.pieces.filter((p) => p.playerNumber === playerNum && p.position === 99);
 
   const renderSquare = (position: number) => {
     const pieces = getPiecesAtPosition(position);
-    const isSpecial = position in SPECIAL_SQUARES;
+    const special = SPECIAL_SQUARES[position];
+    const isEven = position % 2 === 0;
+    const isLanding = hoveredLanding === position;
+    const bg = isLanding
+      ? special ? special.bg : isEven ? '#F2E4B0' : '#DFC080'
+      : special ? special.bg : isEven ? '#E8D5A3' : '#C9A86C';
+    const border = isLanding ? '#FFD060' : special ? special.border : '#9A7840';
 
     return (
       <div
         key={position}
-        className={`aspect-square border-2 rounded-lg flex items-center justify-center relative transition-all ${
-          isSpecial
-            ? 'bg-amber-900 border-amber-500'
-            : position % 2 === 0
-            ? 'bg-gray-700 border-gray-600'
-            : 'bg-gray-800 border-gray-700'
-        }`}
+        className="aspect-square flex items-center justify-center relative rounded-sm overflow-hidden"
+        style={{
+          background: bg,
+          border: `2px solid ${border}`,
+          boxShadow: isLanding
+            ? '0 0 0 2px #FFD060, 0 0 10px rgba(255,208,60,0.5), inset 0 1px 0 rgba(255,255,255,0.2)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.2)',
+          zIndex: isLanding ? 1 : undefined,
+          transition: 'background 0.1s, box-shadow 0.1s, border-color 0.1s',
+        }}
       >
-        {isSpecial && (
-          <div className="absolute top-0 left-0 right-0 text-[8px] text-amber-400 text-center px-1 truncate">
-            {SPECIAL_SQUARES[position as keyof typeof SPECIAL_SQUARES]}
+        {/* Special square decoration */}
+        {special && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <div style={{ opacity: 0.85 }}>
+              <SpecialIcon type={special.iconType} color={border} />
+            </div>
+            {special.name && (
+              <span
+                className="absolute bottom-0.5 left-0 right-0 text-center truncate px-0.5"
+                style={{ fontSize: '5.5px', color: border, fontWeight: 700, lineHeight: 1 }}
+              >
+                {special.name}
+              </span>
+            )}
           </div>
         )}
 
-        {pieces.map((piece) => (
-          <button
-            key={`${piece.playerNumber}-${piece.pieceIndex}`}
-            onClick={() => handlePieceClick(piece)}
-            disabled={!isMyTurn || piece.playerNumber !== playerNumber}
-            className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 font-bold text-xs transition-transform ${
-              piece.playerNumber === 0
-                ? 'bg-blue-600 border-blue-400'
-                : 'bg-red-600 border-red-400'
-            } ${
-              isMyTurn && piece.playerNumber === playerNumber
-                ? 'cursor-pointer hover:scale-110 active:scale-95'
-                : 'cursor-not-allowed opacity-70'
-            }`}
-          >
-            {piece.pieceIndex + 1}
-          </button>
-        ))}
+        {/* Subtle grain texture on light squares */}
+        {!special && isEven && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px)',
+            }}
+          />
+        )}
 
-        <div className="absolute bottom-0 right-1 text-[10px] text-gray-500">{position}</div>
+        {/* Pieces */}
+        <div className="relative z-10 flex items-center justify-center w-full h-full">
+          {pieces.map((piece) => {
+            const canClick = isMyTurn && piece.playerNumber === playerNumber;
+            const sz = pieces.length > 1 ? 16 : 24;
+            return (
+              <button
+                key={`${piece.playerNumber}-${piece.pieceIndex}`}
+                onClick={() => handlePieceClick(piece)}
+                onMouseEnter={() => canClick && gameState.board.diceRoll !== null && setHoveredPiece(piece)}
+                onMouseLeave={() => setHoveredPiece(null)}
+                disabled={!canClick}
+                className={`transition-transform focus:outline-none ${
+                  canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
+                }`}
+                style={{ width: sz, height: Math.round(sz * 1.25) }}
+                title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
+              >
+                {piece.playerNumber === 0 ? <ConePiece size={sz} /> : <SpoolPiece size={sz} />}
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   };
 
-  const finishedPieces = (playerNum: number) => {
-    return gameState.board.pieces.filter(
-      (p) => p.playerNumber === playerNum && p.position === 99
-    );
-  };
-
-  // Create board rows
   const row0 = Array.from({ length: 10 }, (_, i) => i);
   const row1 = Array.from({ length: 10 }, (_, i) => 19 - i);
   const row2 = Array.from({ length: 10 }, (_, i) => i + 20);
+  const extraTurn = [1, 4, 5].includes(gameState.board.diceRoll ?? -1);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Player Info */}
-      <div className="grid grid-cols-2 gap-4">
-        {session.players.map((player) => (
-          <div
-            key={player.id}
-            className={`card ${
-              gameState.currentTurn === player.playerNumber
-                ? 'border-primary-500'
-                : 'border-gray-700'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="font-bold">{player.displayName}</div>
-              <div
-                className={`w-4 h-4 rounded-full ${
-                  player.playerNumber === 0 ? 'bg-blue-600' : 'bg-red-600'
-                }`}
-              />
+      <div className="grid grid-cols-2 gap-3">
+        {session.players.map((player) => {
+          const isActive = gameState.currentTurn === player.playerNumber;
+          return (
+            <div
+              key={player.id}
+              className="rounded-xl p-3 border-2 transition-all"
+              style={{
+                background: isActive ? 'rgba(196,168,107,0.1)' : 'rgba(15,8,0,0.55)',
+                borderColor: isActive ? '#C4A86B' : '#3A2810',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <div style={{ width: 20, height: 25, flexShrink: 0 }}>
+                  {player.playerNumber === 0 ? <ConePiece size={20} /> : <SpoolPiece size={20} />}
+                </div>
+                <div className="font-semibold text-sm truncate">{player.displayName}</div>
+                {isActive && (
+                  <div
+                    className="ml-auto text-xs px-2 py-0.5 rounded font-bold"
+                    style={{ background: '#C4A86B', color: '#1A0A00' }}
+                  >
+                    Turn
+                  </div>
+                )}
+              </div>
+              <div className="text-xs" style={{ color: '#A09070' }}>
+                {finishedPieces(player.playerNumber).length} / 5 pieces escaped
+              </div>
             </div>
-            <div className="text-sm text-gray-400">
-              Finished: {finishedPieces(player.playerNumber).length}/5
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Dice */}
-      <div className="card text-center">
+      {/* Throwing Sticks */}
+      <div
+        className="rounded-xl px-4 py-3 border"
+        style={{ background: 'rgba(8,4,0,0.65)', borderColor: '#3A2810' }}
+      >
         {gameState.board.diceRoll === null ? (
           <button
             onClick={handleRollDice}
             disabled={!isMyTurn || gameState.finished}
-            className="btn btn-primary w-full text-xl py-4"
+            className="w-full py-3 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background:
+                isMyTurn && !gameState.finished
+                  ? 'linear-gradient(135deg, #C4860A 0%, #7A5000 100%)'
+                  : '#2A1A08',
+              color: '#F5EDD5',
+              border: '2px solid #C4860A',
+              fontSize: '1rem',
+              letterSpacing: '0.02em',
+            }}
           >
-            🎲 Throw Sticks
+            Throw the Sticks
           </button>
         ) : (
-          <div className="py-4">
-            <div className="text-4xl font-bold mb-2">{gameState.board.diceRoll}</div>
-            <div className="text-sm text-gray-400">
-              {gameState.board.diceRoll === 1 || gameState.board.diceRoll === 4 || gameState.board.diceRoll === 5
-                ? 'Make your move (you get another turn!)'
-                : 'Make your move'}
+          <div className="flex flex-col items-center gap-1">
+            <ThrowingSticks result={gameState.board.diceRoll} />
+            <div className="text-2xl font-bold mt-1" style={{ color: '#F5EDD5' }}>
+              {gameState.board.diceRoll}
+            </div>
+            <div className="text-xs" style={{ color: '#A09070' }}>
+              {extraTurn ? 'Extra turn — select a piece.' : 'Select a piece to move.'}
             </div>
           </div>
         )}
       </div>
 
-      {/* Board - S-shaped path */}
-      <div className="card">
-        <div className="space-y-2">
-          {/* Row 0: 0-9 (left to right) */}
-          <div className="grid grid-cols-10 gap-1 md:gap-2">
-            {row0.map((pos) => renderSquare(pos))}
-          </div>
+      {/* Senet Board */}
+      <div
+        className="rounded-xl p-3 border-2"
+        style={{
+          background: 'linear-gradient(160deg, #7A5628 0%, #9A7040 50%, #7A5628 100%)',
+          borderColor: '#4A3010',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,215,100,0.08)',
+        }}
+      >
+        {/* Row 0: positions 0–9, left to right */}
+        <div className="grid grid-cols-10 gap-1">{row0.map(renderSquare)}</div>
 
-          {/* Row 1: 19-10 (right to left) */}
-          <div className="grid grid-cols-10 gap-1 md:gap-2">
-            {row1.map((pos) => renderSquare(pos))}
-          </div>
-
-          {/* Row 2: 20-29 (left to right) */}
-          <div className="grid grid-cols-10 gap-1 md:gap-2">
-            {row2.map((pos) => renderSquare(pos))}
-          </div>
+        {/* Turn-around indicator */}
+        <div className="flex justify-end pr-1 my-0.5">
+          <span style={{ color: '#C4A870', fontSize: '11px' }}>↩</span>
         </div>
 
+        {/* Row 1: positions 19–10, right to left */}
+        <div className="grid grid-cols-10 gap-1">{row1.map(renderSquare)}</div>
+
+        <div className="flex justify-start pl-1 my-0.5">
+          <span style={{ color: '#C4A870', fontSize: '11px' }}>↩</span>
+        </div>
+
+        {/* Row 2: positions 20–29, left to right → exit */}
+        <div className="grid grid-cols-10 gap-1">{row2.map(renderSquare)}</div>
+
         {/* Legend */}
-        <div className="mt-4 pt-4 border-t border-gray-700">
-          <div className="text-xs text-gray-400 space-y-1">
-            <div>🏛️ Special Squares:</div>
-            <div>• Position 14: House of Rebirth (captured pieces restart here)</div>
-            <div>• Position 25: House of Beauty (need exact roll to leave)</div>
-            <div>• Position 26: House of Water (returns to position 14)</div>
-          </div>
+        <div className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1" style={{ borderColor: '#4A3010' }}>
+          {(
+            [
+              { key: 14, label: 'Rebirth' },
+              { key: 26, label: 'Water → Rebirth' },
+              { key: 25, label: 'Beauty (exact roll)' },
+            ] as { key: number; label: string }[]
+          ).map(({ key, label }) => {
+            const sq = SPECIAL_SQUARES[key];
+            return (
+              <div key={key} className="flex items-center gap-1.5">
+                <div
+                  className="flex items-center justify-center rounded"
+                  style={{ width: 18, height: 18, background: sq.bg, border: `1px solid ${sq.border}` }}
+                >
+                  <SpecialIcon type={sq.iconType} color={sq.border} />
+                </div>
+                <span style={{ fontSize: '9px', color: '#B0A080' }}>{label}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -4,54 +4,52 @@ import { Session } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 
+const GAME_NAMES: Record<string, string> = {
+  ur: 'Royal Game of Ur',
+  senet: 'Senet',
+};
+
 export default function SessionLobby() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
   const navigate = useNavigate();
+
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const playerId = localStorage.getItem('playerId');
+  // Make playerId reactive so the socket useEffect re-fires after joining
+  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
 
+  // Join-form state (shown when visitor has no playerId)
+  const [displayName, setDisplayName] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [joinError, setJoinError] = useState('');
+
+  // Always fetch session so we can show game context on the join form
   useEffect(() => {
-    if (!sessionCode || !playerId) {
+    if (!sessionCode) {
       navigate('/');
       return;
     }
-
     loadSession();
-  }, [sessionCode, playerId]);
+  }, [sessionCode]);
 
+  // Only connect socket once we have a playerId
   useEffect(() => {
     if (!sessionCode || !playerId) return;
 
     const socket = socketService.connect();
-
-    // Join the session room
     socket.emit('session:join', { sessionCode, playerId });
 
-    // Listen for session updates
-    socket.on('session:updated', (updatedSession) => {
-      setSession(updatedSession);
-    });
-
-    socket.on('session:player-joined', (updatedSession) => {
-      setSession(updatedSession);
-    });
-
-    socket.on('session:player-left', (updatedSession) => {
-      setSession(updatedSession);
-    });
-
+    socket.on('session:updated', (updatedSession) => setSession(updatedSession));
+    socket.on('session:player-joined', (updatedSession) => setSession(updatedSession));
+    socket.on('session:player-left', (updatedSession) => setSession(updatedSession));
     socket.on('game:started', (updatedSession) => {
       setSession(updatedSession);
       navigate(`/game/${sessionCode}`);
     });
-
-    socket.on('session:error', (error) => {
-      setError(error.message);
-    });
+    socket.on('session:error', (err) => setError(err.message));
 
     return () => {
       socket.off('session:updated');
@@ -73,34 +71,45 @@ export default function SessionLobby() {
     }
   };
 
+  const handleJoin = async () => {
+    if (!displayName.trim()) {
+      setJoinError('Please enter your name');
+      return;
+    }
+    setJoinLoading(true);
+    setJoinError('');
+    try {
+      const result = await api.joinSession({
+        sessionCode: sessionCode!,
+        displayName: displayName.trim(),
+      });
+      localStorage.setItem('playerId', result.playerId);
+      setPlayerId(result.playerId);
+      setSession(result.session);
+    } catch (err) {
+      setJoinError((err as Error).message);
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
   const handleReady = () => {
     if (!sessionCode || !playerId) return;
-
     const socket = socketService.getSocket();
     if (!socket) return;
-
     const currentPlayer = session?.players.find((p) => p.id === playerId);
-    const newReadyState = !currentPlayer?.ready;
-
-    socket.emit('session:ready', {
-      sessionCode,
-      playerId,
-      ready: newReadyState,
-    });
+    socket.emit('session:ready', { sessionCode, playerId, ready: !currentPlayer?.ready });
   };
 
   const handleStartGame = () => {
     if (!sessionCode || !playerId) return;
-
     const socket = socketService.getSocket();
     if (!socket) return;
-
     socket.emit('game:start', { sessionCode, playerId });
   };
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/session/${sessionCode}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(`${window.location.origin}/session/${sessionCode}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -115,31 +124,29 @@ export default function SessionLobby() {
 
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
-
     const socket = socketService.getSocket();
-    if (socket) {
-      socket.emit('session:leave', { sessionCode, playerId });
-    }
-
+    if (socket) socket.emit('session:leave', { sessionCode, playerId });
     localStorage.removeItem('playerId');
     navigate('/');
   };
 
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading session...</div>
+        <div className="text-xl text-gray-400">Loading session...</div>
       </div>
     );
   }
 
-  if (error || !session) {
+  // ── Session not found / hard error ────────────────────────────────────────
+  if (error && !session) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="card max-w-md w-full text-center">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold mb-4">Session Error</h2>
-          <p className="text-gray-400 mb-6">{error || 'Session not found'}</p>
+          <p className="text-gray-400 mb-6">{error}</p>
           <button onClick={() => navigate('/')} className="btn btn-primary">
             Back to Home
           </button>
@@ -148,15 +155,89 @@ export default function SessionLobby() {
     );
   }
 
+  // ── Join form — visitor arrived via invite link with no account yet ────────
+  if (!playerId) {
+    const isFull = session && session.players.length >= 2;
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="card max-w-md w-full">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-3">🎲</div>
+            <h1 className="text-2xl font-bold mb-1">You've been invited!</h1>
+            {session && (
+              <p className="text-gray-400">
+                Join a game of{' '}
+                <span className="text-white font-semibold">
+                  {GAME_NAMES[session.gameType] ?? session.gameType}
+                </span>
+              </p>
+            )}
+          </div>
+
+          {session && session.players.length > 0 && (
+            <div className="bg-gray-700/40 rounded-lg p-3 mb-5 text-sm text-gray-300">
+              <span className="text-gray-500 mr-2">Currently in lobby:</span>
+              {session.players.map((p) => p.displayName).join(', ')}
+            </div>
+          )}
+
+          {isFull ? (
+            <div className="text-center space-y-4">
+              <p className="text-red-400">This game is already full.</p>
+              <button onClick={() => navigate('/')} className="btn btn-outline w-full">
+                Back to Home
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Your Name</label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                  placeholder="Enter your name"
+                  className="input w-full"
+                  maxLength={20}
+                  autoFocus
+                />
+              </div>
+
+              {joinError && (
+                <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-red-200 text-sm">
+                  {joinError}
+                </div>
+              )}
+
+              <button
+                onClick={handleJoin}
+                disabled={joinLoading}
+                className="btn btn-primary w-full text-lg py-3"
+              >
+                {joinLoading ? 'Joining...' : 'Join Game'}
+              </button>
+
+              <button
+                onClick={() => navigate('/')}
+                className="text-sm text-gray-400 hover:text-white w-full text-center"
+              >
+                Back to Home
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Normal lobby ──────────────────────────────────────────────────────────
+  if (!session) return null;
+
   const isHost = session.hostId === playerId;
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const allReady = session.players.every((p) => p.ready);
   const canStart = isHost && session.players.length === 2 && allReady;
-
-  const gameNames = {
-    ur: 'Royal Game of Ur',
-    senet: 'Senet',
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -165,7 +246,7 @@ export default function SessionLobby() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <h1 className="text-3xl font-bold mb-2">Game Lobby</h1>
-              <p className="text-gray-400">{gameNames[session.gameType]}</p>
+              <p className="text-gray-400">{GAME_NAMES[session.gameType] ?? session.gameType}</p>
             </div>
             <button onClick={handleLeave} className="text-gray-400 hover:text-white">
               Leave
@@ -176,10 +257,7 @@ export default function SessionLobby() {
             <div className="text-sm text-gray-400 mb-1">Session Code</div>
             <div className="flex items-center gap-3">
               <div className="text-3xl font-mono font-bold tracking-wider">{sessionCode}</div>
-              <button
-                onClick={handleCopyCode}
-                className="btn btn-outline text-sm py-1 px-3"
-              >
+              <button onClick={handleCopyCode} className="btn btn-outline text-sm py-1 px-3">
                 {copied ? '✓ Copied' : 'Copy'}
               </button>
             </div>
@@ -242,7 +320,6 @@ export default function SessionLobby() {
                 {currentPlayer.ready ? 'Not Ready' : 'Ready'}
               </button>
             )}
-
             {isHost && (
               <button
                 onClick={handleStartGame}
