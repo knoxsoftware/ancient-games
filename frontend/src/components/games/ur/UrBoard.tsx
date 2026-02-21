@@ -7,13 +7,14 @@ interface UrBoardProps {
   gameState: GameState;
   playerId: string;
   isMyTurn: boolean;
+  animatingPiece?: { playerNumber: number; pieceIndex: number } | null;
 }
 
 const ROSETTE_POSITIONS = [2, 6, 13];
 
 // Thin disk piece viewed from slightly above — 5 pips (center + 4 cardinal)
 // Player 0: white disk, blue pips  |  Player 1: black disk, brown pips
-function UrPiece({ playerNumber, size = 28 }: { playerNumber: number; size?: number }) {
+export function UrPiece({ playerNumber, size = 28 }: { playerNumber: number; size?: number }) {
   const isWhite = playerNumber === 0;
   const face   = isWhite ? '#F2EEE4' : '#1C1C1C';
   const edge   = isWhite ? '#C0BAA8' : '#080808';
@@ -123,7 +124,7 @@ function TetraDice({ result }: { result: number }) {
   );
 }
 
-export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBoardProps) {
+export default function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
@@ -207,6 +208,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
     return (
       <div
         key={`priv-${player}-${position}`}
+        data-cell={`ur-p${player}-${position}`}
         className="aspect-square flex items-center justify-center relative rounded-sm overflow-hidden"
         style={landingStyle(isLanding, baseBg, baseBorder)}
       >
@@ -215,6 +217,10 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
           {pieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
             const sz = 22;
+            const isAnimating =
+              !!animatingPiece &&
+              piece.playerNumber === animatingPiece.playerNumber &&
+              piece.pieceIndex === animatingPiece.pieceIndex;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
@@ -225,7 +231,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
                 className={`transition-transform focus:outline-none ${
                   canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={{ width: sz, height: sz }}
+                style={{ width: sz, height: sz, opacity: isAnimating ? 0 : undefined }}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
                 {<UrPiece playerNumber={piece.playerNumber} size={sz} />}
@@ -255,6 +261,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
     return (
       <div
         key={`shared-${position}`}
+        data-cell={`ur-shared-${position}`}
         className="aspect-square flex items-center justify-center relative rounded-sm overflow-hidden"
         style={landingStyle(isLanding, baseBg, baseBorder)}
       >
@@ -263,6 +270,10 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
           {allPieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
             const sz = allPieces.length > 1 ? 16 : 22;
+            const isAnimating =
+              !!animatingPiece &&
+              piece.playerNumber === animatingPiece.playerNumber &&
+              piece.pieceIndex === animatingPiece.pieceIndex;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
@@ -273,7 +284,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
                 className={`transition-transform focus:outline-none ${
                   canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={{ width: sz, height: sz }}
+                style={{ width: sz, height: sz, opacity: isAnimating ? 0 : undefined }}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
                 {<UrPiece playerNumber={piece.playerNumber} size={sz} />}
@@ -434,6 +445,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
           return (
             <div
               key={player.id}
+              data-cell={`ur-offboard-${player.playerNumber}`}
               className="rounded-xl p-3 border"
               style={{
                 background: 'rgba(8,5,0,0.5)',
@@ -447,6 +459,10 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
                 {waiting.map((piece) => {
                   const canClick = isMyTurn && piece.playerNumber === playerNumber;
                   const sz = 22;
+                  const isAnimating =
+                    !!animatingPiece &&
+                    piece.playerNumber === animatingPiece.playerNumber &&
+                    piece.pieceIndex === animatingPiece.pieceIndex;
                   return (
                     <button
                       key={`${piece.playerNumber}-${piece.pieceIndex}`}
@@ -457,7 +473,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn }: UrBo
                       className={`transition-transform focus:outline-none ${
                         canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-50'
                       }`}
-                      style={{ width: sz, height: sz }}
+                      style={{ width: sz, height: sz, opacity: isAnimating ? 0 : undefined }}
                       title={`Enter piece ${piece.pieceIndex + 1}`}
                     >
                       {<UrPiece playerNumber={piece.playerNumber} size={sz} />}

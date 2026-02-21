@@ -7,10 +7,11 @@ interface SenetBoardProps {
   gameState: GameState;
   playerId: string;
   isMyTurn: boolean;
+  animatingPiece?: { playerNumber: number; pieceIndex: number } | null;
 }
 
 // Ivory cone piece (Player 0) - historical Egyptian senet piece shape
-function ConePiece({ size = 28 }: { size?: number }) {
+export function ConePiece({ size = 28 }: { size?: number }) {
   const h = Math.round(size * 1.25);
   return (
     <svg viewBox="0 0 32 40" width={size} height={h} style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.45))' }}>
@@ -23,7 +24,7 @@ function ConePiece({ size = 28 }: { size?: number }) {
 }
 
 // Dark ebony spool piece (Player 1) - second type of historical senet piece
-function SpoolPiece({ size = 28 }: { size?: number }) {
+export function SpoolPiece({ size = 28 }: { size?: number }) {
   const h = Math.round(size * 1.25);
   return (
     <svg viewBox="0 0 32 40" width={size} height={h} style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.55))' }}>
@@ -157,7 +158,7 @@ function SpecialIcon({ type, color }: { type: SpecialSquare['iconType']; color: 
   return <SunIcon color={color} />;
 }
 
-export default function SenetBoard({ session, gameState, playerId, isMyTurn }: SenetBoardProps) {
+export default function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: SenetBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
@@ -221,6 +222,7 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn }: S
     return (
       <div
         key={position}
+        data-cell={`senet-pos-${position}`}
         className="aspect-square flex items-center justify-center relative rounded-sm overflow-hidden"
         style={{
           background: bg,
@@ -264,6 +266,10 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn }: S
           {pieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
             const sz = pieces.length > 1 ? 16 : 24;
+            const isAnimating =
+              !!animatingPiece &&
+              piece.playerNumber === animatingPiece.playerNumber &&
+              piece.pieceIndex === animatingPiece.pieceIndex;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
@@ -274,7 +280,7 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn }: S
                 className={`transition-transform focus:outline-none ${
                   canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={{ width: sz, height: Math.round(sz * 1.25) }}
+                style={{ width: sz, height: Math.round(sz * 1.25), opacity: isAnimating ? 0 : undefined }}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
                 {piece.playerNumber === 0 ? <ConePiece size={sz} /> : <SpoolPiece size={sz} />}

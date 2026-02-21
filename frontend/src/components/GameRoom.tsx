@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import UrBoard from './games/ur/UrBoard';
 import SenetBoard from './games/senet/SenetBoard';
+import { AnimationOverlay, AnimationState } from './AnimationOverlay';
+import { MoveLog, HistoryEntry } from './MoveLog';
 
 export default function GameRoom() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
@@ -14,6 +16,20 @@ export default function GameRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  const gameStateRef = useRef<GameState | null>(null);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  const sessionRef = useRef<Session | null>(null);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+
+  const animIdRef = useRef(0);
+  const [pendingAnimation, setPendingAnimation] = useState<AnimationState | null>(null);
+  const [replayAnimation, setReplayAnimation] = useState<AnimationState | null>(null);
+  const [moveHistory, setMoveHistory] = useState<HistoryEntry[]>([]);
+  const historyIdRef = useRef(0);
+  const replayIdRef = useRef(0);
+  const [replayingEntryId, setReplayingEntryId] = useState<number | null>(null);
 
   const playerId = localStorage.getItem('playerId');
 
@@ -47,8 +63,36 @@ export default function GameRoom() {
       setTimeout(() => setMessage(''), 3000);
     });
 
-    socket.on('game:move-made', ({ gameState: updatedGameState }) => {
+    socket.on('game:move-made', ({ move, gameState: updatedGameState }) => {
+      const prevState = gameStateRef.current;
+      const currentSession = sessionRef.current;
+
+      const playerNum =
+        currentSession?.players.find(p => p.id === move.playerId)?.playerNumber ?? 0;
+
+      const wasCapture =
+        !!prevState &&
+        move.to !== 99 &&
+        prevState.board.pieces.some(
+          p => p.playerNumber !== playerNum && p.position === move.to
+        );
+
       setGameState(updatedGameState);
+
+      animIdRef.current += 1;
+      const animId = animIdRef.current;
+      setPendingAnimation({
+        move,
+        playerNumber: playerNum,
+        gameType: currentSession?.gameType as 'ur' | 'senet',
+        id: animId,
+      });
+
+      historyIdRef.current += 1;
+      setMoveHistory(prev => [
+        ...prev,
+        { id: historyIdRef.current, move, playerNumber: playerNum, wasCapture },
+      ]);
     });
 
     socket.on('game:turn-changed', ({ currentTurn }) => {
@@ -100,6 +144,17 @@ export default function GameRoom() {
     navigate('/');
   };
 
+  const handleReplay = (entry: HistoryEntry) => {
+    replayIdRef.current += 1;
+    setReplayAnimation({
+      move: entry.move,
+      playerNumber: entry.playerNumber,
+      gameType: session!.gameType as 'ur' | 'senet',
+      id: replayIdRef.current,
+    });
+    setReplayingEntryId(entry.id);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -125,6 +180,10 @@ export default function GameRoom() {
 
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const isMyTurn = gameState.currentTurn === currentPlayer?.playerNumber;
+
+  const animatingPiece = pendingAnimation
+    ? { playerNumber: pendingAnimation.playerNumber, pieceIndex: pendingAnimation.move.pieceIndex }
+    : null;
 
   return (
     <div className="min-h-screen p-4">
@@ -171,24 +230,38 @@ export default function GameRoom() {
           </div>
         )}
 
-        {/* Game Board */}
-        {session.gameType === 'ur' && (
-          <UrBoard
-            session={session}
-            gameState={gameState}
-            playerId={playerId!}
-            isMyTurn={isMyTurn}
-          />
-        )}
-
-        {session.gameType === 'senet' && (
-          <SenetBoard
-            session={session}
-            gameState={gameState}
-            playerId={playerId!}
-            isMyTurn={isMyTurn}
-          />
-        )}
+        {/* Game Board + Move Log */}
+        <div className="lg:flex lg:gap-4 lg:items-start">
+          <div className="lg:flex-1">
+            {session.gameType === 'ur' && (
+              <UrBoard
+                session={session}
+                gameState={gameState}
+                playerId={playerId!}
+                isMyTurn={isMyTurn}
+                animatingPiece={animatingPiece}
+              />
+            )}
+            {session.gameType === 'senet' && (
+              <SenetBoard
+                session={session}
+                gameState={gameState}
+                playerId={playerId!}
+                isMyTurn={isMyTurn}
+                animatingPiece={animatingPiece}
+              />
+            )}
+          </div>
+          <div className="mt-4 lg:mt-0 lg:w-52 lg:flex-shrink-0">
+            <MoveLog
+              entries={moveHistory}
+              gameType={session.gameType as 'ur' | 'senet'}
+              session={session}
+              onReplay={handleReplay}
+              replayingId={replayingEntryId}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Non-layout-shifting toast for transient messages */}
@@ -207,6 +280,19 @@ export default function GameRoom() {
         >
           {message}
         </div>
+      )}
+
+      {pendingAnimation && (
+        <AnimationOverlay
+          animation={pendingAnimation}
+          onComplete={() => setPendingAnimation(null)}
+        />
+      )}
+      {replayAnimation && (
+        <AnimationOverlay
+          animation={replayAnimation}
+          onComplete={() => { setReplayAnimation(null); setReplayingEntryId(null); }}
+        />
       )}
     </div>
   );
