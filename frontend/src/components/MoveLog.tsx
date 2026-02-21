@@ -17,7 +17,7 @@ interface MoveLogProps {
   replayingId: number | null;
 }
 
-function describeMove(
+export function describeMove(
   entry: HistoryEntry,
   session: Session
 ): string {

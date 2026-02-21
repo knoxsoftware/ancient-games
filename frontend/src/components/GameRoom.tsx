@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
+import { initPushNotifications } from '../services/pushNotifications';
 import UrBoard from './games/ur/UrBoard';
 import SenetBoard from './games/senet/SenetBoard';
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
@@ -43,12 +44,12 @@ export default function GameRoom() {
     loadSession();
   }, [sessionCode, playerId]);
 
-  // Request browser notification permission once on mount
+  // Register service worker and subscribe to push notifications on mount
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (playerId) {
+      initPushNotifications(playerId);
     }
-  }, []);
+  }, [playerId]);
 
   useEffect(() => {
     if (!sessionCode || !playerId) return;
@@ -266,19 +267,6 @@ export default function GameRoom() {
           </div>
         )}
 
-        {/* Turn Indicator */}
-        {!gameState.finished && (
-          <div className="bg-gray-800 rounded-lg p-4 mb-4 text-center">
-            {isMyTurn ? (
-              <div className="text-xl font-bold text-primary-400">Your Turn!</div>
-            ) : (
-              <div className="text-lg text-gray-400">
-                Waiting for {session.players[gameState.currentTurn]?.displayName}...
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Winner Banner */}
         {gameState.finished && gameState.winner !== null && (
           <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg p-6 mb-4 text-center">
@@ -301,6 +289,7 @@ export default function GameRoom() {
                 playerId={playerId!}
                 isMyTurn={isMyTurn}
                 animatingPiece={animatingPiece}
+                lastMove={moveHistory[moveHistory.length - 1]}
               />
             )}
             {session.gameType === 'senet' && (
@@ -310,6 +299,7 @@ export default function GameRoom() {
                 playerId={playerId!}
                 isMyTurn={isMyTurn}
                 animatingPiece={animatingPiece}
+                lastMove={moveHistory[moveHistory.length - 1]}
               />
             )}
           </div>
