@@ -6,6 +6,7 @@ export interface HistoryEntry {
   move: Move;
   playerNumber: number;
   wasCapture: boolean;
+  isSkip?: boolean;
 }
 
 interface MoveLogProps {
@@ -20,8 +21,11 @@ function describeMove(
   entry: HistoryEntry,
   session: Session
 ): string {
-  const { move, playerNumber, wasCapture } = entry;
+  const { move, playerNumber, wasCapture, isSkip } = entry;
   const name = session.players.find(p => p.playerNumber === playerNumber)?.displayName ?? `P${playerNumber + 1}`;
+  if (isSkip) {
+    return `${name}: skipped (rolled ${move.diceRoll ?? '?'})`;
+  }
   const roll = move.diceRoll !== undefined ? ` (${move.diceRoll})` : '';
   const fromStr = move.from === -1 ? 'start' : String(move.from);
   const toStr = move.to === 99 ? 'exit' : String(move.to);

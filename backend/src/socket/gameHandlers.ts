@@ -99,13 +99,16 @@ export function registerGameHandlers(
       session.gameState.board.diceRoll = roll;
       await sessionService.updateGameState(sessionCode, session.gameState);
 
+      const canMove = gameEngine.canMove(session.gameState.board, player.playerNumber, roll);
+
       io.to(sessionCode).emit('game:dice-rolled', {
         playerNumber: player.playerNumber,
         roll,
+        canMove,
       });
 
       // Check if player can move with this roll
-      if (!gameEngine.canMove(session.gameState.board, player.playerNumber, roll)) {
+      if (!canMove) {
         // No valid moves, skip turn
         const nextTurn = (session.gameState.currentTurn + 1) % 2;
         session.gameState.board.diceRoll = null;

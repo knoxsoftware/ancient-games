@@ -16,6 +16,7 @@ export default function GameRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
 
   const gameStateRef = useRef<GameState | null>(null);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
@@ -58,9 +59,25 @@ export default function GameRoom() {
       setGameState(updatedGameState);
     });
 
-    socket.on('game:dice-rolled', ({ playerNumber, roll }) => {
-      setMessage(`Player ${playerNumber + 1} rolled a ${roll}`);
-      setTimeout(() => setMessage(''), 3000);
+    socket.on('game:dice-rolled', ({ playerNumber, roll, canMove }) => {
+      if (!canMove) {
+        const currentSession = sessionRef.current;
+        const skipPlayer = currentSession?.players.find((p) => p.playerNumber === playerNumber);
+        const playerName = skipPlayer?.displayName ?? `Player ${playerNumber + 1}`;
+        historyIdRef.current += 1;
+        setMoveHistory((prev) => [
+          ...prev,
+          {
+            id: historyIdRef.current,
+            move: { playerId: skipPlayer?.id ?? '', pieceIndex: -1, from: -2, to: -2, diceRoll: roll },
+            playerNumber,
+            wasCapture: false,
+            isSkip: true,
+          },
+        ]);
+        setSkipNotice({ playerName });
+        setTimeout(() => setSkipNotice(null), 2500);
+      }
     });
 
     socket.on('game:move-made', ({ move, gameState: updatedGameState }) => {
@@ -279,6 +296,24 @@ export default function GameRoom() {
           }}
         >
           {message}
+        </div>
+      )}
+
+      {/* Skip-turn notice — amber/warning styling distinct from normal toast */}
+      {skipNotice && (
+        <div
+          key={skipNotice.playerName}
+          className="dice-shake fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
+          style={{
+            background: 'rgba(40,22,0,0.93)',
+            border: '1px solid rgba(220,140,20,0.7)',
+            color: '#FFD060',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(220,140,20,0.2)',
+          }}
+        >
+          No valid moves — {skipNotice.playerName}&apos;s turn passes
         </div>
       )}
 
