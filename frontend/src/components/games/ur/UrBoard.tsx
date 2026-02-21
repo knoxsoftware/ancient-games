@@ -131,6 +131,9 @@ function TetraDice({ result }: { result: number }) {
 export default function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, lastMove }: UrBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
+  // topPlayer = opponent's row (far side); bottomPlayer = my row (near side)
+  const topPlayer = playerNumber === 0 ? 1 : 0;
+  const bottomPlayer = playerNumber;
 
   const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
   const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
@@ -507,27 +510,76 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
           boxShadow: '0 6px 28px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,200,60,0.06)',
         }}
       >
+        {/* Opponent's waiting pieces — above the board */}
+        <div
+          data-cell={`ur-offboard-${topPlayer}`}
+          className="flex items-center gap-1.5 flex-wrap mb-2 pb-2 border-b min-h-[28px]"
+          style={{ borderColor: '#2A1E0E' }}
+        >
+          {offBoardPieces(topPlayer).map((piece) => (
+            <div
+              key={`${piece.playerNumber}-${piece.pieceIndex}`}
+              style={{ width: 22, height: 22, opacity: 0.55 }}
+              title={`${session.players.find(p => p.playerNumber === topPlayer)?.displayName} – piece ${piece.pieceIndex + 1}`}
+            >
+              <UrPiece playerNumber={piece.playerNumber} size={22} />
+            </div>
+          ))}
+          {offBoardPieces(topPlayer).length === 0 && (
+            <span className="text-xs italic" style={{ color: '#5A4A38' }}>all on board</span>
+          )}
+        </div>
+
         <div className="space-y-1.5">
-          {/* Top row: P1 start [3,2,1,0] · gap · end [13, 12★] (rosette is last before exit) */}
+          {/* Top row: opponent's private lane */}
           <div className="grid grid-cols-8 gap-1">
-            {[3, 2, 1, 0].map((pos) => renderPrivate(pos, 1))}
+            {[3, 2, 1, 0].map((pos) => renderPrivate(pos, topPlayer))}
             {emptyCell('t4')}
             {emptyCell('t5')}
-            {[13, 12].map((pos) => renderPrivate(pos, 1))}
+            {[13, 12].map((pos) => renderPrivate(pos, topPlayer))}
           </div>
 
-          {/* Middle row: 8 shared squares — aligns directly under/above end lanes */}
+          {/* Middle row: 8 shared squares */}
           <div className="grid grid-cols-8 gap-1">
             {[0, 1, 2, 3, 4, 5, 6, 7].map((idx) => renderShared(idx))}
           </div>
 
-          {/* Bottom row: P0 start [3,2,1,0] · gap · end [13, 12★] */}
+          {/* Bottom row: my private lane */}
           <div className="grid grid-cols-8 gap-1">
-            {[3, 2, 1, 0].map((pos) => renderPrivate(pos, 0))}
+            {[3, 2, 1, 0].map((pos) => renderPrivate(pos, bottomPlayer))}
             {emptyCell('b4')}
             {emptyCell('b5')}
-            {[13, 12].map((pos) => renderPrivate(pos, 0))}
+            {[13, 12].map((pos) => renderPrivate(pos, bottomPlayer))}
           </div>
+        </div>
+
+        {/* My waiting pieces — below the board */}
+        <div
+          data-cell={`ur-offboard-${bottomPlayer}`}
+          className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t min-h-[28px]"
+          style={{ borderColor: '#2A1E0E' }}
+        >
+          {offBoardPieces(bottomPlayer).map((piece) => {
+            const canClick = isMyTurn && piece.playerNumber === playerNumber;
+            const sz = 22;
+            return (
+              <button
+                key={`${piece.playerNumber}-${piece.pieceIndex}`}
+                onClick={() => handlePieceClick(piece)}
+                disabled={!canClick}
+                className={`transition-transform focus:outline-none ${
+                  canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-50'
+                }`}
+                style={pieceButtonStyle(piece, sz)}
+                title={`Enter piece ${piece.pieceIndex + 1}`}
+              >
+                <UrPiece playerNumber={piece.playerNumber} size={sz} />
+              </button>
+            );
+          })}
+          {offBoardPieces(bottomPlayer).length === 0 && (
+            <span className="text-xs italic" style={{ color: '#5A4A38' }}>all on board</span>
+          )}
         </div>
 
         {/* Legend */}
@@ -543,53 +595,6 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
             <span style={{ fontSize: '9px', color: '#908070' }}>Shared path — can capture</span>
           </div>
         </div>
-      </div>
-
-      {/* Off-board pieces waiting to enter */}
-      <div className="grid grid-cols-2 gap-3">
-        {session.players.map((player) => {
-          const waiting = offBoardPieces(player.playerNumber);
-          return (
-            <div
-              key={player.id}
-              data-cell={`ur-offboard-${player.playerNumber}`}
-              className="rounded-xl p-3 border"
-              style={{
-                background: 'rgba(8,5,0,0.5)',
-                borderColor: player.playerNumber === 0 ? '#1E3A5A' : '#5A1E1E',
-              }}
-            >
-              <div className="text-xs font-medium mb-2" style={{ color: '#907A60' }}>
-                {player.displayName} — waiting ({waiting.length})
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {waiting.map((piece) => {
-                  const canClick = isMyTurn && piece.playerNumber === playerNumber;
-                  const sz = 22;
-                  return (
-                    <button
-                      key={`${piece.playerNumber}-${piece.pieceIndex}`}
-                      onClick={() => handlePieceClick(piece)}
-                      disabled={!canClick}
-                      className={`transition-transform focus:outline-none ${
-                        canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-50'
-                      }`}
-                      style={pieceButtonStyle(piece, sz)}
-                      title={`Enter piece ${piece.pieceIndex + 1}`}
-                    >
-                      {<UrPiece playerNumber={piece.playerNumber} size={sz} />}
-                    </button>
-                  );
-                })}
-                {waiting.length === 0 && (
-                  <span className="text-xs italic" style={{ color: '#5A4A38' }}>
-                    all on board
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
