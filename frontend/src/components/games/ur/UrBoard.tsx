@@ -134,6 +134,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
   // topPlayer = opponent's row (far side); bottomPlayer = my row (near side)
   const topPlayer = playerNumber === 0 ? 1 : 0;
   const bottomPlayer = playerNumber;
+  const currentTurnName = session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
 
   const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
   const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
@@ -466,23 +467,26 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
         {/* Roll / dice result */}
         <div className="flex flex-col items-center justify-center min-h-[92px]">
           {gameState.board.diceRoll === null ? (
-            <button
-              onClick={handleRollDice}
-              disabled={!isMyTurn || gameState.finished}
-              className="w-full py-3 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{
-                background:
-                  isMyTurn && !gameState.finished
-                    ? 'linear-gradient(135deg, #C4860A 0%, #7A5000 100%)'
-                    : '#1E1408',
-                color: '#F0EDE0',
-                border: '2px solid #C4860A',
-                fontSize: '1rem',
-                letterSpacing: '0.02em',
-              }}
-            >
-              Roll the Dice
-            </button>
+            isMyTurn ? (
+              <button
+                onClick={handleRollDice}
+                disabled={gameState.finished}
+                className="w-full py-3 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  background: 'linear-gradient(135deg, #C4860A 0%, #7A5000 100%)',
+                  color: '#F0EDE0',
+                  border: '2px solid #C4860A',
+                  fontSize: '1rem',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                Roll the Dice
+              </button>
+            ) : (
+              <div className="text-center text-sm" style={{ color: '#907A60' }}>
+                Waiting for <span style={{ color: '#F0EDE0' }}>{currentTurnName}</span> to roll…
+              </div>
+            )
           ) : (
             <div className="flex flex-col items-center gap-1">
               <TetraDice result={gameState.board.diceRoll} />
@@ -492,6 +496,8 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
               <div className="text-xs" style={{ color: '#907A60' }}>
                 {gameState.board.diceRoll === 0
                   ? 'No move — turn passes.'
+                  : !isMyTurn
+                  ? `Waiting for ${currentTurnName} to move…`
                   : selectedPiece
                   ? 'Tap again to confirm.'
                   : 'Select a piece to move.'}
