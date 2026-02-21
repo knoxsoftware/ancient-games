@@ -29,7 +29,7 @@ export class UrGame extends GameEngine {
 
   private readonly PIECES_PER_PLAYER = 7;
   private readonly PATH_LENGTH = 14; // 4 private + 8 shared + 2 private
-  private readonly ROSETTE_POSITIONS = [2, 6, 12]; // Positions with rosettes
+  private readonly ROSETTE_POSITIONS = [2, 6, 13]; // Positions with rosettes
   private readonly SHARED_START = 4;
   private readonly SHARED_END = 11;
 
@@ -91,9 +91,9 @@ export class UrGame extends GameEngine {
       return this.isPositionAvailableForPlayer(board, to, playerNumber);
     }
 
-    // If moving beyond the board, piece finishes
+    // Exact roll required to exit the board
     if (from + diceRoll >= this.PATH_LENGTH) {
-      return to === 99;
+      return from + diceRoll === this.PATH_LENGTH && to === 99;
     }
 
     // Normal move - check if destination is available
@@ -170,15 +170,17 @@ export class UrGame extends GameEngine {
       const from = piece.position;
       const to = from === -1 ? diceRoll - 1 : from + diceRoll;
 
-      // Check if piece can finish
+      // Check if piece can finish (exact roll required)
       if (from !== -1 && from + diceRoll >= this.PATH_LENGTH) {
-        moves.push({
-          playerId: '', // Will be set by caller
-          pieceIndex: piece.pieceIndex,
-          from,
-          to: 99,
-          diceRoll,
-        });
+        if (from + diceRoll === this.PATH_LENGTH) {
+          moves.push({
+            playerId: '', // Will be set by caller
+            pieceIndex: piece.pieceIndex,
+            from,
+            to: 99,
+            diceRoll,
+          });
+        }
         continue;
       }
 

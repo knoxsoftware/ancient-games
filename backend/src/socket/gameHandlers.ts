@@ -107,8 +107,10 @@ export function registerGameHandlers(
       // Check if player can move with this roll
       if (!gameEngine.canMove(session.gameState.board, player.playerNumber, roll)) {
         // No valid moves, skip turn
+        const nextTurn = (session.gameState.currentTurn + 1) % 2;
         session.gameState.board.diceRoll = null;
-        session.gameState.currentTurn = (session.gameState.currentTurn + 1) % 2;
+        session.gameState.board.currentTurn = nextTurn;
+        session.gameState.currentTurn = nextTurn;
         await sessionService.updateGameState(sessionCode, session.gameState);
 
         io.to(sessionCode).emit('game:turn-changed', {
@@ -205,8 +207,10 @@ export function registerGameHandlers(
         return;
       }
 
+      const nextTurn = (session.gameState.currentTurn + 1) % 2;
       session.gameState.board.diceRoll = null;
-      session.gameState.currentTurn = (session.gameState.currentTurn + 1) % 2;
+      session.gameState.board.currentTurn = nextTurn;
+      session.gameState.currentTurn = nextTurn;
       await sessionService.updateGameState(sessionCode, session.gameState);
 
       io.to(sessionCode).emit('game:turn-changed', {
