@@ -13,6 +13,19 @@ export interface AnimationState {
   id: number;
 }
 
+// Returns a virtual DOMRect just off the right edge of the last board cell,
+// used as the "exit" destination for pieces leaving the board.
+function getExitRect(gameType: 'ur' | 'senet', playerNumber: number): DOMRect | null {
+  const selector =
+    gameType === 'ur'
+      ? `[data-cell="ur-p${playerNumber}-13"]`
+      : `[data-cell="senet-pos-29"]`;
+  const el = document.querySelector(selector);
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  return new DOMRect(rect.left + rect.width * 1.5, rect.top, rect.width, rect.height);
+}
+
 function getCellRect(
   gameType: 'ur' | 'senet',
   position: number,
@@ -21,15 +34,34 @@ function getCellRect(
   let selector: string;
   if (gameType === 'ur') {
     if (position === -1) selector = `[data-cell="ur-offboard-${playerNumber}"]`;
-    else if (position === 99) return null; // fade-out at source
+    else if (position === 99) return getExitRect(gameType, playerNumber);
     else if (position >= 4 && position <= 11) selector = `[data-cell="ur-shared-${position}"]`;
     else selector = `[data-cell="ur-p${playerNumber}-${position}"]`;
   } else {
+    if (position === 99) return getExitRect(gameType, playerNumber);
     if (position < 0 || position >= 30) return null;
     selector = `[data-cell="senet-pos-${position}"]`;
   }
   const el = document.querySelector(selector);
   return el ? el.getBoundingClientRect() : null;
+}
+
+// Returns the ordered list of board positions the piece travels through,
+// not including `from`, including `to` (and the virtual exit pos 99 if exiting).
+function getPathPositions(
+  gameType: 'ur' | 'senet',
+  from: number,
+  to: number,
+): number[] {
+  // Entering from off-board: animate directly to destination in one step
+  if (from === -1) return [to];
+  const maxBoard = gameType === 'ur' ? 13 : 29;
+  const boardEnd = to === 99 ? maxBoard : to;
+  const steps: number[] = [];
+  for (let p = from + 1; p <= boardEnd; p++) steps.push(p);
+  // Append virtual exit position so the piece slides off the board edge
+  if (to === 99) steps.push(99);
+  return steps;
 }
 
 export function AnimationOverlay({
@@ -44,15 +76,6 @@ export function AnimationOverlay({
   useEffect(() => {
     const { move, playerNumber, gameType } = animation;
     const PIECE_SIZE = gameType === 'ur' ? 28 : 24;
-    const fromRect = getCellRect(gameType, move.from, playerNumber);
-    const toRect = getCellRect(gameType, move.to, playerNumber);
-
-    if (!fromRect && !toRect) { onComplete(); return; }
-
-    const center = (r: DOMRect) => ({
-      x: r.left + r.width / 2 - PIECE_SIZE / 2,
-      y: r.top + r.height / 2 - PIECE_SIZE / 2,
-    });
 
     const base: React.CSSProperties = {
       position: 'fixed',
@@ -60,37 +83,94 @@ export function AnimationOverlay({
       height: gameType === 'senet' ? Math.round(PIECE_SIZE * 1.25) : PIECE_SIZE,
       pointerEvents: 'none',
       zIndex: 9999,
-      willChange: 'transform',
     };
 
+    const centerOf = (r: DOMRect) => ({
+      x: r.left + r.width / 2 - PIECE_SIZE / 2,
+      y: r.top + r.height / 2 - PIECE_SIZE / 2,
+    });
+
+    const fromRect = getCellRect(gameType, move.from, playerNumber);
+
     if (!fromRect) {
-      // No source: fade in at destination
-      const { x, y } = center(toRect!);
+      // No source rect (shouldn't happen in practice): fade-in at destination
+      const toRect = getCellRect(gameType, move.to, playerNumber);
+      if (!toRect) { onComplete(); return; }
+      const { x, y } = centerOf(toRect);
       setStyle({ ...base, left: x, top: y, opacity: 0, transition: `opacity ${DURATION}ms ease-out` });
       requestAnimationFrame(() => setStyle(s => ({ ...s, opacity: 1 })));
-    } else if (!toRect) {
-      // No destination (exiting board): fade out at source
-      const { x, y } = center(fromRect);
-      setStyle({ ...base, left: x, top: y, opacity: 1, transition: `opacity ${DURATION}ms ease-out` });
-      requestAnimationFrame(() => setStyle(s => ({ ...s, opacity: 0 })));
-    } else {
-      // Slide from source to destination
-      const from = center(fromRect);
-      const to = center(toRect);
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      setStyle({ ...base, left: from.x, top: from.y, opacity: 1, transform: 'translate(0,0)', transition: 'none' });
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        setStyle(s => ({
-          ...s,
-          transform: `translate(${dx}px,${dy}px)`,
-          transition: `transform ${DURATION}ms cubic-bezier(0.4,0,0.2,1)`,
-        }));
-      }));
+      const timer = setTimeout(onComplete, DURATION + 50);
+      return () => clearTimeout(timer);
     }
 
-    const timer = setTimeout(onComplete, DURATION + 50);
-    return () => clearTimeout(timer);
+    // Build the list of intermediate positions and collect their centers
+    const pathPositions = getPathPositions(gameType, move.from, move.to);
+    const validSteps: Array<{ x: number; y: number }> = [];
+    for (const pos of pathPositions) {
+      const rect = getCellRect(gameType, pos, playerNumber);
+      if (rect) validSteps.push(centerOf(rect));
+    }
+
+    if (validSteps.length === 0) {
+      // No reachable destination rects: fade-out at source
+      const src = centerOf(fromRect);
+      setStyle({ ...base, left: src.x, top: src.y, opacity: 1, transition: `opacity ${DURATION}ms ease-out` });
+      requestAnimationFrame(() => setStyle(s => ({ ...s, opacity: 0 })));
+      const timer = setTimeout(onComplete, DURATION + 50);
+      return () => clearTimeout(timer);
+    }
+
+    // Per-step duration: shorter steps for longer paths, minimum 80 ms
+    const stepDuration = Math.max(80, DURATION / validSteps.length);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let cancelled = false;
+    let stepIdx = 0;
+
+    // Place piece at the source with no transition
+    const start = centerOf(fromRect);
+    setStyle({ ...base, left: start.x, top: start.y, opacity: 1, transition: 'none' });
+
+    const runStep = () => {
+      if (cancelled) return;
+
+      if (stepIdx >= validSteps.length) {
+        // All board steps complete
+        if (move.to === 99) {
+          // Fade out at the virtual exit position
+          const last = validSteps[validSteps.length - 1];
+          setStyle(s => ({ ...s, left: last.x, top: last.y, transition: 'none' }));
+          requestAnimationFrame(() => {
+            if (!cancelled) {
+              setStyle(s => ({ ...s, opacity: 0, transition: `opacity ${stepDuration}ms ease-out` }));
+            }
+          });
+          timers.push(setTimeout(onComplete, stepDuration + 50));
+        } else {
+          onComplete();
+        }
+        return;
+      }
+
+      const { x: nextX, y: nextY } = validSteps[stepIdx];
+      stepIdx++;
+
+      setStyle(s => ({
+        ...s,
+        left: nextX,
+        top: nextY,
+        transition: `left ${stepDuration}ms linear, top ${stepDuration}ms linear`,
+      }));
+
+      timers.push(setTimeout(runStep, stepDuration));
+    };
+
+    // Start after initial render so the browser paints the source position first
+    requestAnimationFrame(() => { if (!cancelled) runStep(); });
+
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
   }, [animation.id]);
 
   const { playerNumber, gameType } = animation;
