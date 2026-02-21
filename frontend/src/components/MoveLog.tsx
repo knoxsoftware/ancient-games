@@ -38,7 +38,7 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0;
     }
   }, [entries.length]);
 
@@ -68,7 +68,7 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
             No moves yet
           </div>
         )}
-        {entries.map((entry) => {
+        {[...entries].reverse().map((entry) => {
           const isReplaying = entry.id === replayingId;
           return (
             <button
