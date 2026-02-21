@@ -55,7 +55,25 @@ export default function GameRoom() {
 
     const socket = socketService.connect();
 
-    socket.emit('session:join', { sessionCode, playerId });
+    // Re-join the session room and pull latest state on every (re)connection.
+    // The server responds with session:updated which carries the full game state,
+    // so no separate REST call is needed on reconnect.
+    const rejoin = () => {
+      socket.emit('session:join', { sessionCode, playerId });
+    };
+    socket.on('connect', rejoin);
+    // If the socket is already connected (e.g. navigating back to this page),
+    // the 'connect' event won't fire again — call immediately.
+    if (socket.connected) rejoin();
+
+    // When the tab becomes visible again, force a reconnect if the socket has
+    // dropped (Socket.io may have exhausted its retry window while backgrounded).
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !socket.connected) {
+        socket.connect();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     socket.on('session:updated', (updatedSession) => {
       setSession(updatedSession);
@@ -151,6 +169,8 @@ export default function GameRoom() {
     });
 
     return () => {
+      socket.off('connect', rejoin);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.off('session:updated');
       socket.off('game:state-updated');
       socket.off('game:dice-rolled');
