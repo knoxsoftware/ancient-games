@@ -13,8 +13,8 @@ export interface AnimationState {
   id: number;
 }
 
-// Returns a virtual DOMRect just off the right edge of the last board cell,
-// used as the "exit" destination for pieces leaving the board.
+// Returns a virtual DOMRect just off the edge of the last board cell in the
+// direction the piece is travelling, used as the exit destination.
 function getExitRect(gameType: 'ur' | 'senet', playerNumber: number): DOMRect | null {
   const selector =
     gameType === 'ur'
@@ -23,7 +23,10 @@ function getExitRect(gameType: 'ur' | 'senet', playerNumber: number): DOMRect | 
   const el = document.querySelector(selector);
   if (!el) return null;
   const rect = el.getBoundingClientRect();
-  return new DOMRect(rect.left + rect.width * 1.5, rect.top, rect.width, rect.height);
+  // Ur end lane runs right→left (pos 12 col 7, pos 13 col 6), so exit goes left.
+  // Senet row 2 runs left→right, so exit goes right.
+  const offsetX = gameType === 'ur' ? -rect.width * 1.5 : rect.width * 1.5;
+  return new DOMRect(rect.left + offsetX, rect.top, rect.width, rect.height);
 }
 
 function getCellRect(
