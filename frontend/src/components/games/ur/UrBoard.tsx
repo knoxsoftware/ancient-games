@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -11,6 +11,8 @@ interface UrBoardProps {
 }
 
 const ROSETTE_POSITIONS = [2, 6, 13];
+const SHARED_START = 4;
+const SHARED_END = 11;
 
 // Thin disk piece viewed from slightly above — 5 pips (center + 4 cardinal)
 // Player 0: white disk, blue pips  |  Player 1: black disk, brown pips
@@ -128,18 +130,64 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
-  const [hoveredPiece, setHoveredPiece] = useState<PiecePosition | null>(null);
+  const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
+  const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
+  const invalidTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Landing position + owning player for the currently hovered piece
-  const hoveredLanding = (() => {
-    if (!hoveredPiece || !isMyTurn || hoveredPiece.playerNumber !== playerNumber) return null;
+  // Clear selection when turn changes or dice roll resets
+  useEffect(() => {
+    if (!isMyTurn || gameState.board.diceRoll === null) {
+      setSelectedPiece(null);
+    }
+  }, [isMyTurn, gameState.board.diceRoll]);
+
+  // Returns the board position the selected piece would land on, or null
+  const selectedLanding = (() => {
+    if (!selectedPiece || !isMyTurn || selectedPiece.playerNumber !== playerNumber) return null;
     if (gameState.board.diceRoll === null) return null;
-    const from = hoveredPiece.position;
+    const from = selectedPiece.position;
     const roll = gameState.board.diceRoll;
     if (from !== -1 && from + roll >= 14) return null; // exits board
     const to = from === -1 ? roll - 1 : from + roll;
-    return { pos: to, player: hoveredPiece.playerNumber };
+    return { pos: to, player: selectedPiece.playerNumber };
   })();
+
+  // Client-side move validity check (server re-validates; this is for UX only)
+  const canMovePiece = (piece: PiecePosition): boolean => {
+    const roll = gameState.board.diceRoll;
+    if (roll === null || roll === 0) return false;
+    if (piece.position === 99) return false;
+
+    const from = piece.position;
+
+    if (from === -1) {
+      // Entering: target is roll-1
+      const to = roll - 1;
+      return !gameState.board.pieces.some(
+        (p) => p.playerNumber === playerNumber && p.position === to
+      );
+    }
+
+    // Exact roll required to exit (PATH_LENGTH = 14)
+    if (from + roll > 14) return false; // overrun
+    if (from + roll === 14) return true; // exact exit
+
+    const to = from + roll;
+    // Own piece blocks
+    if (gameState.board.pieces.some((p) => p.playerNumber === playerNumber && p.position === to)) {
+      return false;
+    }
+    // Opponent on rosette in shared lane blocks
+    if (
+      to >= SHARED_START &&
+      to <= SHARED_END &&
+      ROSETTE_POSITIONS.includes(to) &&
+      gameState.board.pieces.some((p) => p.playerNumber !== playerNumber && p.position === to)
+    ) {
+      return false;
+    }
+    return true;
+  };
 
   const handleRollDice = () => {
     if (!isMyTurn || gameState.board.diceRoll !== null) return;
@@ -153,22 +201,41 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     if (!isMyTurn || gameState.board.diceRoll === null) return;
     if (piece.playerNumber !== playerNumber) return;
 
-    const from = piece.position;
-    const diceRoll = gameState.board.diceRoll;
-    const to = from === -1 ? diceRoll - 1 : from + diceRoll;
+    const isSelected =
+      selectedPiece?.playerNumber === piece.playerNumber &&
+      selectedPiece?.pieceIndex === piece.pieceIndex;
 
-    const move: Move = {
-      playerId,
-      pieceIndex: piece.pieceIndex,
-      from,
-      to: from !== -1 && from + diceRoll >= 14 ? 99 : to,
-      diceRoll,
-    };
+    if (isSelected) {
+      // Second click: confirm the move
+      const from = piece.position;
+      const diceRoll = gameState.board.diceRoll;
+      const to = from === -1 ? diceRoll - 1 : from + diceRoll;
 
-    const socket = socketService.getSocket();
-    if (socket) {
-      socket.emit('game:move', { sessionCode: session.sessionCode, playerId, move });
+      const move: Move = {
+        playerId,
+        pieceIndex: piece.pieceIndex,
+        from,
+        to: from !== -1 && from + diceRoll >= 14 ? 99 : to,
+        diceRoll,
+      };
+
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('game:move', { sessionCode: session.sessionCode, playerId, move });
+      }
+      setSelectedPiece(null);
+      return;
     }
+
+    // First click or switching selection
+    if (!canMovePiece(piece)) {
+      setInvalidPiece({ playerNumber: piece.playerNumber, pieceIndex: piece.pieceIndex });
+      if (invalidTimerRef.current) clearTimeout(invalidTimerRef.current);
+      invalidTimerRef.current = setTimeout(() => setInvalidPiece(null), 600);
+      return;
+    }
+
+    setSelectedPiece(piece);
   };
 
   const getPiecesAt = (position: number, player: number): PiecePosition[] =>
@@ -191,15 +258,40 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     transition: 'background 0.1s, box-shadow 0.1s, border-color 0.1s',
   });
 
+  // Piece button style: golden glow when selected, red glow when invalid
+  const pieceButtonStyle = (piece: PiecePosition, sz: number): React.CSSProperties => {
+    const isSelected =
+      selectedPiece?.playerNumber === piece.playerNumber &&
+      selectedPiece?.pieceIndex === piece.pieceIndex;
+    const isInvalid =
+      invalidPiece?.playerNumber === piece.playerNumber &&
+      invalidPiece?.pieceIndex === piece.pieceIndex;
+    const isAnimating =
+      !!animatingPiece &&
+      piece.playerNumber === animatingPiece.playerNumber &&
+      piece.pieceIndex === animatingPiece.pieceIndex;
+    return {
+      width: sz,
+      height: sz,
+      opacity: isAnimating ? 0 : undefined,
+      borderRadius: '50%',
+      ...(isSelected && {
+        boxShadow: '0 0 0 2px #FFD060, 0 0 10px rgba(255,208,60,0.5)',
+      }),
+      ...(isInvalid && {
+        boxShadow: '0 0 0 2px #FF4040, 0 0 10px rgba(255,64,64,0.4)',
+      }),
+    };
+  };
+
   // Private-lane square for one player
   const renderPrivate = (position: number, player: number) => {
     const isRosette = ROSETTE_POSITIONS.includes(position);
     const pieces = getPiecesAt(position, player);
-    // A private square is a landing target only for the matching player's pieces
     const isLanding =
-      hoveredLanding !== null &&
-      hoveredLanding.pos === position &&
-      hoveredLanding.player === player &&
+      selectedLanding !== null &&
+      selectedLanding.pos === position &&
+      selectedLanding.player === player &&
       (position < 4 || position >= 12); // must be in private zone
 
     const baseBg = isRosette ? '#3A2400' : player === 0 ? '#0C1A2E' : '#2E0C0C';
@@ -217,21 +309,15 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
           {pieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
             const sz = 22;
-            const isAnimating =
-              !!animatingPiece &&
-              piece.playerNumber === animatingPiece.playerNumber &&
-              piece.pieceIndex === animatingPiece.pieceIndex;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
                 onClick={() => handlePieceClick(piece)}
-                onMouseEnter={() => canClick && gameState.board.diceRoll !== null && setHoveredPiece(piece)}
-                onMouseLeave={() => setHoveredPiece(null)}
                 disabled={!canClick}
                 className={`transition-transform focus:outline-none ${
-                  canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
+                  canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={{ width: sz, height: sz, opacity: isAnimating ? 0 : undefined }}
+                style={pieceButtonStyle(piece, sz)}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
                 {<UrPiece playerNumber={piece.playerNumber} size={sz} />}
@@ -251,8 +337,8 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     const piecesP1 = getPiecesAt(position, 1);
     const allPieces = [...piecesP0, ...piecesP1];
     const isLanding =
-      hoveredLanding !== null &&
-      hoveredLanding.pos === position &&
+      selectedLanding !== null &&
+      selectedLanding.pos === position &&
       position >= 4 && position <= 11;
 
     const baseBg = isRosette ? '#3A2400' : '#1A1208';
@@ -270,21 +356,15 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
           {allPieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
             const sz = allPieces.length > 1 ? 16 : 22;
-            const isAnimating =
-              !!animatingPiece &&
-              piece.playerNumber === animatingPiece.playerNumber &&
-              piece.pieceIndex === animatingPiece.pieceIndex;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
                 onClick={() => handlePieceClick(piece)}
-                onMouseEnter={() => canClick && gameState.board.diceRoll !== null && setHoveredPiece(piece)}
-                onMouseLeave={() => setHoveredPiece(null)}
                 disabled={!canClick}
                 className={`transition-transform focus:outline-none ${
-                  canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
+                  canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={{ width: sz, height: sz, opacity: isAnimating ? 0 : undefined }}
+                style={pieceButtonStyle(piece, sz)}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
                 {<UrPiece playerNumber={piece.playerNumber} size={sz} />}
@@ -385,6 +465,8 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
             <div className="text-xs" style={{ color: '#907A60' }}>
               {gameState.board.diceRoll === 0
                 ? 'No move — turn passes.'
+                : selectedPiece
+                ? 'Tap again to confirm.'
                 : 'Select a piece to move.'}
             </div>
           </div>
@@ -459,21 +541,15 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
                 {waiting.map((piece) => {
                   const canClick = isMyTurn && piece.playerNumber === playerNumber;
                   const sz = 22;
-                  const isAnimating =
-                    !!animatingPiece &&
-                    piece.playerNumber === animatingPiece.playerNumber &&
-                    piece.pieceIndex === animatingPiece.pieceIndex;
                   return (
                     <button
                       key={`${piece.playerNumber}-${piece.pieceIndex}`}
                       onClick={() => handlePieceClick(piece)}
-                      onMouseEnter={() => canClick && gameState.board.diceRoll !== null && setHoveredPiece(piece)}
-                      onMouseLeave={() => setHoveredPiece(null)}
                       disabled={!canClick}
                       className={`transition-transform focus:outline-none ${
-                        canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-50'
+                        canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-50'
                       }`}
-                      style={{ width: sz, height: sz, opacity: isAnimating ? 0 : undefined }}
+                      style={pieceButtonStyle(piece, sz)}
                       title={`Enter piece ${piece.pieceIndex + 1}`}
                     >
                       {<UrPiece playerNumber={piece.playerNumber} size={sz} />}

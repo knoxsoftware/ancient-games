@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -162,15 +162,38 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
-  const [hoveredPiece, setHoveredPiece] = useState<PiecePosition | null>(null);
+  const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
+  const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
+  const invalidTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Compute which board square the hovered piece would land on (null = no highlight)
-  const hoveredLanding = (() => {
-    if (!hoveredPiece || !isMyTurn || hoveredPiece.playerNumber !== playerNumber) return null;
+  // Clear selection when turn changes or dice roll resets
+  useEffect(() => {
+    if (!isMyTurn || gameState.board.diceRoll === null) {
+      setSelectedPiece(null);
+    }
+  }, [isMyTurn, gameState.board.diceRoll]);
+
+  // Returns the board position the selected piece would land on, or null
+  const selectedLanding = (() => {
+    if (!selectedPiece || !isMyTurn || selectedPiece.playerNumber !== playerNumber) return null;
     if (gameState.board.diceRoll === null) return null;
-    const to = hoveredPiece.position + gameState.board.diceRoll;
+    const to = selectedPiece.position + gameState.board.diceRoll;
     return to < 30 ? to : null; // 99+ (exiting) has no board square to highlight
   })();
+
+  // Client-side move validity check (server re-validates; this is for UX only)
+  const canMovePiece = (piece: PiecePosition): boolean => {
+    const roll = gameState.board.diceRoll;
+    if (roll === null) return false;
+    if (piece.position === 99) return false;
+    const to = piece.position + roll;
+    if (to >= 30) return true; // exiting, valid
+    // Blocked if own 2+ pieces already at destination
+    const ownAtDest = gameState.board.pieces.filter(
+      (p) => p.playerNumber === playerNumber && p.position === to
+    ).length;
+    return ownAtDest < 2;
+  };
 
   const handleRollDice = () => {
     if (!isMyTurn || gameState.board.diceRoll !== null) return;
@@ -185,22 +208,41 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
     if (piece.playerNumber !== playerNumber) return;
     if (piece.position === 99) return;
 
-    const from = piece.position;
-    const diceRoll = gameState.board.diceRoll;
-    const to = from + diceRoll;
+    const isSelected =
+      selectedPiece?.playerNumber === piece.playerNumber &&
+      selectedPiece?.pieceIndex === piece.pieceIndex;
 
-    const move: Move = {
-      playerId,
-      pieceIndex: piece.pieceIndex,
-      from,
-      to: to >= 30 ? 99 : to,
-      diceRoll,
-    };
+    if (isSelected) {
+      // Second click: confirm the move
+      const from = piece.position;
+      const diceRoll = gameState.board.diceRoll;
+      const to = from + diceRoll;
 
-    const socket = socketService.getSocket();
-    if (socket) {
-      socket.emit('game:move', { sessionCode: session.sessionCode, playerId, move });
+      const move: Move = {
+        playerId,
+        pieceIndex: piece.pieceIndex,
+        from,
+        to: to >= 30 ? 99 : to,
+        diceRoll,
+      };
+
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('game:move', { sessionCode: session.sessionCode, playerId, move });
+      }
+      setSelectedPiece(null);
+      return;
     }
+
+    // First click or switching selection
+    if (!canMovePiece(piece)) {
+      setInvalidPiece({ playerNumber: piece.playerNumber, pieceIndex: piece.pieceIndex });
+      if (invalidTimerRef.current) clearTimeout(invalidTimerRef.current);
+      invalidTimerRef.current = setTimeout(() => setInvalidPiece(null), 600);
+      return;
+    }
+
+    setSelectedPiece(piece);
   };
 
   const getPiecesAtPosition = (position: number): PiecePosition[] =>
@@ -209,11 +251,37 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
   const finishedPieces = (playerNum: number) =>
     gameState.board.pieces.filter((p) => p.playerNumber === playerNum && p.position === 99);
 
+  // Piece button style: golden glow when selected, red glow when invalid
+  const pieceButtonStyle = (piece: PiecePosition, sz: number): React.CSSProperties => {
+    const isSelected =
+      selectedPiece?.playerNumber === piece.playerNumber &&
+      selectedPiece?.pieceIndex === piece.pieceIndex;
+    const isInvalid =
+      invalidPiece?.playerNumber === piece.playerNumber &&
+      invalidPiece?.pieceIndex === piece.pieceIndex;
+    const isAnimating =
+      !!animatingPiece &&
+      piece.playerNumber === animatingPiece.playerNumber &&
+      piece.pieceIndex === animatingPiece.pieceIndex;
+    return {
+      width: sz,
+      height: Math.round(sz * 1.25),
+      opacity: isAnimating ? 0 : undefined,
+      borderRadius: '4px',
+      ...(isSelected && {
+        boxShadow: '0 0 0 2px #FFD060, 0 0 10px rgba(255,208,60,0.5)',
+      }),
+      ...(isInvalid && {
+        boxShadow: '0 0 0 2px #FF4040, 0 0 10px rgba(255,64,64,0.4)',
+      }),
+    };
+  };
+
   const renderSquare = (position: number) => {
     const pieces = getPiecesAtPosition(position);
     const special = SPECIAL_SQUARES[position];
     const isEven = position % 2 === 0;
-    const isLanding = hoveredLanding === position;
+    const isLanding = selectedLanding === position;
     const bg = isLanding
       ? special ? special.bg : isEven ? '#F2E4B0' : '#DFC080'
       : special ? special.bg : isEven ? '#E8D5A3' : '#C9A86C';
@@ -266,21 +334,15 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
           {pieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
             const sz = pieces.length > 1 ? 16 : 24;
-            const isAnimating =
-              !!animatingPiece &&
-              piece.playerNumber === animatingPiece.playerNumber &&
-              piece.pieceIndex === animatingPiece.pieceIndex;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
                 onClick={() => handlePieceClick(piece)}
-                onMouseEnter={() => canClick && gameState.board.diceRoll !== null && setHoveredPiece(piece)}
-                onMouseLeave={() => setHoveredPiece(null)}
                 disabled={!canClick}
                 className={`transition-transform focus:outline-none ${
-                  canClick ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
+                  canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={{ width: sz, height: Math.round(sz * 1.25), opacity: isAnimating ? 0 : undefined }}
+                style={pieceButtonStyle(piece, sz)}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
                 {piece.playerNumber === 0 ? <ConePiece size={sz} /> : <SpoolPiece size={sz} />}
@@ -364,7 +426,11 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
               {gameState.board.diceRoll}
             </div>
             <div className="text-xs" style={{ color: '#A09070' }}>
-              {extraTurn ? 'Extra turn — select a piece.' : 'Select a piece to move.'}
+              {extraTurn
+                ? 'Extra turn — select a piece.'
+                : selectedPiece
+                ? 'Tap again to confirm.'
+                : 'Select a piece to move.'}
             </div>
           </div>
         )}
