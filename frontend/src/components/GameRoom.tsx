@@ -43,6 +43,13 @@ export default function GameRoom() {
     loadSession();
   }, [sessionCode, playerId]);
 
+  // Request browser notification permission once on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   useEffect(() => {
     if (!sessionCode || !playerId) return;
 
@@ -110,6 +117,23 @@ export default function GameRoom() {
         ...prev,
         { id: historyIdRef.current, move, playerNumber: playerNum, wasCapture },
       ]);
+
+      // Browser notification when the tab is inactive and it's now my turn
+      if (
+        'Notification' in window &&
+        Notification.permission === 'granted' &&
+        (document.hidden || !document.hasFocus())
+      ) {
+        const myPlayer = currentSession?.players.find((p) => p.id === playerId);
+        if (myPlayer && updatedGameState.currentTurn === myPlayer.playerNumber) {
+          const opponent = currentSession?.players.find((p) => p.id !== playerId);
+          const gameTitle = currentSession?.gameType === 'ur' ? 'Royal Game of Ur' : 'Senet';
+          new Notification('Your turn!', {
+            body: `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`,
+            icon: '/favicon.ico',
+          });
+        }
+      }
     });
 
     socket.on('game:turn-changed', ({ currentTurn }) => {
