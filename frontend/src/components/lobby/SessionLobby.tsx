@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Session } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
@@ -17,6 +17,10 @@ export default function SessionLobby() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevSessionRef = useRef<Session | null>(null);
 
   // Make playerId reactive so the socket useEffect re-fires after joining
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
@@ -25,6 +29,12 @@ export default function SessionLobby() {
   const [displayName, setDisplayName] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
+
+  const showNotice = (msg: string) => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    setNotice(msg);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 3000);
+  };
 
   // Always fetch session so we can show game context on the join form
   useEffect(() => {
@@ -40,18 +50,75 @@ export default function SessionLobby() {
     if (!sessionCode || !playerId) return;
 
     const socket = socketService.connect();
-    socket.emit('session:join', { sessionCode, playerId });
 
-    socket.on('session:updated', (updatedSession) => setSession(updatedSession));
-    socket.on('session:player-joined', (updatedSession) => setSession(updatedSession));
-    socket.on('session:player-left', (updatedSession) => setSession(updatedSession));
+    // Re-join the session room on every (re)connection so the server sends
+    // a fresh session:updated with the latest lobby state.
+    const rejoin = () => {
+      socket.emit('session:join', { sessionCode, playerId });
+    };
+    socket.on('connect', rejoin);
+    if (socket.connected) rejoin();
+
+    // If the tab becomes visible again and the socket has dropped, reconnect.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !socket.connected) {
+        socket.connect();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    socket.on('session:updated', (updatedSession) => {
+      const prev = prevSessionRef.current;
+      if (prev) {
+        // Detect new players
+        const prevIds = new Set(prev.players.map((p) => p.id));
+        for (const p of updatedSession.players) {
+          if (!prevIds.has(p.id) && p.id !== playerId) {
+            showNotice(`${p.displayName} has joined`);
+          }
+        }
+        // Detect ready-status changes for other players
+        for (const p of updatedSession.players) {
+          if (p.id === playerId) continue;
+          const prevPlayer = prev.players.find((pp) => pp.id === p.id);
+          if (prevPlayer && prevPlayer.ready !== p.ready) {
+            showNotice(p.ready ? `${p.displayName} is ready` : `${p.displayName} is not ready`);
+          }
+        }
+      }
+      prevSessionRef.current = updatedSession;
+      setSession(updatedSession);
+    });
+
+    socket.on('session:player-joined', (updatedSession) => {
+      prevSessionRef.current = updatedSession;
+      setSession(updatedSession);
+    });
+
+    socket.on('session:player-left', (updatedSession) => {
+      const prev = prevSessionRef.current;
+      if (prev) {
+        const newIds = new Set(updatedSession.players.map((p) => p.id));
+        for (const p of prev.players) {
+          if (!newIds.has(p.id) && p.id !== playerId) {
+            showNotice(`${p.displayName} has left`);
+          }
+        }
+      }
+      prevSessionRef.current = updatedSession;
+      setSession(updatedSession);
+    });
+
     socket.on('game:started', (updatedSession) => {
       setSession(updatedSession);
       navigate(`/game/${sessionCode}`);
     });
+
     socket.on('session:error', (err) => setError(err.message));
 
     return () => {
+      socket.off('connect', rejoin);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.off('session:updated');
       socket.off('session:player-joined');
       socket.off('session:player-left');
@@ -340,6 +407,24 @@ export default function SessionLobby() {
           )}
         </div>
       </div>
+
+      {/* Lobby notification toast */}
+      {notice && (
+        <div
+          key={notice}
+          className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
+          style={{
+            background: 'rgba(20,12,0,0.92)',
+            border: '1px solid rgba(196,168,107,0.5)',
+            color: '#F0E6C8',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+          }}
+        >
+          {notice}
+        </div>
+      )}
     </div>
   );
 }
