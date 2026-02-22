@@ -21,7 +21,7 @@ const GameStateSchema = new Schema<GameState>({
 
 const SessionSchema = new Schema<SessionDocument>({
   sessionCode: { type: String, required: true, unique: true, index: true },
-  gameType: { type: String, enum: ['ur', 'senet'], required: true },
+  gameType: { type: String, enum: ['ur', 'senet', 'morris'], required: true },
   status: { type: String, enum: ['lobby', 'playing', 'finished'], default: 'lobby' },
   players: [PlayerSchema],
   gameState: { type: GameStateSchema, required: true },
