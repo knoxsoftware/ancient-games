@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
-import { HistoryEntry, describeMove } from '../../MoveLog';
 
 interface SenetBoardProps {
   session: Session;
@@ -9,7 +8,6 @@ interface SenetBoardProps {
   playerId: string;
   isMyTurn: boolean;
   animatingPiece?: { playerNumber: number; pieceIndex: number } | null;
-  lastMove?: HistoryEntry;
 }
 
 // Ivory cone piece (Player 0) - historical Egyptian senet piece shape
@@ -107,7 +105,7 @@ function SunIcon({ color }: { color: string }) {
 }
 
 // 4 throwing sticks display — light side = flat/scored, dark = round side
-function ThrowingSticks({ result }: { result: number }) {
+export function ThrowingSticks({ result }: { result: number }) {
   const flatCount = result === 5 ? 0 : result;
   return (
     <div className="flex items-end justify-center gap-2 py-1">
@@ -160,10 +158,9 @@ function SpecialIcon({ type, color }: { type: SpecialSquare['iconType']; color: 
   return <SunIcon color={color} />;
 }
 
-export default function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece, lastMove }: SenetBoardProps) {
+export default function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: SenetBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
-  const currentTurnName = session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
 
   const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
   const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
@@ -196,14 +193,6 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
       (p) => p.playerNumber === playerNumber && p.position === to
     ).length;
     return ownAtDest < 2;
-  };
-
-  const handleRollDice = () => {
-    if (!isMyTurn || gameState.board.diceRoll !== null) return;
-    const socket = socketService.getSocket();
-    if (socket) {
-      socket.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId });
-    }
   };
 
   const handlePieceClick = (piece: PiecePosition) => {
@@ -250,9 +239,6 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
 
   const getPiecesAtPosition = (position: number): PiecePosition[] =>
     gameState.board.pieces.filter((p) => p.position === position);
-
-  const finishedPieces = (playerNum: number) =>
-    gameState.board.pieces.filter((p) => p.playerNumber === playerNum && p.position === 99);
 
   // Piece button style: golden glow when selected, red glow when invalid
   const pieceButtonStyle = (piece: PiecePosition, sz: number): React.CSSProperties => {
@@ -360,113 +346,9 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
   const row0 = Array.from({ length: 10 }, (_, i) => i);
   const row1 = Array.from({ length: 10 }, (_, i) => 19 - i);
   const row2 = Array.from({ length: 10 }, (_, i) => i + 20);
-  const extraTurn = [1, 4, 5].includes(gameState.board.diceRoll ?? -1);
 
   return (
     <div className="space-y-4">
-      {/* Player Info */}
-      <div className="grid grid-cols-2 gap-3">
-        {session.players.map((player) => {
-          const isActive = gameState.currentTurn === player.playerNumber;
-          return (
-            <div
-              key={player.id}
-              className="rounded-xl p-3 border-2 transition-all"
-              style={{
-                background: isActive ? 'rgba(196,168,107,0.1)' : 'rgba(15,8,0,0.55)',
-                borderColor: isActive ? '#C4A86B' : '#3A2810',
-              }}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div style={{ width: 20, height: 25, flexShrink: 0 }}>
-                  {player.playerNumber === 0 ? <ConePiece size={20} /> : <SpoolPiece size={20} />}
-                </div>
-                <div className="font-semibold text-sm truncate">{player.displayName}</div>
-                {isActive && (
-                  <div
-                    className="ml-auto text-xs px-2 py-0.5 rounded font-bold"
-                    style={{ background: '#C4A86B', color: '#1A0A00' }}
-                  >
-                    Turn
-                  </div>
-                )}
-              </div>
-              <div className="text-xs" style={{ color: '#A09070' }}>
-                {finishedPieces(player.playerNumber).length} / 5 pieces escaped
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Throwing Sticks */}
-      <div
-        className="rounded-xl px-4 pt-3 pb-4 border"
-        style={{ background: 'rgba(8,4,0,0.65)', borderColor: '#3A2810' }}
-      >
-        {/* Last move */}
-        <div
-          className="flex items-center gap-1.5 mb-3 pb-2 border-b"
-          style={{ borderColor: '#3A2810', minHeight: 20 }}
-        >
-          {lastMove ? (
-            <>
-              <span
-                className="flex-shrink-0 w-2 h-2 rounded-full"
-                style={{ background: lastMove.playerNumber === 0 ? '#C4A870' : '#7A5030' }}
-              />
-              <span className="text-xs font-mono truncate" style={{ color: '#A09070' }}>
-                {describeMove(lastMove, session)}
-              </span>
-            </>
-          ) : (
-            <span className="text-xs" style={{ color: '#5A4030' }}>No moves yet</span>
-          )}
-        </div>
-
-        {/* Roll / sticks result */}
-        <div className="flex flex-col items-center justify-center min-h-[120px]">
-          {gameState.board.diceRoll === null ? (
-            isMyTurn ? (
-              <button
-                onClick={handleRollDice}
-                disabled={gameState.finished}
-                className="w-full py-3 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: 'linear-gradient(135deg, #C4860A 0%, #7A5000 100%)',
-                  color: '#F5EDD5',
-                  border: '2px solid #C4860A',
-                  fontSize: '1rem',
-                  letterSpacing: '0.02em',
-                }}
-              >
-                Throw the Sticks
-              </button>
-            ) : (
-              <div className="text-center text-sm" style={{ color: '#A09070' }}>
-                Waiting for <span style={{ color: '#F5EDD5' }}>{currentTurnName}</span> to throw…
-              </div>
-            )
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <ThrowingSticks result={gameState.board.diceRoll} />
-              <div className="text-2xl font-bold mt-1" style={{ color: '#F5EDD5' }}>
-                {gameState.board.diceRoll}
-              </div>
-              <div className="text-xs" style={{ color: '#A09070' }}>
-                {extraTurn
-                  ? 'Extra turn — select a piece.'
-                  : !isMyTurn
-                  ? `Waiting for ${currentTurnName} to move…`
-                  : selectedPiece
-                  ? 'Tap again to confirm.'
-                  : 'Select a piece to move.'}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Senet Board */}
       <div
         className="rounded-xl p-3 border-2"

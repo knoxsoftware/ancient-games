@@ -11,6 +11,7 @@ import WolvesAndRavensBoard from './games/wolves-and-ravens/WolvesAndRavensBoard
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
+import GameControls from './GameControls';
 import ChatPanel, { ChatMessage } from './ChatPanel';
 
 async function showNotification(title: string, body: string) {
@@ -39,12 +40,13 @@ export default function GameRoom() {
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'game' | 'rules' | 'chat'>('game');
+  const [activeTab, setActiveTab] = useState<'game' | 'chat' | 'room' | 'history'>('game');
+  const [showRules, setShowRules] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [unreadChat, setUnreadChat] = useState(0);
   const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
   const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeTabRef = useRef<'game' | 'rules' | 'chat'>('game');
+  const activeTabRef = useRef<'game' | 'chat' | 'room' | 'history'>('game');
   useEffect(() => {
     activeTabRef.current = activeTab;
     if (activeTab === 'chat') {
@@ -436,31 +438,28 @@ export default function GameRoom() {
     <div className="min-h-screen p-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">
             {session.gameType === 'ur' ? 'Royal Game of Ur'
               : session.gameType === 'morris' ? "Nine Men's Morris"
               : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
               : 'Senet'}
           </h1>
-          <div className="flex items-center gap-2">
-            {!isSpectator && (
-              <button onClick={handleStandUp} className="btn btn-outline text-sm">
-                Stand Up
-              </button>
-            )}
-            {isSpectator && session.players.length < 2 && (
-              <button onClick={handleTakeSeat} className="btn btn-secondary text-sm">
-                Take Seat
-              </button>
-            )}
-            <button onClick={handleLeave} className="btn btn-outline text-sm">
-              Leave Game
-            </button>
-          </div>
+          <button
+            onClick={() => setShowRules(true)}
+            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-colors"
+            style={{
+              background: 'rgba(196,160,48,0.12)',
+              border: '1.5px solid rgba(196,160,48,0.35)',
+              color: '#C4A030',
+            }}
+            title="Rules"
+          >
+            ?
+          </button>
         </div>
 
-        {/* Inline error (layout-impacting intentionally — user needs to see it) */}
+        {/* Inline error */}
         {error && (
           <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 mb-4 text-center text-red-200">
             {error}
@@ -493,14 +492,14 @@ export default function GameRoom() {
 
         {/* Tab bar */}
         <div
-          className="flex gap-0 mb-4 border-b"
+          className="flex gap-0 border-b"
           style={{ borderColor: 'rgba(42,30,14,0.8)' }}
         >
-          {(['game', 'chat', 'rules'] as const).map((tab) => (
+          {(['game', 'chat', 'room', 'history'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className="px-5 py-2 text-sm font-medium transition-colors capitalize relative"
+              className="px-4 py-2 text-sm font-medium transition-colors capitalize relative"
               style={{
                 color: activeTab === tab ? '#E8C870' : '#6A5A40',
                 borderBottom: activeTab === tab ? '2px solid #C4A030' : '2px solid transparent',
@@ -508,7 +507,7 @@ export default function GameRoom() {
                 background: 'transparent',
               }}
             >
-              {tab === 'game' ? 'Game' : tab === 'rules' ? 'Rules' : 'Chat'}
+              {tab === 'game' ? 'Game' : tab === 'chat' ? 'Chat' : tab === 'room' ? 'Room' : 'History'}
               {tab === 'chat' && unreadChat > 0 && (
                 <span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-xs font-bold"
@@ -521,48 +520,194 @@ export default function GameRoom() {
           ))}
         </div>
 
-        {/* Game Board + Move Log */}
-        {activeTab === 'game' && (
-          <div className="lg:flex lg:gap-4 lg:items-start">
-            <div className="lg:flex-1">
-              {session.gameType === 'ur' && (
-                <UrBoard
+        {/* Tab content — fixed height so the board below stays anchored */}
+        <div className="h-64 overflow-y-auto mb-4">
+          {/* Game tab: player seats + dice / controls */}
+          {activeTab === 'game' && (
+            <div>
+              {/* Player seats — always 2 slots */}
+              <div className="grid grid-cols-2 gap-2 p-2">
+                {([0, 1] as const).map((seatIndex) => {
+                  const player = session.players.find((p) => p.playerNumber === seatIndex);
+                  const isActive = player !== undefined && gameState.currentTurn === seatIndex;
+                  const isMe = player?.id === playerId;
+                  const boardPieces = gameState.board.pieces;
+
+                  const scoreInfo = (() => {
+                    if (!player) return null;
+                    if (session.gameType === 'ur') {
+                      const escaped = boardPieces.filter(p => p.playerNumber === seatIndex && p.position === 99).length;
+                      const waiting = boardPieces.filter(p => p.playerNumber === seatIndex && p.position === -1).length;
+                      return `${escaped}/7 escaped · ${waiting} waiting`;
+                    }
+                    if (session.gameType === 'senet') {
+                      const escaped = boardPieces.filter(p => p.playerNumber === seatIndex && p.position === 99).length;
+                      const onBoard = boardPieces.filter(p => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99).length;
+                      return `${escaped}/5 escaped · ${onBoard} on board`;
+                    }
+                    if (session.gameType === 'morris') {
+                      const unplaced = boardPieces.filter(p => p.playerNumber === seatIndex && p.position === -1).length;
+                      const captured = boardPieces.filter(p => p.playerNumber === seatIndex && p.position === 99).length;
+                      const onBoard = 9 - unplaced - captured;
+                      return unplaced > 0
+                        ? `${onBoard} on board · ${unplaced} to place`
+                        : `${onBoard} on board · ${captured} lost`;
+                    }
+                    if (session.gameType === 'wolves-and-ravens') {
+                      if (seatIndex === 0) {
+                        const caught = boardPieces.filter(p => p.playerNumber === 1 && p.position === 99).length;
+                        return `${caught} ravens caught`;
+                      } else {
+                        const alive = boardPieces.filter(p => p.playerNumber === 1 && p.position !== 99).length;
+                        return `${alive} ravens alive`;
+                      }
+                    }
+                    return null;
+                  })();
+
+                  return (
+                    <div
+                      key={seatIndex}
+                      className="rounded-lg p-2.5 border transition-all"
+                      style={{
+                        background: isActive ? 'rgba(196,160,48,0.08)' : 'rgba(8,5,0,0.5)',
+                        borderColor: isActive ? 'rgba(196,160,48,0.45)' : 'rgba(42,30,14,0.8)',
+                      }}
+                    >
+                      {player ? (
+                        <div>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm font-semibold truncate" style={{ color: '#E8D8B0' }}>
+                              {player.displayName}
+                            </span>
+                            {isActive && (
+                              <span
+                                className="ml-auto flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-bold"
+                                style={{ background: 'rgba(196,160,48,0.25)', color: '#E8C870' }}
+                              >
+                                Turn
+                              </span>
+                            )}
+                            {isMe && !isActive && (
+                              <span className="ml-auto flex-shrink-0 text-xs" style={{ color: '#6A5A40' }}>you</span>
+                            )}
+                          </div>
+                          {scoreInfo && (
+                            <div className="text-xs mt-0.5" style={{ color: '#8A7A60' }}>
+                              {scoreInfo}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs" style={{ color: '#5A4A38' }}>
+                            {seatIndex === 0 ? 'Player 1' : 'Player 2'}
+                          </span>
+                          {isSpectator ? (
+                            <button onClick={handleTakeSeat} className="btn btn-secondary text-xs py-0.5 px-2">
+                              Take Seat
+                            </button>
+                          ) : (
+                            <span className="text-xs" style={{ color: '#3A2A1A' }}>Empty</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Dice / controls */}
+              {bothSeated ? (
+                <GameControls
                   session={session}
                   gameState={gameState}
                   playerId={playerId!}
                   isMyTurn={isMyTurn}
-                  animatingPiece={animatingPiece}
                   lastMove={moveHistory[moveHistory.length - 1]}
                 />
-              )}
-              {session.gameType === 'senet' && (
-                <SenetBoard
-                  session={session}
-                  gameState={gameState}
-                  playerId={playerId!}
-                  isMyTurn={isMyTurn}
-                  animatingPiece={animatingPiece}
-                  lastMove={moveHistory[moveHistory.length - 1]}
-                />
-              )}
-              {session.gameType === 'morris' && (
-                <MorrisBoard
-                  session={session}
-                  gameState={gameState}
-                  playerId={playerId!}
-                  isMyTurn={isMyTurn}
-                />
-              )}
-              {session.gameType === 'wolves-and-ravens' && (
-                <WolvesAndRavensBoard
-                  session={session}
-                  gameState={gameState}
-                  playerId={playerId!}
-                  isMyTurn={isMyTurn}
-                />
+              ) : (
+                <div className="px-2 py-1 text-center text-xs" style={{ color: '#5A4A38' }}>
+                  Waiting for both players to take their seats…
+                </div>
               )}
             </div>
-            <div className="mt-4 lg:mt-0 lg:w-52 lg:flex-shrink-0 space-y-3">
+          )}
+
+          {/* Chat tab */}
+          {activeTab === 'chat' && (
+            <ChatPanel
+              messages={chatMessages}
+              currentPlayerId={playerId!}
+              onSend={(text) => {
+                const socket = socketService.getSocket();
+                if (socket && sessionCode) {
+                  socket.emit('chat:send', { sessionCode, playerId: playerId!, text });
+                }
+              }}
+            />
+          )}
+
+          {/* Room tab */}
+          {activeTab === 'room' && (
+            <div className="p-3 space-y-4">
+              {/* Seated players */}
+              <div>
+                <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
+                  Players
+                </div>
+                {session.players.length === 0 ? (
+                  <div className="text-xs" style={{ color: '#5A4A38' }}>No players seated</div>
+                ) : (
+                  <div className="space-y-1">
+                    {session.players.map((p) => (
+                      <div key={p.id} className="flex items-center gap-2">
+                        <span className="text-sm" style={{ color: '#D4C8A8' }}>{p.displayName}</span>
+                        {p.id === playerId && (
+                          <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Spectators */}
+              {session.spectators.length > 0 && (
+                <div>
+                  <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
+                    Watching ({session.spectators.length})
+                  </div>
+                  <div className="space-y-1">
+                    {session.spectators.map((s) => (
+                      <div key={s.id} className="flex items-center gap-2">
+                        <span className="text-xs" style={{ color: '#A09070' }}>{s.displayName}</span>
+                        {s.id === playerId && (
+                          <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex flex-col gap-2 pt-1">
+                {!isSpectator && (
+                  <button onClick={handleStandUp} className="btn btn-outline text-sm">
+                    Stand Up
+                  </button>
+                )}
+                <button onClick={handleLeave} className="btn btn-outline text-sm">
+                  Leave Room
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* History tab: move log */}
+          {activeTab === 'history' && (
+            <div className="pt-3">
               <MoveLog
                 entries={moveHistory}
                 gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens'}
@@ -570,43 +715,47 @@ export default function GameRoom() {
                 onReplay={handleReplay}
                 replayingId={replayingEntryId}
               />
-              {session.spectators.length > 0 && (
-                <div className="rounded-lg p-3 text-sm" style={{ background: 'rgba(30,20,8,0.6)', border: '1px solid rgba(80,60,30,0.4)' }}>
-                  <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
-                    Watching ({session.spectators.length})
-                  </div>
-                  {session.spectators.map((s) => (
-                    <div key={s.id} className="text-gray-400 text-xs py-0.5">{s.displayName}</div>
-                  ))}
-                </div>
-              )}
-              {!bothSeated && (
-                <div className="rounded-lg p-3 text-xs text-center" style={{ background: 'rgba(30,20,8,0.6)', border: '1px solid rgba(80,60,30,0.4)', color: '#A09070' }}>
-                  Waiting for opponent to fill seat…
-                </div>
-              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Rules tab */}
-        {activeTab === 'rules' && (
-          <GameRules gameType={session.gameType} />
-        )}
-
-        {/* Chat tab */}
-        {activeTab === 'chat' && (
-          <ChatPanel
-            messages={chatMessages}
-            currentPlayerId={playerId!}
-            onSend={(text) => {
-              const socket = socketService.getSocket();
-              if (socket && sessionCode) {
-                socket.emit('chat:send', { sessionCode, playerId: playerId!, text });
-              }
-            }}
-          />
-        )}
+        {/* Board — always visible regardless of active tab */}
+        <div>
+          {session.gameType === 'ur' && (
+            <UrBoard
+              session={session}
+              gameState={gameState}
+              playerId={playerId!}
+              isMyTurn={isMyTurn}
+              animatingPiece={animatingPiece}
+            />
+          )}
+          {session.gameType === 'senet' && (
+            <SenetBoard
+              session={session}
+              gameState={gameState}
+              playerId={playerId!}
+              isMyTurn={isMyTurn}
+              animatingPiece={animatingPiece}
+            />
+          )}
+          {session.gameType === 'morris' && (
+            <MorrisBoard
+              session={session}
+              gameState={gameState}
+              playerId={playerId!}
+              isMyTurn={isMyTurn}
+            />
+          )}
+          {session.gameType === 'wolves-and-ravens' && (
+            <WolvesAndRavensBoard
+              session={session}
+              gameState={gameState}
+              playerId={playerId!}
+              isMyTurn={isMyTurn}
+            />
+          )}
+        </div>
       </div>
 
       {/* Non-layout-shifting toast for transient messages */}
@@ -675,6 +824,31 @@ export default function GameRoom() {
           animation={replayAnimation}
           onComplete={() => { setReplayAnimation(null); setReplayingEntryId(null); }}
         />
+      )}
+
+      {/* Rules overlay modal */}
+      {showRules && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowRules(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-xl p-6"
+            style={{ background: '#1A1008', border: '1px solid rgba(196,160,48,0.3)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowRules(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+              style={{ background: 'rgba(80,60,30,0.5)', color: '#E8C870', border: '1px solid rgba(196,160,48,0.25)' }}
+              title="Close"
+            >
+              ✕
+            </button>
+            <GameRules gameType={session.gameType} />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -82,7 +82,6 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
 
   const myPlayer = session.players.find(p => p.id === playerId);
   const myPN = myPlayer?.playerNumber ?? 0;
-  const opponentPN = 1 - myPN;
 
   const board = gameState.board;
   const pieces = board.pieces;
@@ -93,8 +92,6 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
   const ravens = pieces.filter(p => p.playerNumber === 1);
   const aliveRavens = ravens.filter(p => p.position !== 99);
   const capturedCount = ravens.filter(p => p.position === 99).length;
-
-  const opponent = session.players.find(p => p.id !== playerId);
 
   // Clear raven selection on turn change or dice reset
   useEffect(() => {
@@ -116,15 +113,6 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
   const flash = (pos: number) => {
     setFlashCell(pos);
     setTimeout(() => setFlashCell(null), 500);
-  };
-
-  const handleRollDice = () => {
-    socketService.getSocket()?.emit('game:roll-dice', { sessionCode, playerId });
-  };
-
-  const handleEndTurn = () => {
-    socketService.getSocket()?.emit('game:skip-turn', { sessionCode, playerId });
-    setSelectedRaven(null);
   };
 
   const handleCellClick = (pos: number) => {
@@ -213,14 +201,6 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
         {statusText}
       </div>
 
-      {/* Opponent info */}
-      <PlayerTray
-        name={opponent?.displayName ?? 'Opponent'}
-        isWolf={opponentPN === 0}
-        capturedCount={opponentPN === 0 ? capturedCount : 0}
-        aliveRavenCount={opponentPN === 1 ? aliveRavens.length : 0}
-        isActive={!isMyTurn && !gameState.finished}
-      />
 
       {/* SVG Board */}
       <svg
@@ -411,33 +391,21 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
         </defs>
       </svg>
 
-      {/* My info */}
-      <PlayerTray
-        name="You"
-        isWolf={myPN === 0}
-        capturedCount={myPN === 0 ? capturedCount : 0}
-        aliveRavenCount={myPN === 1 ? aliveRavens.length : 0}
-        isActive={isMyTurn && !gameState.finished}
-      />
-
-      {/* Controls */}
-      {isMyTurn && !gameState.finished && (
-        <div className="flex gap-3 items-center">
-          {diceRoll === null ? (
-            <button onClick={handleRollDice} className="btn btn-primary px-8 py-2">
-              Roll Dice
-            </button>
-          ) : myPN === 1 ? (
-            <button
-              onClick={handleEndTurn}
-              className="btn btn-outline text-sm px-5 py-2"
-              style={{ borderColor: 'rgba(100,200,100,0.4)', color: '#90D090' }}
-            >
-              Done&nbsp;Moving&nbsp;({diceRoll}&nbsp;left)
-            </button>
-          ) : null}
-        </div>
-      )}
+      {/* Player trays for seated players */}
+      {session.players.map((player) => {
+        const pn = player.playerNumber;
+        const isMe = player.id === playerId;
+        return (
+          <PlayerTray
+            key={player.id}
+            name={isMe ? 'You' : player.displayName}
+            isWolf={pn === 0}
+            capturedCount={pn === 0 ? capturedCount : 0}
+            aliveRavenCount={pn === 1 ? aliveRavens.length : 0}
+            isActive={!gameState.finished && gameState.currentTurn === pn}
+          />
+        );
+      })}
     </div>
   );
 }

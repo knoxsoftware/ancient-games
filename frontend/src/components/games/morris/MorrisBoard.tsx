@@ -190,7 +190,6 @@ export default function MorrisBoard({ session, gameState, playerId, isMyTurn }: 
 
   // ── Status bar text ───────────────────────────────────────────────────────
   const unplacedMy = pieces.filter(p => p.playerNumber === myPN && p.position === -1).length;
-  const unplacedOpp = pieces.filter(p => p.playerNumber === opponentPN && p.position === -1).length;
   const opponent = session.players.find(p => p.id !== playerId);
 
   let statusText = '';
@@ -208,9 +207,7 @@ export default function MorrisBoard({ session, gameState, playerId, isMyTurn }: 
     statusText = selected ? 'Click a highlighted spot to move' : 'Select a piece to move';
   }
 
-  // ── Piece tray (unplaced + captured counts) ───────────────────────────────
-  const capturedMy = pieces.filter(p => p.playerNumber === myPN && p.position === 99).length;
-  const capturedOpp = pieces.filter(p => p.playerNumber === opponentPN && p.position === 99).length;
+  // ── Piece counts (used by trays below the board) ──────────────────────────
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -226,8 +223,6 @@ export default function MorrisBoard({ session, gameState, playerId, isMyTurn }: 
         {statusText}
       </div>
 
-      {/* Piece trays — opponent on top, me on bottom (visual board orientation) */}
-      <PieceTray playerNumber={opponentPN} unplaced={unplacedOpp} captured={capturedOpp} label={opponent?.displayName ?? 'Opponent'} />
 
       {/* SVG Board */}
       <svg
@@ -310,7 +305,16 @@ export default function MorrisBoard({ session, gameState, playerId, isMyTurn }: 
         })}
       </svg>
 
-      <PieceTray playerNumber={myPN} unplaced={unplacedMy} captured={capturedMy} label="You" isMe />
+      {/* Piece trays for seated players */}
+      {session.players.map((player) => {
+        const pn = player.playerNumber;
+        const isMe = player.id === playerId;
+        const unplaced = pieces.filter(p => p.playerNumber === pn && p.position === -1).length;
+        const captured = pieces.filter(p => p.playerNumber === pn && p.position === 99).length;
+        return (
+          <PieceTray key={player.id} playerNumber={pn} unplaced={unplaced} captured={captured} label={isMe ? 'You' : player.displayName} isMe={isMe} />
+        );
+      })}
     </div>
   );
 }

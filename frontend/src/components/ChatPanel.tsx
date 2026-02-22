@@ -43,8 +43,7 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
       style={{
         background: 'rgba(8,5,0,0.6)',
         borderColor: '#2A1E0E',
-        height: '400px',
-        maxWidth: '600px',
+        height: '100%',
       }}
     >
       {/* Messages */}

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
-import { HistoryEntry, describeMove } from '../../MoveLog';
 
 interface UrBoardProps {
   session: Session;
@@ -9,7 +8,6 @@ interface UrBoardProps {
   playerId: string;
   isMyTurn: boolean;
   animatingPiece?: { playerNumber: number; pieceIndex: number } | null;
-  lastMove?: HistoryEntry;
 }
 
 const ROSETTE_POSITIONS = [2, 6, 13];
@@ -98,7 +96,7 @@ function RosettePattern() {
 }
 
 // 4 tetrahedral (pyramid) dice — each shows scored tip or blank base
-function TetraDice({ result }: { result: number }) {
+export function TetraDice({ result }: { result: number }) {
   return (
     <div className="flex gap-2 justify-center items-center py-1">
       {Array.from({ length: 4 }, (_, i) => {
@@ -128,13 +126,12 @@ function TetraDice({ result }: { result: number }) {
   );
 }
 
-export default function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, lastMove }: UrBoardProps) {
+export default function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
   // topPlayer = opponent's row (far side); bottomPlayer = my row (near side)
   const topPlayer = playerNumber === 0 ? 1 : 0;
   const bottomPlayer = playerNumber;
-  const currentTurnName = session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
 
   const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
   const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
@@ -195,14 +192,6 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     return true;
   };
 
-  const handleRollDice = () => {
-    if (!isMyTurn || gameState.board.diceRoll !== null) return;
-    const socket = socketService.getSocket();
-    if (socket) {
-      socket.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId });
-    }
-  };
-
   const handlePieceClick = (piece: PiecePosition) => {
     if (!isMyTurn || gameState.board.diceRoll === null) return;
     if (piece.playerNumber !== playerNumber) return;
@@ -249,9 +238,6 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
 
   const offBoardPieces = (playerNum: number) =>
     gameState.board.pieces.filter((p) => p.playerNumber === playerNum && p.position === -1);
-
-  const finishedPieces = (playerNum: number) =>
-    gameState.board.pieces.filter((p) => p.playerNumber === playerNum && p.position === 99);
 
   // Shared highlight styling helper
   const landingStyle = (isLanding: boolean, baseBg: string, baseBorder: string) => ({
@@ -393,120 +379,6 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
 
   return (
     <div className="space-y-4">
-      {/* Player Info */}
-      <div className="grid grid-cols-2 gap-3">
-        {session.players.map((player) => {
-          const isActive = gameState.currentTurn === player.playerNumber;
-          return (
-            <div
-              key={player.id}
-              className="rounded-xl p-3 border-2 transition-all"
-              style={{
-                background: isActive
-                  ? player.playerNumber === 0
-                    ? 'rgba(14,34,60,0.6)'
-                    : 'rgba(60,14,14,0.6)'
-                  : 'rgba(8,5,0,0.6)',
-                borderColor: isActive
-                  ? player.playerNumber === 0
-                    ? '#2A5A9A'
-                    : '#9A2A2A'
-                  : '#2A1E0E',
-              }}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div style={{ width: 20, height: 20, flexShrink: 0 }}>
-                  {<UrPiece playerNumber={player.playerNumber} size={20} />}
-                </div>
-                <div className="font-semibold text-sm truncate">{player.displayName}</div>
-                {isActive && (
-                  <div
-                    className="ml-auto text-xs px-2 py-0.5 rounded font-bold"
-                    style={{
-                      background: player.playerNumber === 0 ? '#1E4A80' : '#801E1E',
-                      color: '#F0EDE0',
-                    }}
-                  >
-                    Turn
-                  </div>
-                )}
-              </div>
-              <div className="text-xs" style={{ color: '#907A60' }}>
-                {finishedPieces(player.playerNumber).length} / 7 pieces escaped
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Dice — Tetrahedral */}
-      <div
-        className="rounded-xl px-4 pt-3 pb-4 border"
-        style={{ background: 'rgba(5,3,0,0.7)', borderColor: '#2A1E0E' }}
-      >
-        {/* Last move */}
-        <div
-          className="flex items-center gap-1.5 mb-3 pb-2 border-b"
-          style={{ borderColor: '#2A1E0E', minHeight: 20 }}
-        >
-          {lastMove ? (
-            <>
-              <span
-                className="flex-shrink-0 w-2 h-2 rounded-full"
-                style={{ background: lastMove.playerNumber === 0 ? '#2F6BAD' : '#7A4A22' }}
-              />
-              <span className="text-xs font-mono truncate" style={{ color: '#907A60' }}>
-                {describeMove(lastMove, session)}
-              </span>
-            </>
-          ) : (
-            <span className="text-xs" style={{ color: '#4A3A2A' }}>No moves yet</span>
-          )}
-        </div>
-
-        {/* Roll / dice result */}
-        <div className="flex flex-col items-center justify-center min-h-[92px]">
-          {gameState.board.diceRoll === null ? (
-            isMyTurn ? (
-              <button
-                onClick={handleRollDice}
-                disabled={gameState.finished}
-                className="w-full py-3 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: 'linear-gradient(135deg, #C4860A 0%, #7A5000 100%)',
-                  color: '#F0EDE0',
-                  border: '2px solid #C4860A',
-                  fontSize: '1rem',
-                  letterSpacing: '0.02em',
-                }}
-              >
-                Roll the Dice
-              </button>
-            ) : (
-              <div className="text-center text-sm" style={{ color: '#907A60' }}>
-                Waiting for <span style={{ color: '#F0EDE0' }}>{currentTurnName}</span> to roll…
-              </div>
-            )
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <TetraDice result={gameState.board.diceRoll} />
-              <div className="text-2xl font-bold" style={{ color: '#F0EDE0' }}>
-                {gameState.board.diceRoll}
-              </div>
-              <div className="text-xs" style={{ color: '#907A60' }}>
-                {gameState.board.diceRoll === 0
-                  ? 'No move — turn passes.'
-                  : !isMyTurn
-                  ? `Waiting for ${currentTurnName} to move…`
-                  : selectedPiece
-                  ? 'Tap again to confirm.'
-                  : 'Select a piece to move.'}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Royal Game of Ur Board */}
       <div
         className="rounded-xl p-3 border-2"
