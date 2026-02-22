@@ -113,9 +113,17 @@ export default function GameRoom() {
       const playerNum =
         currentSession?.players.find(p => p.id === move.playerId)?.playerNumber ?? 0;
 
+      // Captures are only possible in Ur's shared section (positions 4–11).
+      // Private lane positions use the same numbers for both players but
+      // occupy separate physical paths, so a position match there is not a
+      // capture and must be excluded.
+      const isCapturablePosition =
+        currentSession?.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
+
       const wasCapture =
         !!prevState &&
         move.to !== 99 &&
+        isCapturablePosition &&
         prevState.board.pieces.some(
           p => p.playerNumber !== playerNum && p.position === move.to
         );
