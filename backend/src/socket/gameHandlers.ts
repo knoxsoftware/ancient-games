@@ -1,12 +1,18 @@
 import { Server, Socket } from 'socket.io';
 import { SessionService } from '../services/SessionService';
+import { PushService } from '../services/PushService';
 import { GameRegistry } from '../games/GameRegistry';
 import { ClientToServerEvents, ServerToClientEvents } from '@ancient-games/shared';
+
+function gameTitle(gameType: string): string {
+  return gameType === 'ur' ? 'Royal Game of Ur' : 'Senet';
+}
 
 export function registerGameHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents>,
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
-  sessionService: SessionService
+  sessionService: SessionService,
+  pushService: PushService
 ) {
   // Join a session room
   socket.on('session:join', async ({ sessionCode, playerId }) => {
@@ -119,6 +125,16 @@ export function registerGameHandlers(
         io.to(sessionCode).emit('game:turn-changed', {
           currentTurn: session.gameState.currentTurn,
         });
+
+        // Notify the next player — the current player had no valid moves
+        const nextPlayer = session.players.find(p => p.playerNumber === nextTurn);
+        if (nextPlayer) {
+          await pushService.sendNotification(nextPlayer.id, {
+            title: 'Your turn!',
+            body: `${player.displayName} had no moves in ${gameTitle(session.gameType)}`,
+            url: `/game/${sessionCode}`,
+          });
+        }
       }
 
       io.to(sessionCode).emit('game:state-updated', session.gameState);
@@ -184,6 +200,18 @@ export function registerGameHandlers(
         io.to(sessionCode).emit('game:turn-changed', {
           currentTurn: session.gameState.currentTurn,
         });
+
+        // Push notification to the player whose turn it now is
+        const nextPlayer = session.players.find(
+          p => p.playerNumber === session.gameState.currentTurn
+        );
+        if (nextPlayer && nextPlayer.id !== playerId) {
+          await pushService.sendNotification(nextPlayer.id, {
+            title: 'Your turn!',
+            body: `${player.displayName} made a move in ${gameTitle(session.gameType)}`,
+            url: `/game/${sessionCode}`,
+          });
+        }
       }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
@@ -221,6 +249,35 @@ export function registerGameHandlers(
       });
 
       io.to(sessionCode).emit('game:state-updated', session.gameState);
+    } catch (error) {
+      socket.emit('game:error', { message: (error as Error).message });
+    }
+  });
+
+  // Rematch — reset game state for the same two players
+  socket.on('game:rematch', async ({ sessionCode, playerId }) => {
+    try {
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) {
+        socket.emit('game:error', { message: 'Session not found' });
+        return;
+      }
+
+      const player = session.players.find(p => p.id === playerId);
+      if (!player) {
+        socket.emit('game:error', { message: 'Player not found' });
+        return;
+      }
+
+      if (session.status !== 'finished') {
+        // Already restarted by the other player; client will receive game:restarted
+        return;
+      }
+
+      const newSession = await sessionService.restartGame(sessionCode);
+      if (newSession) {
+        io.to(sessionCode).emit('game:restarted', newSession);
+      }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
     }

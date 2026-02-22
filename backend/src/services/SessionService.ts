@@ -149,6 +149,31 @@ export class SessionService {
     return this.toSession(session);
   }
 
+  async restartGame(sessionCode: string): Promise<Session | null> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) return null;
+
+    if (session.status !== 'finished') {
+      throw new Error('Game is not finished');
+    }
+
+    const gameEngine = GameRegistry.getGame(session.gameType);
+    const initialBoard = gameEngine.initializeBoard();
+
+    session.status = 'playing';
+    session.gameState = {
+      board: initialBoard,
+      currentTurn: 0,
+      winner: null,
+      started: true,
+      finished: false,
+    };
+    session.lastActivity = new Date();
+    await session.save();
+
+    return this.toSession(session);
+  }
+
   async updateGameState(sessionCode: string, gameState: any): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;

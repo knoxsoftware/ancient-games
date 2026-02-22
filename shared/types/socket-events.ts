@@ -9,6 +9,7 @@ export interface ClientToServerEvents {
   'game:roll-dice': (data: { sessionCode: string; playerId: string }) => void;
   'game:move': (data: { sessionCode: string; playerId: string; move: Move }) => void;
   'game:skip-turn': (data: { sessionCode: string; playerId: string }) => void;
+  'game:rematch': (data: { sessionCode: string; playerId: string }) => void;
 }
 
 // Server to Client events
@@ -24,4 +25,5 @@ export interface ServerToClientEvents {
   'game:turn-changed': (data: { currentTurn: number }) => void;
   'game:ended': (data: { winner: number; gameState: GameState }) => void;
   'game:error': (error: { message: string }) => void;
+  'game:restarted': (session: Session) => void;
 }

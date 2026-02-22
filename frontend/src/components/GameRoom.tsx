@@ -164,6 +164,18 @@ export default function GameRoom() {
       setMessage(`Player ${winner + 1} wins!`);
     });
 
+    socket.on('game:restarted', (newSession) => {
+      setSession(newSession);
+      setGameState(newSession.gameState);
+      setMoveHistory([]);
+      historyIdRef.current = 0;
+      replayIdRef.current = 0;
+      setPendingAnimation(null);
+      setReplayAnimation(null);
+      setReplayingEntryId(null);
+      setMessage('');
+    });
+
     socket.on('game:error', (error) => {
       setError(error.message);
       setTimeout(() => setError(''), 3000);
@@ -178,6 +190,7 @@ export default function GameRoom() {
       socket.off('game:move-made');
       socket.off('game:turn-changed');
       socket.off('game:ended');
+      socket.off('game:restarted');
       socket.off('game:error');
     };
   }, [sessionCode, playerId]);
@@ -204,6 +217,12 @@ export default function GameRoom() {
 
     localStorage.removeItem('playerId');
     navigate('/');
+  };
+
+  const handleRematch = () => {
+    const socket = socketService.getSocket();
+    if (!socket || !sessionCode || !playerId) return;
+    socket.emit('game:rematch', { sessionCode, playerId });
   };
 
   const handleReplay = (entry: HistoryEntry) => {
@@ -273,9 +292,15 @@ export default function GameRoom() {
             <div className="text-3xl font-bold mb-2">
               {gameState.winner === currentPlayer?.playerNumber ? 'You Win!' : 'You Lose'}
             </div>
-            <div className="text-lg">
+            <div className="text-lg mb-4">
               {session.players[gameState.winner]?.displayName} is the winner!
             </div>
+            <button
+              onClick={handleRematch}
+              className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
+            >
+              Play Again
+            </button>
           </div>
         )}
 
