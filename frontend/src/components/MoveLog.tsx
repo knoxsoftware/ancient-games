@@ -11,7 +11,7 @@ export interface HistoryEntry {
 
 interface MoveLogProps {
   entries: HistoryEntry[];
-  gameType: 'ur' | 'senet';
+  gameType: 'ur' | 'senet' | 'morris';
   session: Session;
   onReplay: (entry: HistoryEntry) => void;
   replayingId: number | null;
@@ -45,7 +45,9 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
   const playerColor = (pn: number) =>
     gameType === 'ur'
       ? pn === 0 ? '#2F6BAD' : '#7A4A22'
-      : pn === 0 ? '#C4A870' : '#3A1A00';
+      : gameType === 'morris'
+        ? pn === 0 ? '#3B82F6' : '#EF4444'
+        : pn === 0 ? '#C4A870' : '#3A1A00';
 
   return (
     <div

@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { initPushNotifications } from '../services/pushNotifications';
 import UrBoard from './games/ur/UrBoard';
 import SenetBoard from './games/senet/SenetBoard';
+import MorrisBoard from './games/morris/MorrisBoard';
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
 
@@ -135,14 +136,17 @@ export default function GameRoom() {
 
       setGameState(updatedGameState);
 
-      animIdRef.current += 1;
-      const animId = animIdRef.current;
-      setPendingAnimation({
-        move,
-        playerNumber: playerNum,
-        gameType: currentSession?.gameType as 'ur' | 'senet',
-        id: animId,
-      });
+      // Morris has no path animation support
+      if (currentSession?.gameType !== 'morris') {
+        animIdRef.current += 1;
+        const animId = animIdRef.current;
+        setPendingAnimation({
+          move,
+          playerNumber: playerNum,
+          gameType: currentSession?.gameType as 'ur' | 'senet',
+          id: animId,
+        });
+      }
 
       historyIdRef.current += 1;
       setMoveHistory(prev => [
@@ -159,7 +163,11 @@ export default function GameRoom() {
         const myPlayer = currentSession?.players.find((p) => p.id === playerId);
         if (myPlayer && updatedGameState.currentTurn === myPlayer.playerNumber) {
           const opponent = currentSession?.players.find((p) => p.id !== playerId);
-          const gameTitle = currentSession?.gameType === 'ur' ? 'Royal Game of Ur' : 'Senet';
+          const gameType = currentSession?.gameType;
+          const gameTitle =
+            gameType === 'ur' ? 'Royal Game of Ur' :
+            gameType === 'morris' ? "Nine Men's Morris" :
+            'Senet';
           new Notification('Your turn!', {
             body: `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`,
             icon: '/favicon.ico',
@@ -239,6 +247,7 @@ export default function GameRoom() {
   };
 
   const handleReplay = (entry: HistoryEntry) => {
+    if (session?.gameType === 'morris') return; // Morris has no path animation
     replayIdRef.current += 1;
     setReplayAnimation({
       move: entry.move,
@@ -285,7 +294,7 @@ export default function GameRoom() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">
-            {session.gameType === 'ur' ? 'Royal Game of Ur' : 'Senet'}
+            {session.gameType === 'ur' ? 'Royal Game of Ur' : session.gameType === 'morris' ? "Nine Men's Morris" : 'Senet'}
           </h1>
           <button onClick={handleLeave} className="btn btn-outline text-sm">
             Leave Game
@@ -340,11 +349,19 @@ export default function GameRoom() {
                 lastMove={moveHistory[moveHistory.length - 1]}
               />
             )}
+            {session.gameType === 'morris' && (
+              <MorrisBoard
+                session={session}
+                gameState={gameState}
+                playerId={playerId!}
+                isMyTurn={isMyTurn}
+              />
+            )}
           </div>
           <div className="mt-4 lg:mt-0 lg:w-52 lg:flex-shrink-0">
             <MoveLog
               entries={moveHistory}
-              gameType={session.gameType as 'ur' | 'senet'}
+              gameType={session.gameType as 'ur' | 'senet' | 'morris'}
               session={session}
               onReplay={handleReplay}
               replayingId={replayingEntryId}

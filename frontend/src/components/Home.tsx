@@ -127,7 +127,7 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm font-medium mb-2">Choose Game</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <button
                         onClick={() => setGameType('ur')}
                         className={`p-4 rounded-lg border-2 transition-all ${
@@ -137,7 +137,7 @@ export default function Home() {
                         }`}
                       >
                         <div className="text-2xl mb-2">🏛️</div>
-                        <div className="font-semibold">Royal Game of Ur</div>
+                        <div className="font-semibold text-sm">Royal Game of Ur</div>
                         <div className="text-xs text-gray-400 mt-1">2 players</div>
                       </button>
 
@@ -150,7 +150,20 @@ export default function Home() {
                         }`}
                       >
                         <div className="text-2xl mb-2">🏺</div>
-                        <div className="font-semibold">Senet</div>
+                        <div className="font-semibold text-sm">Senet</div>
+                        <div className="text-xs text-gray-400 mt-1">2 players</div>
+                      </button>
+
+                      <button
+                        onClick={() => setGameType('morris')}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          gameType === 'morris'
+                            ? 'border-primary-500 bg-primary-500/20'
+                            : 'border-gray-600 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2">⬡</div>
+                        <div className="font-semibold text-sm">Nine Men's Morris</div>
                         <div className="text-xs text-gray-400 mt-1">2 players</div>
                       </button>
                     </div>

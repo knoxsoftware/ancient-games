@@ -8,6 +8,7 @@ import { initPushNotifications } from '../../services/pushNotifications';
 const GAME_NAMES: Record<string, string> = {
   ur: 'Royal Game of Ur',
   senet: 'Senet',
+  morris: "Nine Men's Morris",
 };
 
 export default function SessionLobby() {

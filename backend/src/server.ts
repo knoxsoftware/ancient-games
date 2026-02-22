@@ -6,7 +6,9 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
 import { SessionService } from './services/SessionService';
+import { PushService } from './services/PushService';
 import { createSessionRoutes } from './routes/sessions';
+import { createPushRoutes } from './routes/push';
 import { registerGameHandlers } from './socket/gameHandlers';
 import { ClientToServerEvents, ServerToClientEvents } from '@ancient-games/shared';
 
@@ -37,9 +39,11 @@ app.get('/health', (req, res) => {
 
 // Services
 const sessionService = new SessionService();
+const pushService = new PushService();
 
 // API Routes
 app.use('/api', createSessionRoutes(sessionService));
+app.use('/api', createPushRoutes(pushService));
 
 // Serve static frontend files in production
 if (process.env.NODE_ENV === 'production') {
@@ -56,7 +60,7 @@ if (process.env.NODE_ENV === 'production') {
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
-  registerGameHandlers(io, socket, sessionService);
+  registerGameHandlers(io, socket, sessionService, pushService);
 });
 
 // Database connection and server start
