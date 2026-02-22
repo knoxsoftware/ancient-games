@@ -67,11 +67,16 @@ export default function GameRoom() {
     // the 'connect' event won't fire again — call immediately.
     if (socket.connected) rejoin();
 
-    // When the tab becomes visible again, force a reconnect if the socket has
-    // dropped (Socket.io may have exhausted its retry window while backgrounded).
+    // When the tab becomes visible again, refresh state. On Android the socket
+    // often looks "connected" but has gone stale while backgrounded, so we
+    // re-join whenever visible rather than only when visibly disconnected.
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !socket.connected) {
-        socket.connect();
+      if (document.visibilityState === 'visible') {
+        if (socket.connected) {
+          rejoin();
+        } else {
+          socket.connect();
+        }
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);

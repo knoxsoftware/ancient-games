@@ -59,10 +59,16 @@ export default function SessionLobby() {
     socket.on('connect', rejoin);
     if (socket.connected) rejoin();
 
-    // If the tab becomes visible again and the socket has dropped, reconnect.
+    // If the tab becomes visible again, refresh state. On Android the socket
+    // often looks "connected" but has gone stale while backgrounded, so we
+    // re-join whenever visible rather than only when visibly disconnected.
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !socket.connected) {
-        socket.connect();
+      if (document.visibilityState === 'visible') {
+        if (socket.connected) {
+          rejoin();
+        } else {
+          socket.connect();
+        }
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
