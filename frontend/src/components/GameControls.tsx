@@ -169,6 +169,10 @@ export default function GameControls({ session, gameState, playerId, isMyTurn, l
   }
 
   if (gameType === 'wolves-and-ravens') {
+    // Derive raven player number: wolf has 1 piece, ravens have 8
+    const boardPieces = gameState.board.pieces;
+    const ravenPN = boardPieces.filter(p => p.playerNumber === 0).length === 1 ? 1 : 0;
+
     if (!isMyTurn || gameState.finished) {
       return (
         <div className="p-3">
@@ -187,7 +191,7 @@ export default function GameControls({ session, gameState, playerId, isMyTurn, l
           <button onClick={handleRollDice} className="btn btn-primary px-8 py-2">
             Roll Dice
           </button>
-        ) : myPN === 1 && diceRoll > 0 ? (
+        ) : myPN === ravenPN && diceRoll > 0 ? (
           <button
             onClick={handleEndTurn}
             className="btn btn-outline text-sm px-5 py-2"

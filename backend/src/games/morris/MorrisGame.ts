@@ -82,7 +82,7 @@ export class MorrisGame extends GameEngine {
         pieces.push({ playerNumber: player, pieceIndex: i, position: -1 });
       }
     }
-    return { pieces, currentTurn: 0, diceRoll: null, lastMove: null };
+    return { pieces, currentTurn: Math.floor(Math.random() * 2), diceRoll: null, lastMove: null };
   }
 
   /** No real dice — always returns 1 to trigger a normal move. */

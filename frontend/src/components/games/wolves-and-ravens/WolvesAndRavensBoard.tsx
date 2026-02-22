@@ -88,8 +88,12 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
   const diceRoll = board.diceRoll;
   const sessionCode = session.sessionCode;
 
-  const wolf = pieces.find(p => p.playerNumber === 0)!;
-  const ravens = pieces.filter(p => p.playerNumber === 1);
+  // Derive wolf/raven player numbers from piece counts (wolf = 1 piece, ravens = 8 pieces)
+  const wolfPN = pieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
+  const ravenPN = 1 - wolfPN;
+
+  const wolf = pieces.find(p => p.playerNumber === wolfPN)!;
+  const ravens = pieces.filter(p => p.playerNumber === ravenPN);
   const aliveRavens = ravens.filter(p => p.position !== 99);
   const capturedCount = ravens.filter(p => p.position === 99).length;
 
@@ -100,12 +104,12 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
 
   // Valid move sets
   const wolfMoves =
-    isMyTurn && myPN === 0 && diceRoll !== null
+    isMyTurn && myPN === wolfPN && diceRoll !== null
       ? wolfValidDestinations(wolf.position, pieces, diceRoll)
       : new Set<number>();
 
   const ravenMoves =
-    isMyTurn && myPN === 1 && selectedRaven && diceRoll !== null && diceRoll > 0
+    isMyTurn && myPN === ravenPN && selectedRaven && diceRoll !== null && diceRoll > 0
       ? ravenValidDestinations(selectedRaven.position, pieces)
       : new Set<number>();
 
@@ -122,7 +126,7 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
 
     const pieceAt = pieces.find(p => p.position === pos);
 
-    if (myPN === 0) {
+    if (myPN === wolfPN) {
       // ── Wolf player ──
       if (wolfMoves.has(pos)) {
         const move: Move = { playerId, pieceIndex: 0, from: wolf.position, to: pos };
@@ -135,7 +139,7 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
       if (diceRoll <= 0) return;
 
       // Clicking own raven selects it
-      if (pieceAt?.playerNumber === 1) {
+      if (pieceAt?.playerNumber === ravenPN) {
         setSelectedRaven(pieceAt);
         return;
       }
@@ -165,8 +169,8 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
   } else if (!isMyTurn) {
     statusText = `${turnPlayerName}'s turn…`;
   } else if (diceRoll === null) {
-    statusText = myPN === 0 ? 'Roll to hunt' : 'Roll to move your flock';
-  } else if (myPN === 0) {
+    statusText = myPN === wolfPN ? 'Roll to hunt' : 'Roll to move your flock';
+  } else if (myPN === wolfPN) {
     statusText = `Rolled ${diceRoll} — click a glowing cell to move`;
   } else {
     const plural = diceRoll !== 1 ? 'moves' : 'move';
@@ -183,7 +187,7 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
     .map(([r, c]) => rcToPos(r, c));
 
   const blockedNeighbors = orthNeighbors.filter(p =>
-    pieces.some(raven => raven.playerNumber === 1 && raven.position === p)
+    pieces.some(raven => raven.playerNumber === ravenPN && raven.position === p)
   ).length;
   const wolfThreatened = !gameState.finished && blockedNeighbors >= orthNeighbors.length - 1 && orthNeighbors.length > 0;
 
@@ -353,7 +357,7 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
           const cx = cellCx(rc);
           const cy = cellCy(rr);
           const isSel = selectedRaven?.pieceIndex === raven.pieceIndex;
-          const canSelect = isMyTurn && myPN === 1 && diceRoll !== null && diceRoll > 0 && !gameState.finished;
+          const canSelect = isMyTurn && myPN === ravenPN && diceRoll !== null && diceRoll > 0 && !gameState.finished;
 
           return (
             <g
@@ -399,9 +403,9 @@ export default function WolvesAndRavensBoard({ session, gameState, playerId, isM
           <PlayerTray
             key={player.id}
             name={isMe ? 'You' : player.displayName}
-            isWolf={pn === 0}
-            capturedCount={pn === 0 ? capturedCount : 0}
-            aliveRavenCount={pn === 1 ? aliveRavens.length : 0}
+            isWolf={pn === wolfPN}
+            capturedCount={pn === wolfPN ? capturedCount : 0}
+            aliveRavenCount={pn === ravenPN ? aliveRavens.length : 0}
             isActive={!gameState.finished && gameState.currentTurn === pn}
           />
         );

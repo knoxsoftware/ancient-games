@@ -54,7 +54,7 @@ export class SenetGame extends GameEngine {
 
     return {
       pieces,
-      currentTurn: 0,
+      currentTurn: Math.floor(Math.random() * 2),
       diceRoll: null,
       lastMove: null,
     };

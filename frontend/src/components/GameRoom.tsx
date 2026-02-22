@@ -554,12 +554,14 @@ export default function GameRoom() {
                         : `${onBoard} on board · ${captured} lost`;
                     }
                     if (session.gameType === 'wolves-and-ravens') {
-                      if (seatIndex === 0) {
-                        const caught = boardPieces.filter(p => p.playerNumber === 1 && p.position === 99).length;
-                        return `${caught} ravens caught`;
+                      const wolfPN = boardPieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
+                      const ravenPN = 1 - wolfPN;
+                      if (seatIndex === wolfPN) {
+                        const caught = boardPieces.filter(p => p.playerNumber === ravenPN && p.position === 99).length;
+                        return `Wolf · ${caught} ravens caught`;
                       } else {
-                        const alive = boardPieces.filter(p => p.playerNumber === 1 && p.position !== 99).length;
-                        return `${alive} ravens alive`;
+                        const alive = boardPieces.filter(p => p.playerNumber === ravenPN && p.position !== 99).length;
+                        return `Ravens · ${alive} alive`;
                       }
                     }
                     return null;
