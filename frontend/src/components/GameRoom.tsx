@@ -13,6 +13,20 @@ import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
 import ChatPanel, { ChatMessage } from './ChatPanel';
 
+async function showNotification(title: string, body: string) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(title, { body, icon: '/favicon.ico' });
+      return;
+    } catch {
+      // fall through to Notification constructor
+    }
+  }
+  new Notification(title, { body, icon: '/favicon.ico' });
+}
+
 export default function GameRoom() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
   const navigate = useNavigate();
@@ -28,8 +42,17 @@ export default function GameRoom() {
   const [activeTab, setActiveTab] = useState<'game' | 'rules' | 'chat'>('game');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [unreadChat, setUnreadChat] = useState(0);
+  const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
+  const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeTabRef = useRef<'game' | 'rules' | 'chat'>('game');
-  useEffect(() => { activeTabRef.current = activeTab; if (activeTab === 'chat') setUnreadChat(0); }, [activeTab]);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    if (activeTab === 'chat') {
+      setUnreadChat(0);
+      if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
+      setChatToast(null);
+    }
+  }, [activeTab]);
 
   const gameStateRef = useRef<GameState | null>(null);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
@@ -181,10 +204,7 @@ export default function GameRoom() {
             gameType === 'morris' ? "Nine Men's Morris" :
             gameType === 'wolves-and-ravens' ? 'Wolves & Ravens' :
             'Senet';
-          new Notification('Your turn!', {
-            body: `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`,
-            icon: '/favicon.ico',
-          });
+          showNotification('Your turn!', `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`);
         }
       }
     });
@@ -219,6 +239,15 @@ export default function GameRoom() {
       setChatMessages((prev) => [...prev, msg]);
       if (activeTabRef.current !== 'chat') {
         setUnreadChat((n) => n + 1);
+        // Toast when the game is visible but chat tab is not active
+        if (!document.hidden) {
+          if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
+          setChatToast({ displayName: msg.displayName, text: msg.text });
+          chatToastTimerRef.current = setTimeout(() => setChatToast(null), 3000);
+        } else {
+          // Push notification when the tab is not active
+          showNotification(msg.displayName, msg.text);
+        }
       }
     });
 
@@ -467,7 +496,7 @@ export default function GameRoom() {
           className="flex gap-0 mb-4 border-b"
           style={{ borderColor: 'rgba(42,30,14,0.8)' }}
         >
-          {(['game', 'rules', 'chat'] as const).map((tab) => (
+          {(['game', 'chat', 'rules'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -595,6 +624,25 @@ export default function GameRoom() {
           }}
         >
           {message}
+        </div>
+      )}
+
+      {/* Chat message toast — shown when a message arrives and chat tab is not active */}
+      {chatToast && (
+        <div
+          key={chatToast.displayName + chatToast.text}
+          className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
+          style={{
+            background: 'rgba(20,12,0,0.92)',
+            border: '1px solid rgba(196,168,107,0.5)',
+            color: '#F0E6C8',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+          }}
+        >
+          <span style={{ color: '#E8C870' }}>{chatToast.displayName}:</span>{' '}
+          {chatToast.text.length > 60 ? chatToast.text.slice(0, 60) + '…' : chatToast.text}
         </div>
       )}
 
