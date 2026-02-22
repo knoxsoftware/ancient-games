@@ -40,6 +40,24 @@ export function createSessionRoutes(sessionService: SessionService): Router {
     }
   });
 
+  // Spectate a session
+  router.post('/sessions/spectate', async (req, res) => {
+    try {
+      const { sessionCode, displayName } = req.body;
+
+      if (!sessionCode || !displayName) {
+        return res.status(400).json({ error: 'sessionCode and displayName are required' });
+      }
+
+      const socketId = 'temp';
+      const result = await sessionService.addSpectator(sessionCode, displayName, socketId);
+
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
+
   // Get session details
   router.get('/sessions/:sessionCode', async (req, res) => {
     try {

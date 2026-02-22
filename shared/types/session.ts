@@ -1,4 +1,4 @@
-import { GameType, GameState, Player } from './game';
+import { GameType, GameState, Player, Spectator } from './game';
 
 export type SessionStatus = 'lobby' | 'playing' | 'finished';
 
@@ -8,6 +8,7 @@ export interface Session {
   gameType: GameType;
   status: SessionStatus;
   players: Player[];
+  spectators: Spectator[];
   gameState: GameState;
   hostId: string;
   createdAt: Date;
@@ -32,4 +33,14 @@ export interface JoinSessionRequest {
 export interface JoinSessionResponse {
   session: Session;
   playerId: string;
+}
+
+export interface SpectateSessionRequest {
+  sessionCode: string;
+  displayName: string;
+}
+
+export interface SpectateSessionResponse {
+  session: Session;
+  spectatorId: string;
 }

@@ -1,7 +1,7 @@
 import { customAlphabet } from 'nanoid';
 import { SessionModel } from '../models/Session';
 import { GameRegistry } from '../games/GameRegistry';
-import { Session, GameType, Player, CreateSessionRequest, JoinSessionRequest } from '@ancient-games/shared';
+import { Session, GameType, Player, Spectator, CreateSessionRequest, JoinSessionRequest } from '@ancient-games/shared';
 
 const nanoid = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 6);
 
@@ -85,10 +85,16 @@ export class SessionService {
   }
 
   async updatePlayerSocketId(sessionCode: string, playerId: string, socketId: string): Promise<void> {
-    await SessionModel.updateOne(
+    const playerResult = await SessionModel.updateOne(
       { sessionCode, 'players.id': playerId },
       { $set: { 'players.$.socketId': socketId, lastActivity: new Date() } }
     );
+    if (playerResult.matchedCount === 0) {
+      await SessionModel.updateOne(
+        { sessionCode, 'spectators.id': playerId },
+        { $set: { 'spectators.$.socketId': socketId, lastActivity: new Date() } }
+      );
+    }
   }
 
   async updatePlayerReady(sessionCode: string, playerId: string, ready: boolean): Promise<Session | null> {
@@ -102,6 +108,93 @@ export class SessionService {
       await session.save();
     }
 
+    return this.toSession(session);
+  }
+
+  async addSpectator(sessionCode: string, displayName: string, socketId: string): Promise<{ session: Session; spectatorId: string }> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) throw new Error('Session not found');
+
+    const spectatorId = this.generatePlayerId();
+    const spectator: Spectator = { id: spectatorId, displayName, socketId };
+    session.spectators.push(spectator);
+    session.lastActivity = new Date();
+    await session.save();
+
+    return { session: this.toSession(session), spectatorId };
+  }
+
+  async removeSpectator(sessionCode: string, spectatorId: string): Promise<Session | null> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) return null;
+
+    session.spectators = session.spectators.filter(s => s.id !== spectatorId);
+
+    // If no players and no spectators left, delete the session
+    if (session.players.length === 0 && session.spectators.length === 0) {
+      await SessionModel.deleteOne({ sessionCode });
+      return null;
+    }
+
+    session.lastActivity = new Date();
+    await session.save();
+    return this.toSession(session);
+  }
+
+  async playerToSpectator(sessionCode: string, playerId: string): Promise<Session | null> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) return null;
+
+    const playerIndex = session.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) return this.toSession(session);
+
+    const player = session.players[playerIndex];
+    session.players.splice(playerIndex, 1);
+
+    const spectator: Spectator = {
+      id: player.id,
+      displayName: player.displayName,
+      socketId: player.socketId,
+    };
+    session.spectators.push(spectator);
+
+    if (session.hostId === playerId && session.players.length > 0) {
+      session.hostId = session.players[0].id;
+    }
+
+    session.lastActivity = new Date();
+    await session.save();
+    return this.toSession(session);
+  }
+
+  async spectatorToPlayer(sessionCode: string, spectatorId: string): Promise<Session | null> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) return null;
+
+    const spectatorIndex = session.spectators.findIndex(s => s.id === spectatorId);
+    if (spectatorIndex === -1) throw new Error('Spectator not found');
+
+    const takenNumbers = new Set(session.players.map(p => p.playerNumber));
+    let playerNumber: number | null = null;
+    for (const n of [0, 1]) {
+      if (!takenNumbers.has(n)) { playerNumber = n; break; }
+    }
+    if (playerNumber === null) throw new Error('No seats available');
+
+    const spectator = session.spectators[spectatorIndex];
+    session.spectators.splice(spectatorIndex, 1);
+
+    const player: Player = {
+      id: spectator.id,
+      displayName: spectator.displayName,
+      socketId: spectator.socketId,
+      ready: false,
+      playerNumber,
+    };
+    session.players.push(player);
+
+    session.lastActivity = new Date();
+    await session.save();
     return this.toSession(session);
   }
 
@@ -202,6 +295,7 @@ export class SessionService {
       gameType: doc.gameType,
       status: doc.status,
       players: doc.players,
+      spectators: doc.spectators ?? [],
       gameState: doc.gameState,
       hostId: doc.hostId,
       createdAt: doc.createdAt,

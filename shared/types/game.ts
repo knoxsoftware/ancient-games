@@ -8,6 +8,12 @@ export interface Player {
   playerNumber: number; // 0 or 1
 }
 
+export interface Spectator {
+  id: string;
+  displayName: string;
+  socketId: string;
+}
+
 export interface Move {
   playerId: string;
   pieceIndex: number;

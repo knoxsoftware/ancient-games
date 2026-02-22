@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Session as ISession, GameState, Player } from '@ancient-games/shared';
+import { Session as ISession, GameState, Player, Spectator } from '@ancient-games/shared';
 
 export interface SessionDocument extends Omit<ISession, '_id'>, Document {}
 
@@ -9,6 +9,12 @@ const PlayerSchema = new Schema<Player>({
   socketId: { type: String, required: true },
   ready: { type: Boolean, default: false },
   playerNumber: { type: Number, required: true },
+});
+
+const SpectatorSchema = new Schema<Spectator>({
+  id: { type: String, required: true },
+  displayName: { type: String, required: true },
+  socketId: { type: String, required: true },
 });
 
 const GameStateSchema = new Schema<GameState>({
@@ -24,6 +30,7 @@ const SessionSchema = new Schema<SessionDocument>({
   gameType: { type: String, enum: ['ur', 'senet', 'morris', 'wolves-and-ravens'], required: true },
   status: { type: String, enum: ['lobby', 'playing', 'finished'], default: 'lobby' },
   players: [PlayerSchema],
+  spectators: { type: [SpectatorSchema], default: [] },
   gameState: { type: GameStateSchema, required: true },
   hostId: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },

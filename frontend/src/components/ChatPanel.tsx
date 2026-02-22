@@ -5,6 +5,7 @@ export interface ChatMessage {
   displayName: string;
   text: string;
   timestamp: number;
+  isSpectator?: boolean;
 }
 
 interface ChatPanelProps {
@@ -67,6 +68,11 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
                 >
                   {msg.displayName}
                 </span>
+                {msg.isSpectator && (
+                  <span className="text-xs" style={{ color: '#5A4A38', fontSize: '10px' }}>
+                    spectating
+                  </span>
+                )}
                 <span className="text-xs" style={{ color: '#5A4A38', fontSize: '10px' }}>
                   {formatTime(msg.timestamp)}
                 </span>

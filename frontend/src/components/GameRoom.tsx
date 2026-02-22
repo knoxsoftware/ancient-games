@@ -21,6 +21,9 @@ export default function GameRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [spectateDisplayName, setSpectateDisplayName] = useState('');
+  const [spectateLoading, setSpectateLoading] = useState(false);
+  const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'game' | 'rules' | 'chat'>('game');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -42,16 +45,15 @@ export default function GameRoom() {
   const replayIdRef = useRef(0);
   const [replayingEntryId, setReplayingEntryId] = useState<number | null>(null);
 
-  const playerId = localStorage.getItem('playerId');
+  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
 
   useEffect(() => {
-    if (!sessionCode || !playerId) {
+    if (!sessionCode) {
       navigate('/');
       return;
     }
-
     loadSession();
-  }, [sessionCode, playerId]);
+  }, [sessionCode]);
 
   // Register service worker and subscribe to push notifications on mount
   useEffect(() => {
@@ -64,6 +66,7 @@ export default function GameRoom() {
     if (!sessionCode || !playerId) return;
 
     const socket = socketService.connect();
+
 
     // Re-join the session room and pull latest state on every (re)connection.
     // The server responds with session:updated which carries the full game state,
@@ -246,6 +249,43 @@ export default function GameRoom() {
     }
   };
 
+  const handleSpectate = async () => {
+    if (!spectateDisplayName.trim()) {
+      setSpectateError('Please enter your name');
+      return;
+    }
+    setSpectateLoading(true);
+    setSpectateError('');
+    try {
+      const result = await api.spectateSession({
+        sessionCode: sessionCode!,
+        displayName: spectateDisplayName.trim(),
+      });
+      localStorage.setItem('playerId', result.spectatorId);
+      setPlayerId(result.spectatorId);
+      setSession(result.session);
+      setGameState(result.session.gameState);
+    } catch (err) {
+      setSpectateError((err as Error).message);
+    } finally {
+      setSpectateLoading(false);
+    }
+  };
+
+  const handleStandUp = () => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:stand-up', { sessionCode, playerId });
+  };
+
+  const handleTakeSeat = () => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:take-seat', { sessionCode, playerId });
+  };
+
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
 
@@ -300,8 +340,64 @@ export default function GameRoom() {
     );
   }
 
+  // Show spectate form when visitor has no ID or their ID isn't recognised in this session
+  const knownToSession =
+    playerId &&
+    (session.players.some((p) => p.id === playerId) ||
+      session.spectators.some((s) => s.id === playerId));
+
+  if (!knownToSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="card max-w-md w-full">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-3">👁</div>
+            <h1 className="text-2xl font-bold mb-1">Watch this game</h1>
+            <p className="text-gray-400">Enter your name to spectate</p>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Your Name</label>
+              <input
+                type="text"
+                value={spectateDisplayName}
+                onChange={(e) => setSpectateDisplayName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSpectate()}
+                placeholder="Enter your name"
+                className="input w-full"
+                maxLength={20}
+                autoFocus
+              />
+            </div>
+            {spectateError && (
+              <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-red-200 text-sm">
+                {spectateError}
+              </div>
+            )}
+            <button
+              onClick={handleSpectate}
+              disabled={spectateLoading}
+              className="btn btn-primary w-full text-lg py-3"
+            >
+              {spectateLoading ? 'Joining...' : 'Watch Game'}
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm text-gray-400 hover:text-white w-full text-center"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentPlayer = session.players.find((p) => p.id === playerId);
-  const isMyTurn = gameState.currentTurn === currentPlayer?.playerNumber;
+  const isSpectator =
+    !currentPlayer && session.spectators.some((s) => s.id === playerId);
+  const bothSeated = session.players.length === 2;
+  const isMyTurn = bothSeated && !isSpectator && gameState.currentTurn === currentPlayer?.playerNumber;
 
   const animatingPiece = pendingAnimation
     ? { playerNumber: pendingAnimation.playerNumber, pieceIndex: pendingAnimation.move.pieceIndex }
@@ -318,9 +414,21 @@ export default function GameRoom() {
               : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
               : 'Senet'}
           </h1>
-          <button onClick={handleLeave} className="btn btn-outline text-sm">
-            Leave Game
-          </button>
+          <div className="flex items-center gap-2">
+            {!isSpectator && (
+              <button onClick={handleStandUp} className="btn btn-outline text-sm">
+                Stand Up
+              </button>
+            )}
+            {isSpectator && session.players.length < 2 && (
+              <button onClick={handleTakeSeat} className="btn btn-secondary text-sm">
+                Take Seat
+              </button>
+            )}
+            <button onClick={handleLeave} className="btn btn-outline text-sm">
+              Leave Game
+            </button>
+          </div>
         </div>
 
         {/* Inline error (layout-impacting intentionally — user needs to see it) */}
@@ -334,17 +442,23 @@ export default function GameRoom() {
         {gameState.finished && gameState.winner !== null && (
           <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg p-6 mb-4 text-center">
             <div className="text-3xl font-bold mb-2">
-              {gameState.winner === currentPlayer?.playerNumber ? 'You Win!' : 'You Lose'}
+              {isSpectator
+                ? `${session.players[gameState.winner]?.displayName} wins!`
+                : gameState.winner === currentPlayer?.playerNumber
+                  ? 'You Win!'
+                  : 'You Lose'}
             </div>
             <div className="text-lg mb-4">
               {session.players[gameState.winner]?.displayName} is the winner!
             </div>
-            <button
-              onClick={handleRematch}
-              className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
-            >
-              Play Again
-            </button>
+            {!isSpectator && (
+              <button
+                onClick={handleRematch}
+                className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
+              >
+                Play Again
+              </button>
+            )}
           </div>
         )}
 
@@ -419,7 +533,7 @@ export default function GameRoom() {
                 />
               )}
             </div>
-            <div className="mt-4 lg:mt-0 lg:w-52 lg:flex-shrink-0">
+            <div className="mt-4 lg:mt-0 lg:w-52 lg:flex-shrink-0 space-y-3">
               <MoveLog
                 entries={moveHistory}
                 gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens'}
@@ -427,6 +541,21 @@ export default function GameRoom() {
                 onReplay={handleReplay}
                 replayingId={replayingEntryId}
               />
+              {session.spectators.length > 0 && (
+                <div className="rounded-lg p-3 text-sm" style={{ background: 'rgba(30,20,8,0.6)', border: '1px solid rgba(80,60,30,0.4)' }}>
+                  <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
+                    Watching ({session.spectators.length})
+                  </div>
+                  {session.spectators.map((s) => (
+                    <div key={s.id} className="text-gray-400 text-xs py-0.5">{s.displayName}</div>
+                  ))}
+                </div>
+              )}
+              {!bothSeated && (
+                <div className="rounded-lg p-3 text-xs text-center" style={{ background: 'rgba(30,20,8,0.6)', border: '1px solid rgba(80,60,30,0.4)', color: '#A09070' }}>
+                  Waiting for opponent to fill seat…
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -28,9 +28,10 @@ export function registerGameHandlers(
 
       // Detect first-ever socket connection (socketId is 'temp' until then)
       const joiningPlayer = session.players.find(p => p.id === playerId);
-      const isFirstConnect = joiningPlayer?.socketId === 'temp';
+      const joiningSpectator = !joiningPlayer ? session.spectators.find(s => s.id === playerId) : undefined;
+      const isFirstConnect = (joiningPlayer?.socketId === 'temp') || (joiningSpectator?.socketId === 'temp');
 
-      // Update socket ID for reconnections
+      // Update socket ID for reconnections (checks players then spectators)
       await sessionService.updatePlayerSocketId(sessionCode, playerId, socket.id);
 
       // Join the room
@@ -39,7 +40,7 @@ export function registerGameHandlers(
       // Notify everyone in the room
       io.to(sessionCode).emit('session:updated', session);
 
-      // Push notification when a new player first connects to the lobby
+      // Push notification when a new player first connects to the lobby (not spectators)
       if (isFirstConnect && joiningPlayer) {
         for (const other of session.players) {
           if (other.id !== playerId) {
@@ -59,11 +60,45 @@ export function registerGameHandlers(
   // Leave a session
   socket.on('session:leave', async ({ sessionCode, playerId }) => {
     try {
-      const session = await sessionService.removePlayer(sessionCode, playerId);
+      // Try removing as player first, fall back to spectator
+      const currentSession = await sessionService.getSession(sessionCode);
+      const isPlayer = currentSession?.players.some(p => p.id === playerId) ?? false;
+
+      let session: typeof currentSession;
+      if (isPlayer) {
+        session = await sessionService.removePlayer(sessionCode, playerId);
+      } else {
+        session = await sessionService.removeSpectator(sessionCode, playerId);
+      }
+
       socket.leave(sessionCode);
 
       if (session) {
         io.to(sessionCode).emit('session:player-left', session);
+      }
+    } catch (error) {
+      socket.emit('session:error', { message: (error as Error).message });
+    }
+  });
+
+  // Player stands up and becomes a spectator
+  socket.on('session:stand-up', async ({ sessionCode, playerId }) => {
+    try {
+      const session = await sessionService.playerToSpectator(sessionCode, playerId);
+      if (session) {
+        io.to(sessionCode).emit('session:updated', session);
+      }
+    } catch (error) {
+      socket.emit('session:error', { message: (error as Error).message });
+    }
+  });
+
+  // Spectator takes an open seat
+  socket.on('session:take-seat', async ({ sessionCode, playerId }) => {
+    try {
+      const session = await sessionService.spectatorToPlayer(sessionCode, playerId);
+      if (session) {
+        io.to(sessionCode).emit('session:updated', session);
       }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
@@ -325,16 +360,19 @@ export function registerGameHandlers(
       if (!session) return;
 
       const player = session.players.find(p => p.id === playerId);
-      if (!player) return;
+      const spectator = !player ? session.spectators.find(s => s.id === playerId) : undefined;
+      const sender = player ?? spectator;
+      if (!sender) return;
 
       const trimmed = text.trim().slice(0, 500);
       if (!trimmed) return;
 
       io.to(sessionCode).emit('chat:message', {
         playerId,
-        displayName: player.displayName,
+        displayName: sender.displayName,
         text: trimmed,
         timestamp: Date.now(),
+        isSpectator: !!spectator,
       });
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });

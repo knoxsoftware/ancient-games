@@ -1,4 +1,4 @@
-import { CreateSessionRequest, CreateSessionResponse, JoinSessionRequest, JoinSessionResponse, Session } from '@ancient-games/shared';
+import { CreateSessionRequest, CreateSessionResponse, JoinSessionRequest, JoinSessionResponse, SpectateSessionRequest, SpectateSessionResponse, Session } from '@ancient-games/shared';
 
 const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:3000/api';
 
@@ -28,6 +28,21 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to join session');
+    }
+
+    return response.json();
+  },
+
+  async spectateSession(request: SpectateSessionRequest): Promise<SpectateSessionResponse> {
+    const response = await fetch(`${API_URL}/sessions/spectate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to join as spectator');
     }
 
     return response.json();

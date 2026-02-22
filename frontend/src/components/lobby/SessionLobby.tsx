@@ -32,6 +32,7 @@ export default function SessionLobby() {
   const [displayName, setDisplayName] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
+  const [spectateLoading, setSpectateLoading] = useState(false);
 
   // Register push notifications whenever we have a playerId
   useEffect(() => {
@@ -212,6 +213,42 @@ export default function SessionLobby() {
     }
   };
 
+  const handleSpectate = async () => {
+    if (!displayName.trim()) {
+      setJoinError('Please enter your name');
+      return;
+    }
+    setSpectateLoading(true);
+    setJoinError('');
+    try {
+      const result = await api.spectateSession({
+        sessionCode: sessionCode!,
+        displayName: displayName.trim(),
+      });
+      localStorage.setItem('playerId', result.spectatorId);
+      setPlayerId(result.spectatorId);
+      setSession(result.session);
+    } catch (err) {
+      setJoinError((err as Error).message);
+    } finally {
+      setSpectateLoading(false);
+    }
+  };
+
+  const handleStandUp = () => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:stand-up', { sessionCode, playerId });
+  };
+
+  const handleTakeSeat = () => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:take-seat', { sessionCode, playerId });
+  };
+
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
@@ -246,7 +283,13 @@ export default function SessionLobby() {
   }
 
   // ── Join form — visitor has no playerId, or has a stale one from a different session ──
-  if (!playerId || (session && !session.players.some((p) => p.id === playerId))) {
+  const knownToSession =
+    playerId &&
+    session &&
+    (session.players.some((p) => p.id === playerId) ||
+      session.spectators.some((s) => s.id === playerId));
+
+  if (!knownToSession) {
     const isFull = session && session.players.length >= 2;
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -271,35 +314,28 @@ export default function SessionLobby() {
             </div>
           )}
 
-          {isFull ? (
-            <div className="text-center space-y-4">
-              <p className="text-red-400">This game is already full.</p>
-              <button onClick={() => navigate('/')} className="btn btn-outline w-full">
-                Back to Home
-              </button>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Your Name</label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (isFull ? handleSpectate() : handleJoin())}
+                placeholder="Enter your name"
+                className="input w-full"
+                maxLength={20}
+                autoFocus
+              />
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Your Name</label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                  placeholder="Enter your name"
-                  className="input w-full"
-                  maxLength={20}
-                  autoFocus
-                />
+
+            {joinError && (
+              <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-red-200 text-sm">
+                {joinError}
               </div>
+            )}
 
-              {joinError && (
-                <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-red-200 text-sm">
-                  {joinError}
-                </div>
-              )}
-
+            {!isFull && (
               <button
                 onClick={handleJoin}
                 disabled={joinLoading}
@@ -307,15 +343,23 @@ export default function SessionLobby() {
               >
                 {joinLoading ? 'Joining...' : 'Join Game'}
               </button>
+            )}
 
-              <button
-                onClick={() => navigate('/')}
-                className="text-sm text-gray-400 hover:text-white w-full text-center"
-              >
-                Back to Home
-              </button>
-            </div>
-          )}
+            <button
+              onClick={handleSpectate}
+              disabled={spectateLoading}
+              className="btn btn-outline w-full"
+            >
+              {spectateLoading ? 'Joining...' : 'Watch Game'}
+            </button>
+
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm text-gray-400 hover:text-white w-full text-center"
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -324,6 +368,9 @@ export default function SessionLobby() {
   // ── Normal lobby ──────────────────────────────────────────────────────────
   if (!session) return null;
 
+  const isSpectator =
+    !session.players.some((p) => p.id === playerId) &&
+    session.spectators.some((s) => s.id === playerId);
   const isHost = session.hostId === playerId;
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const allReady = session.players.every((p) => p.ready);
@@ -397,10 +444,32 @@ export default function SessionLobby() {
                 Waiting for another player...
               </div>
             )}
+
+            {session.spectators.length > 0 && (
+              <div className="mt-4">
+                <div className="text-sm font-medium text-gray-400 mb-2">
+                  Spectators ({session.spectators.length})
+                </div>
+                {session.spectators.map((spec) => (
+                  <div
+                    key={spec.id}
+                    className="flex items-center gap-3 bg-gray-700/20 rounded-lg p-3 mb-1"
+                  >
+                    <span className="text-gray-400 text-sm">👁</span>
+                    <span className="text-gray-300 text-sm">{spec.displayName}</span>
+                    {spec.id === playerId && (
+                      <span className="text-xs bg-gray-600/50 text-gray-400 px-2 py-0.5 rounded">
+                        You
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="flex gap-3">
-            {currentPlayer && (
+          <div className="flex gap-3 flex-wrap">
+            {!isSpectator && currentPlayer && (
               <button
                 onClick={handleReady}
                 className={`btn flex-1 ${
@@ -410,7 +479,7 @@ export default function SessionLobby() {
                 {currentPlayer.ready ? 'Not Ready' : 'Ready'}
               </button>
             )}
-            {isHost && (
+            {!isSpectator && isHost && (
               <button
                 onClick={handleStartGame}
                 disabled={!canStart}
@@ -419,9 +488,19 @@ export default function SessionLobby() {
                 Start Game
               </button>
             )}
+            {!isSpectator && currentPlayer && (
+              <button onClick={handleStandUp} className="btn btn-outline text-sm">
+                Stand Up
+              </button>
+            )}
+            {isSpectator && session.players.length < 2 && (
+              <button onClick={handleTakeSeat} className="btn btn-secondary flex-1">
+                Take a Seat
+              </button>
+            )}
           </div>
 
-          {isHost && !canStart && (
+          {!isSpectator && isHost && !canStart && (
             <div className="text-sm text-gray-400 text-center mt-2">
               {session.players.length < 2
                 ? 'Waiting for another player to join'
