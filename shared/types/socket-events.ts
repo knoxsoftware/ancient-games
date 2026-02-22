@@ -1,4 +1,4 @@
-import { Session, GameState, Move } from './index';
+import { Session, GameState, Move, DominoPrivateState } from './index';
 
 // Client to Server events
 export interface ClientToServerEvents {
@@ -30,4 +30,5 @@ export interface ServerToClientEvents {
   'game:error': (error: { message: string }) => void;
   'game:restarted': (session: Session) => void;
   'chat:message': (data: { playerId: string; displayName: string; text: string; timestamp: number; isSpectator?: boolean }) => void;
+  'game:private-state': (data: DominoPrivateState) => void;
 }

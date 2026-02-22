@@ -1,4 +1,4 @@
-export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens';
+export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens' | 'dominos';
 
 export interface Player {
   id: string;
@@ -22,11 +22,36 @@ export interface Move {
   diceRoll?: number;
 }
 
+export interface DominoTile {
+  id: number;   // 0-27
+  high: number; // 0-6
+  low: number;  // 0-6, always <= high
+}
+
+export interface PlayedDomino {
+  tile: DominoTile;
+  side: 'initial' | 'left' | 'right'; // which end of chain it was added to
+  flipped: boolean;  // true = display as [low|high], false = [high|low]
+  playerNumber: number;
+}
+
+export interface DominoPrivateState {
+  playerNumber: number;
+  hand: DominoTile[];
+}
+
 export interface BoardState {
   pieces: PiecePosition[];
   currentTurn: number;
   diceRoll: number | null;
   lastMove: Move | null;
+  // Dominos public state
+  dominoChain?: PlayedDomino[];
+  dominoHandSizes?: number[];
+  dominoBoneyardSize?: number;
+  // Dominos server-only state (stripped before all broadcasts)
+  dominoHands?: DominoTile[][];
+  dominoBoneyard?: DominoTile[];
 }
 
 export interface PiecePosition {

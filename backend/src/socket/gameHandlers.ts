@@ -2,13 +2,40 @@ import { Server, Socket } from 'socket.io';
 import { SessionService } from '../services/SessionService';
 import { PushService } from '../services/PushService';
 import { GameRegistry } from '../games/GameRegistry';
-import { ClientToServerEvents, ServerToClientEvents } from '@ancient-games/shared';
+import { ClientToServerEvents, ServerToClientEvents, GameState, Session } from '@ancient-games/shared';
 
 function gameTitle(gameType: string): string {
   if (gameType === 'ur') return 'Royal Game of Ur';
   if (gameType === 'morris') return "Nine Men's Morris";
   if (gameType === 'wolves-and-ravens') return 'Wolves & Ravens';
+  if (gameType === 'dominos') return 'Dominos';
   return 'Senet';
+}
+
+function stripPrivateData(gameState: GameState): GameState {
+  const board = gameState.board as any;
+  if (!board.dominoHands && !board.dominoBoneyard) return gameState;
+  const { dominoHands, dominoBoneyard, ...publicBoard } = board;
+  return { ...gameState, board: publicBoard };
+}
+
+function stripSessionPrivateData(session: Session): Session {
+  return { ...session, gameState: stripPrivateData(session.gameState) };
+}
+
+function sendPrivateStates(
+  io: Server<ClientToServerEvents, ServerToClientEvents>,
+  session: Session
+): void {
+  if (session.gameType !== 'dominos') return;
+  const hands = (session.gameState.board as any).dominoHands;
+  if (!hands) return;
+  for (const player of session.players) {
+    if (player.socketId && player.socketId !== 'temp') {
+      const hand = hands[player.playerNumber] ?? [];
+      io.to(player.socketId).emit('game:private-state', { playerNumber: player.playerNumber, hand });
+    }
+  }
 }
 
 export function registerGameHandlers(
@@ -37,8 +64,14 @@ export function registerGameHandlers(
       // Join the room
       socket.join(sessionCode);
 
-      // Notify everyone in the room
-      io.to(sessionCode).emit('session:updated', session);
+      // Notify everyone in the room (strip private data before broadcast)
+      io.to(sessionCode).emit('session:updated', stripSessionPrivateData(session));
+
+      // Send private hand to rejoining dominos player
+      if (session.gameType === 'dominos' && session.status === 'playing' && joiningPlayer) {
+        const hand = (session.gameState.board as any).dominoHands?.[joiningPlayer.playerNumber] ?? [];
+        socket.emit('game:private-state', { playerNumber: joiningPlayer.playerNumber, hand });
+      }
 
       // Push notification when a new player first connects to the lobby (not spectators)
       if (isFirstConnect && joiningPlayer) {
@@ -74,7 +107,7 @@ export function registerGameHandlers(
       socket.leave(sessionCode);
 
       if (session) {
-        io.to(sessionCode).emit('session:player-left', session);
+        io.to(sessionCode).emit('session:player-left', stripSessionPrivateData(session));
       }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
@@ -86,7 +119,7 @@ export function registerGameHandlers(
     try {
       const session = await sessionService.playerToSpectator(sessionCode, playerId);
       if (session) {
-        io.to(sessionCode).emit('session:updated', session);
+        io.to(sessionCode).emit('session:updated', stripSessionPrivateData(session));
       }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
@@ -98,7 +131,7 @@ export function registerGameHandlers(
     try {
       const session = await sessionService.spectatorToPlayer(sessionCode, playerId);
       if (session) {
-        io.to(sessionCode).emit('session:updated', session);
+        io.to(sessionCode).emit('session:updated', stripSessionPrivateData(session));
       }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
@@ -110,7 +143,7 @@ export function registerGameHandlers(
     try {
       const session = await sessionService.updatePlayerReady(sessionCode, playerId, ready);
       if (session) {
-        io.to(sessionCode).emit('session:updated', session);
+        io.to(sessionCode).emit('session:updated', stripSessionPrivateData(session));
 
         // Push notification to other lobby players about ready status change
         const player = session.players.find(p => p.id === playerId);
@@ -137,7 +170,8 @@ export function registerGameHandlers(
     try {
       const session = await sessionService.startGame(sessionCode, playerId);
       if (session) {
-        io.to(sessionCode).emit('game:started', session);
+        io.to(sessionCode).emit('game:started', stripSessionPrivateData(session));
+        sendPrivateStates(io, session);
       }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
@@ -207,7 +241,7 @@ export function registerGameHandlers(
         }
       }
 
-      io.to(sessionCode).emit('game:state-updated', session.gameState);
+      io.to(sessionCode).emit('game:state-updated', stripPrivateData(session.gameState));
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
     }
@@ -255,16 +289,19 @@ export function registerGameHandlers(
 
       await sessionService.updateGameState(sessionCode, session.gameState);
 
-      // Notify all players
+      // Notify all players (strip private data)
       io.to(sessionCode).emit('game:move-made', {
         move,
-        gameState: session.gameState,
+        gameState: stripPrivateData(session.gameState),
       });
+
+      // Send updated hands to dominos players
+      sendPrivateStates(io, session);
 
       if (winner !== null) {
         io.to(sessionCode).emit('game:ended', {
           winner,
-          gameState: session.gameState,
+          gameState: stripPrivateData(session.gameState),
         });
       } else {
         io.to(sessionCode).emit('game:turn-changed', {
@@ -318,7 +355,7 @@ export function registerGameHandlers(
         currentTurn: session.gameState.currentTurn,
       });
 
-      io.to(sessionCode).emit('game:state-updated', session.gameState);
+      io.to(sessionCode).emit('game:state-updated', stripPrivateData(session.gameState));
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
     }
@@ -346,7 +383,8 @@ export function registerGameHandlers(
 
       const newSession = await sessionService.restartGame(sessionCode);
       if (newSession) {
-        io.to(sessionCode).emit('game:restarted', newSession);
+        io.to(sessionCode).emit('game:restarted', stripSessionPrivateData(newSession));
+        sendPrivateStates(io, newSession);
       }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
