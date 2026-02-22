@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Session as ISession, GameState, Player, Spectator } from '@ancient-games/shared';
+import { Session as ISession, GameState, Player, Spectator, ChatMessage } from '@ancient-games/shared';
 
 export interface SessionDocument extends Omit<ISession, '_id'>, Document {}
 
@@ -17,12 +17,22 @@ const SpectatorSchema = new Schema<Spectator>({
   socketId: { type: String, required: true },
 });
 
+const ChatMessageSchema = new Schema<ChatMessage>({
+  id: { type: String, required: true },
+  playerId: { type: String, required: true },
+  displayName: { type: String, required: true },
+  text: { type: String, required: true },
+  timestamp: { type: Number, required: true },
+  isSpectator: { type: Boolean, default: false },
+});
+
 const GameStateSchema = new Schema<GameState>({
   board: { type: Schema.Types.Mixed, required: true },
   currentTurn: { type: Number, default: 0 },
   winner: { type: Number, default: null },
   started: { type: Boolean, default: false },
   finished: { type: Boolean, default: false },
+  moveHistory: { type: [Schema.Types.Mixed], default: [] },
 });
 
 const SessionSchema = new Schema<SessionDocument>({
@@ -35,6 +45,7 @@ const SessionSchema = new Schema<SessionDocument>({
   hostId: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   lastActivity: { type: Date, default: Date.now },
+  chatHistory: { type: [ChatMessageSchema], default: [] },
 });
 
 // Auto-cleanup sessions older than 24 hours with no activity

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, GameState, DominoTile } from '@ancient-games/shared';
+import { Session, GameState, DominoTile, HistoricalMove } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { initPushNotifications } from '../services/pushNotifications';
@@ -257,6 +257,22 @@ export default function GameRoom() {
       }
     });
 
+    socket.on('game:history', (moves) => {
+      const entries: HistoryEntry[] = moves.map((hm, i) => ({
+        id: i + 1,
+        move: hm.move,
+        playerNumber: hm.playerNumber,
+        wasCapture: hm.wasCapture,
+        isSkip: hm.isSkip,
+      }));
+      historyIdRef.current = moves.length;
+      setMoveHistory(entries);
+    });
+
+    socket.on('chat:history', (messages) => {
+      setChatMessages(messages);
+    });
+
     socket.on('game:private-state', ({ playerNumber, hand }) => {
       const currentSession = sessionRef.current;
       const myPlayerNumber = currentSession?.players.find(p => p.id === playerId)?.playerNumber;
@@ -277,6 +293,8 @@ export default function GameRoom() {
       socket.off('game:restarted');
       socket.off('game:error');
       socket.off('chat:message');
+      socket.off('game:history');
+      socket.off('chat:history');
       socket.off('game:private-state');
     };
   }, [sessionCode, playerId]);
@@ -286,6 +304,22 @@ export default function GameRoom() {
       const sessionData = await api.getSession(sessionCode!);
       setSession(sessionData);
       setGameState(sessionData.gameState);
+
+      if (sessionData.chatHistory && sessionData.chatHistory.length > 0) {
+        setChatMessages(sessionData.chatHistory);
+      }
+
+      if (sessionData.gameState.moveHistory && sessionData.gameState.moveHistory.length > 0) {
+        const entries: HistoryEntry[] = sessionData.gameState.moveHistory.map((hm: HistoricalMove, i: number) => ({
+          id: i + 1,
+          move: hm.move,
+          playerNumber: hm.playerNumber,
+          wasCapture: hm.wasCapture,
+          isSkip: hm.isSkip,
+        }));
+        historyIdRef.current = sessionData.gameState.moveHistory.length;
+        setMoveHistory(entries);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {

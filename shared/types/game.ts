@@ -60,12 +60,21 @@ export interface PiecePosition {
   position: number; // -1 = not on board, 0-N = board positions, 99 = finished
 }
 
+export interface HistoricalMove {
+  move: Move;
+  playerNumber: number;
+  wasCapture: boolean;
+  isSkip?: boolean;
+  timestamp: number;
+}
+
 export interface GameState {
   board: BoardState;
   currentTurn: number;
   winner: number | null;
   started: boolean;
   finished: boolean;
+  moveHistory?: HistoricalMove[];
 }
 
 export interface GameEngine {

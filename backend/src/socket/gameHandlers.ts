@@ -1,8 +1,9 @@
 import { Server, Socket } from 'socket.io';
+import { nanoid } from 'nanoid';
 import { SessionService } from '../services/SessionService';
 import { PushService } from '../services/PushService';
 import { GameRegistry } from '../games/GameRegistry';
-import { ClientToServerEvents, ServerToClientEvents, GameState, Session } from '@ancient-games/shared';
+import { ClientToServerEvents, ServerToClientEvents, GameState, Session, HistoricalMove } from '@ancient-games/shared';
 
 function gameTitle(gameType: string): string {
   if (gameType === 'ur') return 'Royal Game of Ur';
@@ -14,9 +15,9 @@ function gameTitle(gameType: string): string {
 
 function stripPrivateData(gameState: GameState): GameState {
   const board = gameState.board as any;
-  if (!board.dominoHands && !board.dominoBoneyard) return gameState;
-  const { dominoHands, dominoBoneyard, ...publicBoard } = board;
-  return { ...gameState, board: publicBoard };
+  const { dominoHands: _dh, dominoBoneyard: _db, ...publicBoard } = board;
+  const { moveHistory: _mh, ...publicState } = gameState as any;
+  return { ...publicState, board: publicBoard };
 }
 
 function stripSessionPrivateData(session: Session): Session {
@@ -66,6 +67,10 @@ export function registerGameHandlers(
 
       // Notify everyone in the room (strip private data before broadcast)
       io.to(sessionCode).emit('session:updated', stripSessionPrivateData(session));
+
+      // Send move and chat history to this socket only
+      socket.emit('game:history', session.gameState.moveHistory ?? []);
+      socket.emit('chat:history', session.chatHistory ?? []);
 
       // Send private hand to rejoining dominos player
       if (session.gameType === 'dominos' && session.status === 'playing' && joiningPlayer) {
@@ -224,6 +229,17 @@ export function registerGameHandlers(
         session.gameState.board.diceRoll = null;
         session.gameState.board.currentTurn = nextTurn;
         session.gameState.currentTurn = nextTurn;
+
+        // Record skip in history
+        if (!session.gameState.moveHistory) session.gameState.moveHistory = [];
+        session.gameState.moveHistory.push({
+          move: { playerId, pieceIndex: -1, from: -2, to: -2, diceRoll: roll },
+          playerNumber: player.playerNumber,
+          wasCapture: false,
+          isSkip: true,
+          timestamp: Date.now(),
+        } as HistoricalMove);
+
         await sessionService.updateGameState(sessionCode, session.gameState);
 
         io.to(sessionCode).emit('game:turn-changed', {
@@ -275,6 +291,15 @@ export function registerGameHandlers(
         return;
       }
 
+      // Capture detection: check if an opponent piece occupies the destination
+      const isCapturablePosition = session.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
+      const wasCapture =
+        move.to !== 99 &&
+        isCapturablePosition &&
+        session.gameState.board.pieces.some(
+          (p) => p.playerNumber !== player.playerNumber && p.position === move.to
+        );
+
       // Apply move
       const newBoard = gameEngine.applyMove(session.gameState.board, move);
       session.gameState.board = newBoard;
@@ -286,6 +311,15 @@ export function registerGameHandlers(
         session.gameState.winner = winner;
         session.gameState.finished = true;
       }
+
+      // Record move in history
+      if (!session.gameState.moveHistory) session.gameState.moveHistory = [];
+      session.gameState.moveHistory.push({
+        move,
+        playerNumber: player.playerNumber,
+        wasCapture,
+        timestamp: Date.now(),
+      } as HistoricalMove);
 
       await sessionService.updateGameState(sessionCode, session.gameState);
 
@@ -405,13 +439,17 @@ export function registerGameHandlers(
       const trimmed = text.trim().slice(0, 500);
       if (!trimmed) return;
 
-      io.to(sessionCode).emit('chat:message', {
+      const message = {
+        id: nanoid(),
         playerId,
         displayName: sender.displayName,
         text: trimmed,
         timestamp: Date.now(),
         isSpectator: !!spectator,
-      });
+      };
+
+      await sessionService.addChatMessage(sessionCode, message);
+      io.to(sessionCode).emit('chat:message', message);
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
     }

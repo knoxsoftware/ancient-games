@@ -2,6 +2,15 @@ import { GameType, GameState, Player, Spectator } from './game';
 
 export type SessionStatus = 'lobby' | 'playing' | 'finished';
 
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  displayName: string;
+  text: string;
+  timestamp: number;
+  isSpectator?: boolean;
+}
+
 export interface Session {
   _id?: string;
   sessionCode: string;
@@ -13,6 +22,7 @@ export interface Session {
   hostId: string;
   createdAt: Date;
   lastActivity: Date;
+  chatHistory?: ChatMessage[];
 }
 
 export interface CreateSessionRequest {

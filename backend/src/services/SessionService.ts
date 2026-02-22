@@ -1,7 +1,7 @@
 import { customAlphabet } from 'nanoid';
 import { SessionModel } from '../models/Session';
 import { GameRegistry } from '../games/GameRegistry';
-import { Session, GameType, Player, Spectator, CreateSessionRequest, JoinSessionRequest } from '@ancient-games/shared';
+import { Session, GameType, Player, Spectator, CreateSessionRequest, JoinSessionRequest, ChatMessage } from '@ancient-games/shared';
 
 const nanoid = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 6);
 
@@ -284,6 +284,16 @@ export class SessionService {
     return this.toSession(session);
   }
 
+  async addChatMessage(sessionCode: string, message: ChatMessage): Promise<void> {
+    await SessionModel.updateOne(
+      { sessionCode },
+      {
+        $push: { chatHistory: { $each: [message], $slice: -100 } },
+        $set: { lastActivity: new Date() },
+      }
+    );
+  }
+
   private generatePlayerId(): string {
     return nanoid();
   }
@@ -300,6 +310,7 @@ export class SessionService {
       hostId: doc.hostId,
       createdAt: doc.createdAt,
       lastActivity: doc.lastActivity,
+      chatHistory: doc.chatHistory ?? [],
     };
   }
 }
