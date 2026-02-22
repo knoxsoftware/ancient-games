@@ -10,6 +10,7 @@ export interface ClientToServerEvents {
   'game:move': (data: { sessionCode: string; playerId: string; move: Move }) => void;
   'game:skip-turn': (data: { sessionCode: string; playerId: string }) => void;
   'game:rematch': (data: { sessionCode: string; playerId: string }) => void;
+  'chat:send': (data: { sessionCode: string; playerId: string; text: string }) => void;
 }
 
 // Server to Client events
@@ -26,4 +27,5 @@ export interface ServerToClientEvents {
   'game:ended': (data: { winner: number; gameState: GameState }) => void;
   'game:error': (error: { message: string }) => void;
   'game:restarted': (session: Session) => void;
+  'chat:message': (data: { playerId: string; displayName: string; text: string; timestamp: number }) => void;
 }

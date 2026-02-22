@@ -7,8 +7,11 @@ import { initPushNotifications } from '../services/pushNotifications';
 import UrBoard from './games/ur/UrBoard';
 import SenetBoard from './games/senet/SenetBoard';
 import MorrisBoard from './games/morris/MorrisBoard';
+import WolvesAndRavensBoard from './games/wolves-and-ravens/WolvesAndRavensBoard';
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
+import GameRules from './GameRules';
+import ChatPanel, { ChatMessage } from './ChatPanel';
 
 export default function GameRoom() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
@@ -19,6 +22,11 @@ export default function GameRoom() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'game' | 'rules' | 'chat'>('game');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [unreadChat, setUnreadChat] = useState(0);
+  const activeTabRef = useRef<'game' | 'rules' | 'chat'>('game');
+  useEffect(() => { activeTabRef.current = activeTab; if (activeTab === 'chat') setUnreadChat(0); }, [activeTab]);
 
   const gameStateRef = useRef<GameState | null>(null);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
@@ -136,8 +144,9 @@ export default function GameRoom() {
 
       setGameState(updatedGameState);
 
-      // Morris has no path animation support
-      if (currentSession?.gameType !== 'morris') {
+      // Morris and Wolves & Ravens have no path animation support
+      const supportsAnimation = currentSession?.gameType === 'ur' || currentSession?.gameType === 'senet';
+      if (supportsAnimation) {
         animIdRef.current += 1;
         const animId = animIdRef.current;
         setPendingAnimation({
@@ -167,6 +176,7 @@ export default function GameRoom() {
           const gameTitle =
             gameType === 'ur' ? 'Royal Game of Ur' :
             gameType === 'morris' ? "Nine Men's Morris" :
+            gameType === 'wolves-and-ravens' ? 'Wolves & Ravens' :
             'Senet';
           new Notification('Your turn!', {
             body: `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`,
@@ -202,6 +212,13 @@ export default function GameRoom() {
       setTimeout(() => setError(''), 3000);
     });
 
+    socket.on('chat:message', (msg) => {
+      setChatMessages((prev) => [...prev, msg]);
+      if (activeTabRef.current !== 'chat') {
+        setUnreadChat((n) => n + 1);
+      }
+    });
+
     return () => {
       socket.off('connect', rejoin);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -213,6 +230,7 @@ export default function GameRoom() {
       socket.off('game:ended');
       socket.off('game:restarted');
       socket.off('game:error');
+      socket.off('chat:message');
     };
   }, [sessionCode, playerId]);
 
@@ -247,12 +265,13 @@ export default function GameRoom() {
   };
 
   const handleReplay = (entry: HistoryEntry) => {
-    if (session?.gameType === 'morris') return; // Morris has no path animation
+    const gt = session?.gameType;
+    if (gt !== 'ur' && gt !== 'senet') return; // only animated games support replay
     replayIdRef.current += 1;
     setReplayAnimation({
       move: entry.move,
       playerNumber: entry.playerNumber,
-      gameType: session!.gameType as 'ur' | 'senet',
+      gameType: gt,
       id: replayIdRef.current,
     });
     setReplayingEntryId(entry.id);
@@ -294,7 +313,10 @@ export default function GameRoom() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">
-            {session.gameType === 'ur' ? 'Royal Game of Ur' : session.gameType === 'morris' ? "Nine Men's Morris" : 'Senet'}
+            {session.gameType === 'ur' ? 'Royal Game of Ur'
+              : session.gameType === 'morris' ? "Nine Men's Morris"
+              : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
+              : 'Senet'}
           </h1>
           <button onClick={handleLeave} className="btn btn-outline text-sm">
             Leave Game
@@ -326,48 +348,107 @@ export default function GameRoom() {
           </div>
         )}
 
-        {/* Game Board + Move Log */}
-        <div className="lg:flex lg:gap-4 lg:items-start">
-          <div className="lg:flex-1">
-            {session.gameType === 'ur' && (
-              <UrBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-                animatingPiece={animatingPiece}
-                lastMove={moveHistory[moveHistory.length - 1]}
-              />
-            )}
-            {session.gameType === 'senet' && (
-              <SenetBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-                animatingPiece={animatingPiece}
-                lastMove={moveHistory[moveHistory.length - 1]}
-              />
-            )}
-            {session.gameType === 'morris' && (
-              <MorrisBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-              />
-            )}
-          </div>
-          <div className="mt-4 lg:mt-0 lg:w-52 lg:flex-shrink-0">
-            <MoveLog
-              entries={moveHistory}
-              gameType={session.gameType as 'ur' | 'senet' | 'morris'}
-              session={session}
-              onReplay={handleReplay}
-              replayingId={replayingEntryId}
-            />
-          </div>
+        {/* Tab bar */}
+        <div
+          className="flex gap-0 mb-4 border-b"
+          style={{ borderColor: 'rgba(42,30,14,0.8)' }}
+        >
+          {(['game', 'rules', 'chat'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="px-5 py-2 text-sm font-medium transition-colors capitalize relative"
+              style={{
+                color: activeTab === tab ? '#E8C870' : '#6A5A40',
+                borderBottom: activeTab === tab ? '2px solid #C4A030' : '2px solid transparent',
+                marginBottom: '-1px',
+                background: 'transparent',
+              }}
+            >
+              {tab === 'game' ? 'Game' : tab === 'rules' ? 'Rules' : 'Chat'}
+              {tab === 'chat' && unreadChat > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-xs font-bold"
+                  style={{ background: '#C4A030', color: '#1A1008', fontSize: '10px' }}
+                >
+                  {unreadChat > 99 ? '99+' : unreadChat}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
+
+        {/* Game Board + Move Log */}
+        {activeTab === 'game' && (
+          <div className="lg:flex lg:gap-4 lg:items-start">
+            <div className="lg:flex-1">
+              {session.gameType === 'ur' && (
+                <UrBoard
+                  session={session}
+                  gameState={gameState}
+                  playerId={playerId!}
+                  isMyTurn={isMyTurn}
+                  animatingPiece={animatingPiece}
+                  lastMove={moveHistory[moveHistory.length - 1]}
+                />
+              )}
+              {session.gameType === 'senet' && (
+                <SenetBoard
+                  session={session}
+                  gameState={gameState}
+                  playerId={playerId!}
+                  isMyTurn={isMyTurn}
+                  animatingPiece={animatingPiece}
+                  lastMove={moveHistory[moveHistory.length - 1]}
+                />
+              )}
+              {session.gameType === 'morris' && (
+                <MorrisBoard
+                  session={session}
+                  gameState={gameState}
+                  playerId={playerId!}
+                  isMyTurn={isMyTurn}
+                />
+              )}
+              {session.gameType === 'wolves-and-ravens' && (
+                <WolvesAndRavensBoard
+                  session={session}
+                  gameState={gameState}
+                  playerId={playerId!}
+                  isMyTurn={isMyTurn}
+                />
+              )}
+            </div>
+            <div className="mt-4 lg:mt-0 lg:w-52 lg:flex-shrink-0">
+              <MoveLog
+                entries={moveHistory}
+                gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens'}
+                session={session}
+                onReplay={handleReplay}
+                replayingId={replayingEntryId}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Rules tab */}
+        {activeTab === 'rules' && (
+          <GameRules gameType={session.gameType} />
+        )}
+
+        {/* Chat tab */}
+        {activeTab === 'chat' && (
+          <ChatPanel
+            messages={chatMessages}
+            currentPlayerId={playerId!}
+            onSend={(text) => {
+              const socket = socketService.getSocket();
+              if (socket && sessionCode) {
+                socket.emit('chat:send', { sessionCode, playerId: playerId!, text });
+              }
+            }}
+          />
+        )}
       </div>
 
       {/* Non-layout-shifting toast for transient messages */}

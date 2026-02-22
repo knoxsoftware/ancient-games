@@ -9,6 +9,7 @@ const GAME_NAMES: Record<string, string> = {
   ur: 'Royal Game of Ur',
   senet: 'Senet',
   morris: "Nine Men's Morris",
+  'wolves-and-ravens': 'Wolves & Ravens',
 };
 
 export default function SessionLobby() {
@@ -244,8 +245,8 @@ export default function SessionLobby() {
     );
   }
 
-  // ── Join form — visitor arrived via invite link with no account yet ────────
-  if (!playerId) {
+  // ── Join form — visitor has no playerId, or has a stale one from a different session ──
+  if (!playerId || (session && !session.players.some((p) => p.id === playerId))) {
     const isFull = session && session.players.length >= 2;
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

@@ -7,6 +7,7 @@ import { ClientToServerEvents, ServerToClientEvents } from '@ancient-games/share
 function gameTitle(gameType: string): string {
   if (gameType === 'ur') return 'Royal Game of Ur';
   if (gameType === 'morris') return "Nine Men's Morris";
+  if (gameType === 'wolves-and-ravens') return 'Wolves & Ravens';
   return 'Senet';
 }
 
@@ -314,6 +315,29 @@ export function registerGameHandlers(
       }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
+    }
+  });
+
+  // Chat message
+  socket.on('chat:send', async ({ sessionCode, playerId, text }) => {
+    try {
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) return;
+
+      const player = session.players.find(p => p.id === playerId);
+      if (!player) return;
+
+      const trimmed = text.trim().slice(0, 500);
+      if (!trimmed) return;
+
+      io.to(sessionCode).emit('chat:message', {
+        playerId,
+        displayName: player.displayName,
+        text: trimmed,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      socket.emit('session:error', { message: (error as Error).message });
     }
   });
 

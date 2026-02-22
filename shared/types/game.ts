@@ -1,4 +1,4 @@
-export type GameType = 'ur' | 'senet' | 'morris';
+export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens';
 
 export interface Player {
   id: string;
