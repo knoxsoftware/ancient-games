@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Session } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
+import { initPushNotifications } from '../../services/pushNotifications';
 
 const GAME_NAMES: Record<string, string> = {
   ur: 'Royal Game of Ur',
@@ -30,10 +31,24 @@ export default function SessionLobby() {
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
 
+  // Register push notifications whenever we have a playerId
+  useEffect(() => {
+    if (playerId) initPushNotifications(playerId);
+  }, [playerId]);
+
   const showNotice = (msg: string) => {
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
     setNotice(msg);
     noticeTimerRef.current = setTimeout(() => setNotice(null), 3000);
+
+    // Also show a browser notification when the tab is not in focus
+    if (
+      'Notification' in window &&
+      Notification.permission === 'granted' &&
+      (document.hidden || !document.hasFocus())
+    ) {
+      new Notification('Ancient Games', { body: msg, icon: '/favicon.ico' });
+    }
   };
 
   // Always fetch session so we can show game context on the join form

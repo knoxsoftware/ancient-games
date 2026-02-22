@@ -5,7 +5,9 @@ import { GameRegistry } from '../games/GameRegistry';
 import { ClientToServerEvents, ServerToClientEvents } from '@ancient-games/shared';
 
 function gameTitle(gameType: string): string {
-  return gameType === 'ur' ? 'Royal Game of Ur' : 'Senet';
+  if (gameType === 'ur') return 'Royal Game of Ur';
+  if (gameType === 'morris') return "Nine Men's Morris";
+  return 'Senet';
 }
 
 export function registerGameHandlers(
@@ -23,6 +25,10 @@ export function registerGameHandlers(
         return;
       }
 
+      // Detect first-ever socket connection (socketId is 'temp' until then)
+      const joiningPlayer = session.players.find(p => p.id === playerId);
+      const isFirstConnect = joiningPlayer?.socketId === 'temp';
+
       // Update socket ID for reconnections
       await sessionService.updatePlayerSocketId(sessionCode, playerId, socket.id);
 
@@ -31,6 +37,19 @@ export function registerGameHandlers(
 
       // Notify everyone in the room
       io.to(sessionCode).emit('session:updated', session);
+
+      // Push notification when a new player first connects to the lobby
+      if (isFirstConnect && joiningPlayer) {
+        for (const other of session.players) {
+          if (other.id !== playerId) {
+            await pushService.sendNotification(other.id, {
+              title: 'Player joined!',
+              body: `${joiningPlayer.displayName} joined your ${gameTitle(session.gameType)} lobby`,
+              url: `/session/${sessionCode}`,
+            });
+          }
+        }
+      }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
     }
@@ -56,6 +75,21 @@ export function registerGameHandlers(
       const session = await sessionService.updatePlayerReady(sessionCode, playerId, ready);
       if (session) {
         io.to(sessionCode).emit('session:updated', session);
+
+        // Push notification to other lobby players about ready status change
+        const player = session.players.find(p => p.id === playerId);
+        if (player) {
+          const statusText = ready ? `${player.displayName} is ready!` : `${player.displayName} is not ready`;
+          for (const other of session.players) {
+            if (other.id !== playerId) {
+              await pushService.sendNotification(other.id, {
+                title: statusText,
+                body: `${gameTitle(session.gameType)} lobby`,
+                url: `/session/${sessionCode}`,
+              });
+            }
+          }
+        }
       }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
