@@ -41,6 +41,12 @@ async function saveSubscriptionToBackend(
   });
 }
 
+let pushSubscribed = false;
+
+export function isPushSubscribed(): boolean {
+  return pushSubscribed;
+}
+
 export async function initPushNotifications(playerId: string): Promise<void> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
@@ -62,6 +68,7 @@ export async function initPushNotifications(playerId: string): Promise<void> {
     const existing = await registration.pushManager.getSubscription();
     if (existing) {
       await saveSubscriptionToBackend(playerId, existing);
+      pushSubscribed = true;
       return;
     }
 
@@ -70,6 +77,7 @@ export async function initPushNotifications(playerId: string): Promise<void> {
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
     await saveSubscriptionToBackend(playerId, subscription);
+    pushSubscribed = true;
   } catch (err) {
     console.error('Push notification setup failed:', err);
   }

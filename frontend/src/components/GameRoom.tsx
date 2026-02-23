@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Session, GameState, HistoricalMove } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
-import { initPushNotifications } from '../services/pushNotifications';
+import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
 import UrBoard from './games/ur/UrBoard';
 import SenetBoard from './games/senet/SenetBoard';
 import MorrisBoard from './games/morris/MorrisBoard';
@@ -212,6 +212,7 @@ export default function GameRoom() {
       ]);
 
       if (
+        !isPushSubscribed() &&
         'Notification' in window &&
         Notification.permission === 'granted' &&
         (document.hidden || !document.hasFocus())
