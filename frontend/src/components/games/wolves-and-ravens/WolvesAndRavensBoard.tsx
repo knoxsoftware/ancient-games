@@ -359,16 +359,15 @@ function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn }: Props)
           const isSel = selectedRaven?.pieceIndex === raven.pieceIndex;
           const canSelect = isMyTurn && myPN === ravenPN && diceRoll !== null && diceRoll > 0 && !gameState.finished;
 
+          const isWolfTarget = isMyTurn && myPN === wolfPN && diceRoll !== null && wolfMoves.has(raven.position);
           return (
             <g
               key={`raven-${raven.pieceIndex}`}
               onClick={(e) => {
-                if (canSelect) {
-                  e.stopPropagation();
-                  setSelectedRaven(raven);
-                }
+                e.stopPropagation();
+                handleCellClick(raven.position);
               }}
-              style={{ cursor: canSelect ? 'pointer' : 'default' }}
+              style={{ cursor: (canSelect || isWolfTarget) ? 'pointer' : 'default' }}
             >
               {/* Body */}
               <circle
