@@ -25,5 +25,5 @@ PushSubscriptionSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 86400 
 
 export const PushSubscriptionModel = mongoose.model<PushSubscriptionDoc>(
   'PushSubscription',
-  PushSubscriptionSchema
+  PushSubscriptionSchema,
 );

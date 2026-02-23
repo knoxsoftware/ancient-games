@@ -1,15 +1,17 @@
 # Ancient Board Games Platform
 
-A mobile-friendly web application for playing ancient board games online with multiplayer support. Play the Royal Game of Ur and Senet with friends without registration - just create a session and share the code!
+A mobile-friendly web application for playing ancient and classic board games online with multiplayer support. Play with friends without registration - just create a session and share the code!
 
 ## Features
 
-- 🎲 **Two Classic Games**: Royal Game of Ur and Senet
+- 🎲 **Six Games**: Royal Game of Ur, Senet, Nine Men's Morris, Wolves & Ravens, Rock-Paper-Scissors, and Stellar Siege
 - 👥 **Multiplayer**: Real-time gameplay using Socket.io
 - 📱 **Mobile-Friendly**: Responsive design with touch controls
 - 🚀 **No Registration**: Guest play with display names
 - 🔄 **Real-time Updates**: Instant game state synchronization
+- 🏆 **Tournaments**: Bo1/Bo3/Bo5/Bo7 and round-robin formats
 - 🐳 **Containerized**: Docker and Kubernetes ready
+- 💬 **In-Game Chat**: Real-time chat during sessions
 - 🔒 **Production Ready**: Health checks, TLS, and resource limits
 
 ## Tech Stack
@@ -208,9 +210,9 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
-    - http01:
-        ingress:
-          class: traefik
+      - http01:
+          ingress:
+            class: traefik
 ```
 
 Apply it:
@@ -274,6 +276,7 @@ To add a new game:
 Socket.io events:
 
 **Client → Server**:
+
 - `session:join` - Join game session
 - `session:leave` - Leave session
 - `session:ready` - Toggle ready status
@@ -283,6 +286,7 @@ Socket.io events:
 - `game:skip-turn` - Skip turn
 
 **Server → Client**:
+
 - `session:updated` - Session state changed
 - `game:started` - Game started
 - `game:dice-rolled` - Dice rolled
@@ -383,10 +387,7 @@ Contributions welcome! Please open an issue or PR.
 ## Future Enhancements
 
 - User accounts and game history
-- Spectator mode
 - Game replays
-- Additional games (Mancala, Nine Men's Morris, etc.)
+- Additional games (Mancala, etc.)
 - AI opponents
-- Tournament mode
-- In-game chat
 - Sound effects and animations

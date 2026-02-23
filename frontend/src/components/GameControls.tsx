@@ -27,3 +27,5 @@ export default function GameControls(props: GameControlsProps) {
   if (!ControlsComponent) return null;
   return <ControlsComponent {...props} />;
 }
+
+export default memo(GameControls);

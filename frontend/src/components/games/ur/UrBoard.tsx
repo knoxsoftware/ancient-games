@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useId, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -16,11 +16,19 @@ const SHARED_END = 11;
 
 // Thin disk piece viewed from slightly above — 5 pips (center + 4 cardinal)
 // Player 0: white disk, blue pips  |  Player 1: black disk, brown pips
-export function UrPiece({ playerNumber, size = '100%' }: { playerNumber: number; size?: number | string }) {
+export function UrPiece({
+  playerNumber,
+  size = '100%',
+}: {
+  playerNumber: number;
+  size?: number | string;
+}) {
+  const uid = useId();
+  const gradId = `ur-hl-${uid}`;
   const isWhite = playerNumber === 0;
-  const face   = isWhite ? '#F2EEE4' : '#1C1C1C';
-  const edge   = isWhite ? '#C0BAA8' : '#080808';
-  const pip    = isWhite ? '#2F6BAD' : '#7A4A22';   // blue vs brown
+  const face = isWhite ? '#F2EEE4' : '#1C1C1C';
+  const edge = isWhite ? '#C0BAA8' : '#080808';
+  const pip = isWhite ? '#2F6BAD' : '#7A4A22'; // blue vs brown
   // pip positions: center (20,20) + cardinal at radius 9
   return (
     <svg
@@ -29,21 +37,26 @@ export function UrPiece({ playerNumber, size = '100%' }: { playerNumber: number;
       height={size}
       style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))' }}
     >
+      <defs>
+        {/* Radial gradient: soft specular highlight from top-left, fades across face */}
+        <radialGradient id={gradId} cx="36%" cy="30%" r="55%" fx="36%" fy="30%">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
+          <stop offset="60%" stopColor="rgba(255,255,255,0.08)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
+      </defs>
       {/* Thin edge — offset ellipse beneath face gives depth */}
       <ellipse cx="20" cy="23" rx="16.5" ry="3.5" fill={edge} />
-
       {/* Disk face */}
       <circle cx="20" cy="20" r="17" fill={face} stroke="white" strokeWidth="1.8" />
-
-      {/* Subtle highlight arc (top-left) to sell the round disk shape */}
-      <ellipse cx="15" cy="14" rx="7" ry="4.5" fill="rgba(255,255,255,0.22)" />
-
+      {/* Specular highlight — radial gradient overlay confined to the face circle */}
+      <circle cx="20" cy="20" r="17" fill={`url(#${gradId})`} />
       {/* 5 pips */}
-      <circle cx="20" cy="20" r="2.6" fill={pip} />  {/* center */}
-      <circle cx="20" cy="11" r="2.6" fill={pip} />  {/* top */}
-      <circle cx="29" cy="20" r="2.6" fill={pip} />  {/* right */}
-      <circle cx="20" cy="29" r="2.6" fill={pip} />  {/* bottom */}
-      <circle cx="11" cy="20" r="2.6" fill={pip} />  {/* left */}
+      <circle cx="20" cy="20" r="2.6" fill={pip} /> {/* center */}
+      <circle cx="20" cy="11" r="2.6" fill={pip} /> {/* top */}
+      <circle cx="29" cy="20" r="2.6" fill={pip} /> {/* right */}
+      <circle cx="20" cy="29" r="2.6" fill={pip} /> {/* bottom */}
+      <circle cx="11" cy="20" r="2.6" fill={pip} /> {/* left */}
     </svg>
   );
 }
@@ -75,7 +88,14 @@ function RosettePattern() {
         );
       })}
       {/* Center */}
-      <circle cx={cx} cy={cy} r={innerR} fill="rgba(255,215,80,0.85)" stroke="rgba(200,150,0,0.8)" strokeWidth="0.8" />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={innerR}
+        fill="rgba(255,215,80,0.85)"
+        stroke="rgba(200,150,0,0.8)"
+        strokeWidth="0.8"
+      />
       {/* Inner petal details */}
       {[0, 60, 120, 180, 240, 300].map((deg) => {
         const r = (deg * Math.PI) / 180;
@@ -102,7 +122,13 @@ export function TetraDice({ result }: { result: number }) {
       {Array.from({ length: 4 }, (_, i) => {
         const scored = i < result;
         return (
-          <svg key={i} viewBox="0 0 32 30" width={30} height={28} style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))' }}>
+          <svg
+            key={i}
+            viewBox="0 0 32 30"
+            width={30}
+            height={28}
+            style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))' }}
+          >
             {/* Tetrahedron silhouette */}
             <polygon
               points="16,2 30,27 2,27"
@@ -126,7 +152,7 @@ export function TetraDice({ result }: { result: number }) {
   );
 }
 
-export default function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrBoardProps) {
+function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
   // topPlayer = opponent's row (far side); bottomPlayer = my row (near side)
@@ -134,7 +160,10 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
   const bottomPlayer = playerNumber;
 
   const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
-  const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
+  const [invalidPiece, setInvalidPiece] = useState<{
+    playerNumber: number;
+    pieceIndex: number;
+  } | null>(null);
   const invalidTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Clear selection when turn changes or dice roll resets
@@ -167,7 +196,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
       // Entering: target is roll-1
       const to = roll - 1;
       return !gameState.board.pieces.some(
-        (p) => p.playerNumber === playerNumber && p.position === to
+        (p) => p.playerNumber === playerNumber && p.position === to,
       );
     }
 
@@ -246,7 +275,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     boxShadow: isLanding
       ? '0 0 0 2px #FFD060, 0 0 10px rgba(255,208,60,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
       : 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
-    zIndex: isLanding ? 1 : undefined as number | undefined,
+    zIndex: isLanding ? 1 : (undefined as number | undefined),
     transition: 'background 0.1s, box-shadow 0.1s, border-color 0.1s',
   });
 
@@ -329,7 +358,8 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     const isLanding =
       selectedLanding !== null &&
       selectedLanding.pos === position &&
-      position >= 4 && position <= 11;
+      position >= 4 &&
+      position <= 11;
 
     const baseBg = isRosette ? '#3A2400' : '#1A1208';
     const baseBorder = isRosette ? '#C4860A' : '#3A2E1C';
@@ -396,13 +426,15 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
             <div
               key={`${piece.playerNumber}-${piece.pieceIndex}`}
               style={{ width: 28, height: 28, opacity: 0.55 }}
-              title={`${session.players.find(p => p.playerNumber === topPlayer)?.displayName} – piece ${piece.pieceIndex + 1}`}
+              title={`${session.players.find((p) => p.playerNumber === topPlayer)?.displayName} – piece ${piece.pieceIndex + 1}`}
             >
               <UrPiece playerNumber={piece.playerNumber} size={28} />
             </div>
           ))}
           {offBoardPieces(topPlayer).length === 0 && (
-            <span className="text-xs italic" style={{ color: '#5A4A38' }}>all on board</span>
+            <span className="text-xs italic" style={{ color: '#5A4A38' }}>
+              all on board
+            </span>
           )}
         </div>
 
@@ -454,20 +486,33 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
             );
           })}
           {offBoardPieces(bottomPlayer).length === 0 && (
-            <span className="text-xs italic" style={{ color: '#5A4A38' }}>all on board</span>
+            <span className="text-xs italic" style={{ color: '#5A4A38' }}>
+              all on board
+            </span>
           )}
         </div>
 
         {/* Legend */}
-        <div className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1" style={{ borderColor: '#2A1E0E' }}>
+        <div
+          className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1"
+          style={{ borderColor: '#2A1E0E' }}
+        >
           <div className="flex items-center gap-1.5">
-            <div className="relative w-5 h-5 rounded overflow-hidden" style={{ background: '#3A2400', border: '1px solid #C4860A' }}>
+            <div
+              className="relative w-5 h-5 rounded overflow-hidden"
+              style={{ background: '#3A2400', border: '1px solid #C4860A' }}
+            >
               <RosettePattern />
             </div>
-            <span style={{ fontSize: '9px', color: '#908070' }}>Rosette: extra turn &amp; safe</span>
+            <span style={{ fontSize: '9px', color: '#908070' }}>
+              Rosette: extra turn &amp; safe
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded" style={{ background: '#1A1208', border: '1px solid #3A2E1C' }} />
+            <div
+              className="w-5 h-5 rounded"
+              style={{ background: '#1A1208', border: '1px solid #3A2E1C' }}
+            />
             <span style={{ fontSize: '9px', color: '#908070' }}>Shared path — can capture</span>
           </div>
         </div>
@@ -475,3 +520,5 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     </div>
   );
 }
+
+export default memo(UrBoard);

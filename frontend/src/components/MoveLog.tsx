@@ -17,12 +17,11 @@ interface MoveLogProps {
   replayingId: number | null;
 }
 
-export function describeMove(
-  entry: HistoryEntry,
-  session: Session
-): string {
+export function describeMove(entry: HistoryEntry, session: Session): string {
   const { move, playerNumber, wasCapture, isSkip } = entry;
-  const name = session.players.find(p => p.playerNumber === playerNumber)?.displayName ?? `P${playerNumber + 1}`;
+  const name =
+    session.players.find((p) => p.playerNumber === playerNumber)?.displayName ??
+    `P${playerNumber + 1}`;
   if (isSkip) {
     return `${name}: skipped (rolled ${move.diceRoll ?? '?'})`;
   }
@@ -33,7 +32,13 @@ export function describeMove(
   return `${name}: ${fromStr}\u2192${toStr}${roll}${cap}`;
 }
 
-export function MoveLog({ entries, gameType, session, onReplay, replayingId }: MoveLogProps) {
+export const MoveLog = memo(function MoveLog({
+  entries,
+  gameType,
+  session,
+  onReplay,
+  replayingId,
+}: MoveLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,11 +60,7 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
       >
         Move History
       </div>
-      <div
-        ref={scrollRef}
-        className="overflow-y-auto"
-        style={{ maxHeight: '240px' }}
-      >
+      <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '240px' }}>
         {entries.length === 0 && (
           <div className="px-3 py-4 text-xs text-center" style={{ color: '#5A4A38' }}>
             No moves yet
@@ -84,9 +85,7 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
                 className="flex-shrink-0 w-2 h-2 rounded-full"
                 style={{ background: playerColor(entry.playerNumber) }}
               />
-              <span className="flex-1 truncate font-mono">
-                {describeMove(entry, session)}
-              </span>
+              <span className="flex-1 truncate font-mono">{describeMove(entry, session)}</span>
               <span style={{ color: '#5A4A38', fontSize: '10px' }}>&#8634;</span>
             </button>
           );
@@ -94,4 +93,4 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
       </div>
     </div>
   );
-}
+});

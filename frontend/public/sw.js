@@ -10,13 +10,11 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     // Skip the notification if the user already has the game tab open and focused
-    clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        const hasFocusedWindow = clientList.some((c) => c.focused);
-        if (hasFocusedWindow) return;
-        return self.registration.showNotification(title, options);
-      })
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const hasFocusedWindow = clientList.some((c) => c.focused);
+      if (hasFocusedWindow) return;
+      return self.registration.showNotification(title, options);
+    }),
   );
 });
 
@@ -34,6 +32,6 @@ self.addEventListener('notificationclick', (event) => {
       if (clients.openWindow) {
         return clients.openWindow(url);
       }
-    })
+    }),
   );
 });

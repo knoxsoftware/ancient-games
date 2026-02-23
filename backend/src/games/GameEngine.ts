@@ -1,4 +1,10 @@
-import { GameEngine as IGameEngine, BoardState, Move, Player, GameType } from '@ancient-games/shared';
+import {
+  GameEngine as IGameEngine,
+  BoardState,
+  Move,
+  Player,
+  GameType,
+} from '@ancient-games/shared';
 
 export abstract class GameEngine implements IGameEngine {
   abstract gameType: GameType;

@@ -70,7 +70,7 @@ export class UrGame extends GameEngine {
 
     // Find the piece
     const piece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex
+      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex,
     );
 
     if (!piece) return false;
@@ -103,7 +103,7 @@ export class UrGame extends GameEngine {
   applyMove(board: BoardState, move: Move): BoardState {
     const newPieces = [...board.pieces];
     const movingPiece = newPieces.find(
-      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+      (p) => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex,
     );
 
     if (!movingPiece) return board;
@@ -113,7 +113,7 @@ export class UrGame extends GameEngine {
     // Check if capturing an opponent piece (only in shared section, not on rosette)
     if (to !== 99 && this.isSharedPosition(to) && !this.ROSETTE_POSITIONS.includes(to)) {
       const capturedPieceIndex = newPieces.findIndex(
-        p => p.playerNumber !== board.currentTurn && p.position === to
+        (p) => p.playerNumber !== board.currentTurn && p.position === to,
       );
 
       if (capturedPieceIndex !== -1) {
@@ -127,7 +127,7 @@ export class UrGame extends GameEngine {
 
     // Move the piece
     const pieceIndex = newPieces.findIndex(
-      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+      (p) => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex,
     );
     newPieces[pieceIndex] = {
       ...newPieces[pieceIndex],
@@ -148,8 +148,8 @@ export class UrGame extends GameEngine {
 
   checkWinCondition(board: BoardState): number | null {
     for (let playerNumber = 0; playerNumber < 2; playerNumber++) {
-      const playerPieces = board.pieces.filter(p => p.playerNumber === playerNumber);
-      const finishedPieces = playerPieces.filter(p => p.position === 99);
+      const playerPieces = board.pieces.filter((p) => p.playerNumber === playerNumber);
+      const finishedPieces = playerPieces.filter((p) => p.position === 99);
 
       if (finishedPieces.length === this.PIECES_PER_PLAYER) {
         return playerNumber;
@@ -162,7 +162,7 @@ export class UrGame extends GameEngine {
     if (diceRoll === 0) return [];
 
     const moves: Move[] = [];
-    const playerPieces = board.pieces.filter(p => p.playerNumber === playerNumber);
+    const playerPieces = board.pieces.filter((p) => p.playerNumber === playerNumber);
 
     for (const piece of playerPieces) {
       if (piece.position === 99) continue; // Already finished
@@ -219,17 +219,21 @@ export class UrGame extends GameEngine {
     return position >= this.SHARED_START && position <= this.SHARED_END;
   }
 
-  private isPositionAvailableForPlayer(board: BoardState, position: number, playerNumber: number): boolean {
+  private isPositionAvailableForPlayer(
+    board: BoardState,
+    position: number,
+    playerNumber: number,
+  ): boolean {
     // Check if any piece of the same player occupies this position
     const ownPiece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.position === position
+      (p) => p.playerNumber === playerNumber && p.position === position,
     );
     if (ownPiece) return false;
 
     // In shared section
     if (this.isSharedPosition(position)) {
       const opponentPiece = board.pieces.find(
-        p => p.playerNumber !== playerNumber && p.position === position
+        (p) => p.playerNumber !== playerNumber && p.position === position,
       );
 
       // Rosettes are safe from capture

@@ -19,7 +19,9 @@ export class PushService {
       webpush.setVapidDetails(mailto, publicKey, privateKey);
       this.configured = true;
     } else {
-      console.warn('VAPID keys not set — push notifications disabled. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.');
+      console.warn(
+        'VAPID keys not set — push notifications disabled. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.',
+      );
       this.configured = false;
     }
   }
@@ -30,12 +32,12 @@ export class PushService {
 
   async saveSubscription(
     playerId: string,
-    subscription: { endpoint: string; keys: { p256dh: string; auth: string } }
+    subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
   ): Promise<void> {
     await PushSubscriptionModel.findOneAndUpdate(
       { playerId },
       { playerId, endpoint: subscription.endpoint, keys: subscription.keys, createdAt: new Date() },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
   }
 
@@ -52,7 +54,7 @@ export class PushService {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
-        JSON.stringify(payload)
+        JSON.stringify(payload),
       );
     } catch (err: any) {
       if (err.statusCode === 410 || err.statusCode === 404) {

@@ -10,8 +10,14 @@ const RAVEN_STARTS = [0, 3, 6, 21, 27, 42, 45, 48];
 const WOLF_START = 24; // center
 
 const DIRECTIONS: [number, number][] = [
-  [-1, 0], [1, 0], [0, -1], [0, 1],   // orthogonal
-  [-1, -1], [-1, 1], [1, -1], [1, 1], // diagonal
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1], // orthogonal
+  [-1, -1],
+  [-1, 1],
+  [1, -1],
+  [1, 1], // diagonal
 ];
 
 function posToRC(pos: number): [number, number] {
@@ -28,7 +34,7 @@ export class WolvesAndRavensGame extends GameEngine {
 
   // Wolf is always the player whose total piece count is 1 (wolf = 1 piece, ravens = 8 pieces)
   private getWolfPN(pieces: PiecePosition[]): number {
-    return pieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
+    return pieces.filter((p) => p.playerNumber === 0).length === 1 ? 0 : 1;
   }
 
   initializeBoard(): BoardState {
@@ -60,14 +66,13 @@ export class WolvesAndRavensGame extends GameEngine {
     const { pieceIndex, from, to } = move;
     const playerNumber = player.playerNumber;
     const wolfPN = this.getWolfPN(board.pieces);
-    const ravenPN = 1 - wolfPN;
 
     if (playerNumber !== board.currentTurn) return false;
     if (board.diceRoll === null) return false;
     if (to < 0 || to >= TOTAL_CELLS) return false;
 
     const piece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex
+      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex,
     );
     if (!piece || piece.position !== from) return false;
 
@@ -91,11 +96,11 @@ export class WolvesAndRavensGame extends GameEngine {
       // No piece may block intermediate squares
       for (let step = 1; step < dist; step++) {
         const intermediate = rcToPos(fromRow + step * stepRow, fromCol + step * stepCol);
-        if (board.pieces.some(p => p.position === intermediate)) return false;
+        if (board.pieces.some((p) => p.position === intermediate)) return false;
       }
 
       // Cannot land on own piece (only one wolf, but guard anyway)
-      if (board.pieces.some(p => p.playerNumber === wolfPN && p.position === to)) return false;
+      if (board.pieces.some((p) => p.playerNumber === wolfPN && p.position === to)) return false;
 
       return true;
     } else {
@@ -105,25 +110,27 @@ export class WolvesAndRavensGame extends GameEngine {
       if (Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol)) !== 1) return false;
 
       // Cannot land on wolf or another raven
-      if (board.pieces.some(p => p.position === to)) return false;
+      if (board.pieces.some((p) => p.position === to)) return false;
 
       return true;
     }
   }
 
   applyMove(board: BoardState, move: Move): BoardState {
-    const newPieces = board.pieces.map(p => ({ ...p }));
+    const newPieces = board.pieces.map((p) => ({ ...p }));
     const wolfPN = this.getWolfPN(board.pieces);
     const ravenPN = 1 - wolfPN;
 
     const movingPiece = newPieces.find(
-      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+      (p) => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex,
     );
     if (!movingPiece) return board;
 
     if (board.currentTurn === wolfPN) {
       // Wolf: capture raven if landing on one
-      const capturedRaven = newPieces.find(p => p.playerNumber === ravenPN && p.position === move.to);
+      const capturedRaven = newPieces.find(
+        (p) => p.playerNumber === ravenPN && p.position === move.to,
+      );
       if (capturedRaven) capturedRaven.position = 99;
 
       movingPiece.position = move.to;
@@ -146,11 +153,13 @@ export class WolvesAndRavensGame extends GameEngine {
     const ravenPN = 1 - wolfPN;
 
     // Wolf wins: captures 5 ravens
-    const captured = board.pieces.filter(p => p.playerNumber === ravenPN && p.position === 99).length;
+    const captured = board.pieces.filter(
+      (p) => p.playerNumber === ravenPN && p.position === 99,
+    ).length;
     if (captured >= WOLF_WIN_CAPTURES) return wolfPN;
 
     // Ravens win: all orthogonal neighbors of wolf are occupied by ravens
-    const wolf = board.pieces.find(p => p.playerNumber === wolfPN);
+    const wolf = board.pieces.find((p) => p.playerNumber === wolfPN);
     if (!wolf) return ravenPN;
 
     const [wr, wc] = posToRC(wolf.position);
@@ -162,8 +171,8 @@ export class WolvesAndRavensGame extends GameEngine {
 
     if (neighbors.length === 0) return null;
 
-    const surrounded = neighbors.every(pos =>
-      board.pieces.some(p => p.playerNumber === ravenPN && p.position === pos)
+    const surrounded = neighbors.every((pos) =>
+      board.pieces.some((p) => p.playerNumber === ravenPN && p.position === pos),
     );
     if (surrounded) return ravenPN;
 
@@ -176,7 +185,7 @@ export class WolvesAndRavensGame extends GameEngine {
     const ravenPN = 1 - wolfPN;
 
     if (playerNumber === wolfPN) {
-      const wolf = board.pieces.find(p => p.playerNumber === wolfPN);
+      const wolf = board.pieces.find((p) => p.playerNumber === wolfPN);
       if (!wolf) return [];
 
       const [wr, wc] = posToRC(wolf.position);
@@ -192,18 +201,21 @@ export class WolvesAndRavensGame extends GameEngine {
           let blocked = false;
           for (let step = 1; step < dist; step++) {
             const inter = rcToPos(wr + dr * step, wc + dc * step);
-            if (board.pieces.some(p => p.position === inter)) { blocked = true; break; }
+            if (board.pieces.some((p) => p.position === inter)) {
+              blocked = true;
+              break;
+            }
           }
           if (blocked) break;
 
-          if (!board.pieces.some(p => p.playerNumber === wolfPN && p.position === to)) {
+          if (!board.pieces.some((p) => p.playerNumber === wolfPN && p.position === to)) {
             moves.push({ playerId: '', pieceIndex: 0, from: wolf.position, to, diceRoll });
           }
         }
       }
     } else {
       const aliveRavens = board.pieces.filter(
-        p => p.playerNumber === ravenPN && p.position >= 0 && p.position < TOTAL_CELLS
+        (p) => p.playerNumber === ravenPN && p.position >= 0 && p.position < TOTAL_CELLS,
       );
 
       for (const raven of aliveRavens) {
@@ -213,8 +225,14 @@ export class WolvesAndRavensGame extends GameEngine {
           const toCol = fc + dc;
           if (toRow < 0 || toRow >= BOARD_SIZE || toCol < 0 || toCol >= BOARD_SIZE) continue;
           const to = rcToPos(toRow, toCol);
-          if (board.pieces.some(p => p.position === to)) continue;
-          moves.push({ playerId: '', pieceIndex: raven.pieceIndex, from: raven.position, to, diceRoll });
+          if (board.pieces.some((p) => p.position === to)) continue;
+          moves.push({
+            playerId: '',
+            pieceIndex: raven.pieceIndex,
+            from: raven.position,
+            to,
+            diceRoll,
+          });
         }
       }
     }

@@ -74,7 +74,7 @@ export class SenetGame extends GameEngine {
     const playerNumber = player.playerNumber;
 
     const piece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex
+      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex,
     );
 
     if (!piece) return false;
@@ -101,14 +101,12 @@ export class SenetGame extends GameEngine {
     if (to !== expectedTo) return false;
 
     // Cannot land on own piece
-    const ownPiece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.position === to
-    );
+    const ownPiece = board.pieces.find((p) => p.playerNumber === playerNumber && p.position === to);
     if (ownPiece) return false;
 
     // Check if blocked by opponent pieces
     const opponentPiece = board.pieces.find(
-      p => p.playerNumber !== playerNumber && p.position === to
+      (p) => p.playerNumber !== playerNumber && p.position === to,
     );
 
     if (opponentPiece) {
@@ -124,7 +122,7 @@ export class SenetGame extends GameEngine {
     const { to } = move;
 
     const pieceIndex = newPieces.findIndex(
-      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+      (p) => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex,
     );
 
     if (pieceIndex === -1) return board;
@@ -134,7 +132,7 @@ export class SenetGame extends GameEngine {
     // Check for piece swap (attack)
     if (to !== 99) {
       const opponentPieceIndex = newPieces.findIndex(
-        p => p.playerNumber !== board.currentTurn && p.position === to
+        (p) => p.playerNumber !== board.currentTurn && p.position === to,
       );
 
       if (opponentPieceIndex !== -1) {
@@ -180,8 +178,8 @@ export class SenetGame extends GameEngine {
 
   checkWinCondition(board: BoardState): number | null {
     for (let playerNumber = 0; playerNumber < 2; playerNumber++) {
-      const playerPieces = board.pieces.filter(p => p.playerNumber === playerNumber);
-      const finishedPieces = playerPieces.filter(p => p.position === 99);
+      const playerPieces = board.pieces.filter((p) => p.playerNumber === playerNumber);
+      const finishedPieces = playerPieces.filter((p) => p.position === 99);
 
       if (finishedPieces.length === this.PIECES_PER_PLAYER) {
         return playerNumber;
@@ -193,7 +191,7 @@ export class SenetGame extends GameEngine {
   getValidMoves(board: BoardState, playerNumber: number, diceRoll: number): Move[] {
     const moves: Move[] = [];
     const playerPieces = board.pieces.filter(
-      p => p.playerNumber === playerNumber && p.position !== 99
+      (p) => p.playerNumber === playerNumber && p.position !== 99,
     );
 
     // Sort pieces by position (furthest first - required to move advanced pieces first)
@@ -219,12 +217,12 @@ export class SenetGame extends GameEngine {
 
       // Check if destination is valid
       const ownPiece = board.pieces.find(
-        p => p.playerNumber === playerNumber && p.position === to
+        (p) => p.playerNumber === playerNumber && p.position === to,
       );
       if (ownPiece) continue;
 
       const opponentPiece = board.pieces.find(
-        p => p.playerNumber !== playerNumber && p.position === to
+        (p) => p.playerNumber !== playerNumber && p.position === to,
       );
 
       if (opponentPiece && this.isProtected(board, to, 1 - playerNumber)) {
@@ -266,7 +264,7 @@ export class SenetGame extends GameEngine {
       if (adjPos < 0 || adjPos >= this.BOARD_SIZE) continue;
 
       const adjacentPiece = board.pieces.find(
-        p => p.playerNumber === playerNumber && p.position === adjPos
+        (p) => p.playerNumber === playerNumber && p.position === adjPos,
       );
       if (adjacentPiece) return true;
     }

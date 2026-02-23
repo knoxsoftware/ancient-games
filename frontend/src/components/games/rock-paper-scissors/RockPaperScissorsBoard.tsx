@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -26,26 +26,23 @@ const WEAPONS = [
 
 function weaponEmoji(position: number): string {
   const val = position > 9 ? position - 9 : position;
-  return WEAPONS.find(w => w.value === val)?.emoji ?? '?';
+  return WEAPONS.find((w) => w.value === val)?.emoji ?? '?';
 }
 
 function weaponLabel(position: number): string {
   const val = position > 9 ? position - 9 : position;
-  return WEAPONS.find(w => w.value === val)?.label ?? '???';
+  return WEAPONS.find((w) => w.value === val)?.label ?? '???';
 }
 
 function getRoundResult(p0Pos: number, p1Pos: number): string | null {
   if (p0Pos < 1 || p0Pos > 3 || p1Pos < 1 || p1Pos > 3) return null;
   if (p0Pos === p1Pos) return 'draw';
-  if (
-    (p0Pos === 1 && p1Pos === 3) ||
-    (p0Pos === 3 && p1Pos === 2) ||
-    (p0Pos === 2 && p1Pos === 1)
-  ) return 'p0';
+  if ((p0Pos === 1 && p1Pos === 3) || (p0Pos === 3 && p1Pos === 2) || (p0Pos === 2 && p1Pos === 1))
+    return 'p0';
   return 'p1';
 }
 
-export default function RockPaperScissorsBoard({
+function RockPaperScissorsBoard({
   session,
   gameState,
   playerId,
@@ -56,18 +53,23 @@ export default function RockPaperScissorsBoard({
   const pendingChoiceRef = useRef<number | null>(null);
   pendingChoiceRef.current = pendingChoice;
 
-  const currentPlayer = session.players.find(p => p.id === playerId);
+  const currentPlayer = session.players.find((p) => p.id === playerId);
   const myPlayerNumber = currentPlayer?.playerNumber ?? -1;
   const opponentPlayerNumber = 1 - myPlayerNumber;
 
-  const myChoicePiece = board.pieces.find(p => p.playerNumber === myPlayerNumber && p.pieceIndex === 0);
-  const opponentChoicePiece = board.pieces.find(p => p.playerNumber === opponentPlayerNumber && p.pieceIndex === 0);
+  const myChoicePiece = board.pieces.find(
+    (p) => p.playerNumber === myPlayerNumber && p.pieceIndex === 0,
+  );
+  const opponentChoicePiece = board.pieces.find(
+    (p) => p.playerNumber === opponentPlayerNumber && p.pieceIndex === 0,
+  );
 
   const myPosition = myChoicePiece?.position ?? -1;
   const opponentPosition = opponentChoicePiece?.position ?? -1;
 
   // Reveal opponent's choice only when both have chosen (round resolved: both in 1–3)
-  const roundResolved = myPosition >= 1 && myPosition <= 3 && opponentPosition >= 1 && opponentPosition <= 3;
+  const roundResolved =
+    myPosition >= 1 && myPosition <= 3 && opponentPosition >= 1 && opponentPosition <= 3;
   const opponentChosen = opponentPosition !== -1; // opponent has committed (may be sealed)
 
   // Auto-move when diceRoll comes back after clicking a weapon
@@ -91,7 +93,8 @@ export default function RockPaperScissorsBoard({
   }, [board.diceRoll]);
 
   function handleChoose(choice: number) {
-    if (!isMyTurn || board.diceRoll !== null || gameState.finished || pendingChoice !== null) return;
+    if (!isMyTurn || board.diceRoll !== null || gameState.finished || pendingChoice !== null)
+      return;
     const s = socketService.getSocket();
     if (!s) return;
     setPendingChoice(choice);
@@ -99,15 +102,17 @@ export default function RockPaperScissorsBoard({
   }
 
   // Determine last round result for display
-  const roundResult = roundResolved ? getRoundResult(
-    myPlayerNumber === 0 ? myPosition : opponentPosition,
-    myPlayerNumber === 0 ? opponentPosition : myPosition,
-  ) : null;
+  const roundResult = roundResolved
+    ? getRoundResult(
+        myPlayerNumber === 0 ? myPosition : opponentPosition,
+        myPlayerNumber === 0 ? opponentPosition : myPosition,
+      )
+    : null;
 
   const myWonRound = roundResult === (myPlayerNumber === 0 ? 'p0' : 'p1');
   const opponentWonRound = roundResult === (myPlayerNumber === 0 ? 'p1' : 'p0');
 
-  const opponent = session.players.find(p => p.id !== playerId);
+  const opponent = session.players.find((p) => p.id !== playerId);
   const isSpectator = !currentPlayer;
 
   return (
@@ -120,7 +125,9 @@ export default function RockPaperScissorsBoard({
           </div>
         </div>
 
-        <div className="text-lg font-bold" style={{ color: '#4A3A28' }}>vs</div>
+        <div className="text-lg font-bold" style={{ color: '#4A3A28' }}>
+          vs
+        </div>
 
         <div className="text-center">
           <div className="text-sm font-semibold truncate max-w-[90px]" style={{ color: '#E8D8B0' }}>
@@ -129,7 +136,9 @@ export default function RockPaperScissorsBoard({
         </div>
       </div>
 
-      <div className="text-xs" style={{ color: '#5A4A38' }}>draw = replay · first win takes the match</div>
+      <div className="text-xs" style={{ color: '#5A4A38' }}>
+        draw = replay · first win takes the match
+      </div>
 
       {/* Round reveal area */}
       <div
@@ -138,13 +147,15 @@ export default function RockPaperScissorsBoard({
       >
         {/* My choice */}
         <div className="flex flex-col items-center gap-1 flex-1">
-          <div className="text-xs font-semibold mb-1" style={{ color: '#6A5A40' }}>You</div>
+          <div className="text-xs font-semibold mb-1" style={{ color: '#6A5A40' }}>
+            You
+          </div>
           <div
             className="text-5xl transition-all duration-300"
             style={{ opacity: myPosition === -1 && !pendingChoice ? 0.25 : 1 }}
           >
             {pendingChoice !== null
-              ? WEAPONS.find(w => w.value === pendingChoice)?.emoji
+              ? WEAPONS.find((w) => w.value === pendingChoice)?.emoji
               : myPosition === -1
                 ? '❔'
                 : roundResolved
@@ -163,7 +174,9 @@ export default function RockPaperScissorsBoard({
           )}
         </div>
 
-        <div className="text-2xl" style={{ color: '#3A2A18' }}>⚔️</div>
+        <div className="text-2xl" style={{ color: '#3A2A18' }}>
+          ⚔️
+        </div>
 
         {/* Opponent's choice */}
         <div className="flex flex-col items-center gap-1 flex-1">
@@ -226,24 +239,29 @@ export default function RockPaperScissorsBoard({
                       background: 'rgba(12,8,0,0.7)',
                       borderColor: 'rgba(42,30,14,0.8)',
                     }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(196,160,48,0.6)';
-                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(196,160,48,0.1)';
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.borderColor =
+                        'rgba(196,160,48,0.6)';
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        'rgba(196,160,48,0.1)';
                     }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(42,30,14,0.8)';
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.borderColor =
+                        'rgba(42,30,14,0.8)';
                       (e.currentTarget as HTMLButtonElement).style.background = 'rgba(12,8,0,0.7)';
                     }}
                   >
                     <span className="text-3xl">{emoji}</span>
-                    <span className="text-xs" style={{ color: '#8A7A60' }}>{label}</span>
+                    <span className="text-xs" style={{ color: '#8A7A60' }}>
+                      {label}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
           ) : isMyTurn && pendingChoice ? (
             <div className="text-center text-sm" style={{ color: '#8A7A60' }}>
-              Locking in {WEAPONS.find(w => w.value === pendingChoice)?.emoji}...
+              Locking in {WEAPONS.find((w) => w.value === pendingChoice)?.emoji}...
             </div>
           ) : (
             <div className="text-center text-sm" style={{ color: '#5A4A38' }}>
@@ -263,3 +281,5 @@ export default function RockPaperScissorsBoard({
     </div>
   );
 }
+
+export default memo(RockPaperScissorsBoard);

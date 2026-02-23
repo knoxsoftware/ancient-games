@@ -6,19 +6,40 @@ export interface ClientToServerEvents {
   'session:join': (data: { sessionCode: string; playerId: string }) => void;
   'session:leave': (data: { sessionCode: string; playerId: string }) => void;
   'session:ready': (data: { sessionCode: string; playerId: string; ready: boolean }) => void;
-  'game:start': (data: { sessionCode: string; playerId: string; tournamentFormat?: TournamentFormat }) => void;
+  'game:start': (data: {
+    sessionCode: string;
+    playerId: string;
+    tournamentFormat?: TournamentFormat;
+  }) => void;
   'game:roll-dice': (data: { sessionCode: string; playerId: string }) => void;
   'game:move': (data: { sessionCode: string; playerId: string; move: Move }) => void;
   'game:skip-turn': (data: { sessionCode: string; playerId: string }) => void;
   'game:rematch': (data: { sessionCode: string; playerId: string }) => void;
-  'chat:send': (data: { sessionCode: string; playerId: string; text: string; scope?: 'tournament' | { toPlayerId: string } }) => void;
+  'chat:send': (data: {
+    sessionCode: string;
+    playerId: string;
+    text: string;
+    scope?: 'tournament' | { toPlayerId: string };
+  }) => void;
   'session:stand-up': (data: { sessionCode: string; playerId: string }) => void;
   'session:take-seat': (data: { sessionCode: string; playerId: string }) => void;
-  'session:host-stand-up': (data: { sessionCode: string; playerId: string; targetPlayerId: string }) => void;
-  'session:host-take-seat': (data: { sessionCode: string; playerId: string; targetPlayerId: string }) => void;
-  'player:away':   (data: { sessionCode: string; playerId: string }) => void;
+  'session:host-stand-up': (data: {
+    sessionCode: string;
+    playerId: string;
+    targetPlayerId: string;
+  }) => void;
+  'session:host-take-seat': (data: {
+    sessionCode: string;
+    playerId: string;
+    targetPlayerId: string;
+  }) => void;
+  'player:away': (data: { sessionCode: string; playerId: string }) => void;
   'player:active': (data: { sessionCode: string; playerId: string }) => void;
-  'session:set-format': (data: { sessionCode: string; playerId: string; format: TournamentFormat | 'single' }) => void;
+  'session:set-format': (data: {
+    sessionCode: string;
+    playerId: string;
+    format: TournamentFormat | 'single';
+  }) => void;
 }
 
 // Server to Client events
@@ -39,7 +60,15 @@ export interface ServerToClientEvents {
   'game:history': (moves: HistoricalMove[]) => void;
   'chat:history': (messages: ChatMessage[]) => void;
   'tournament:updated': (session: Session) => void;
-  'tournament:match-ready': (data: { matchSessionCode: string; opponentName: string; roundLabel: string }) => void;
+  'tournament:match-ready': (data: {
+    matchSessionCode: string;
+    opponentName: string;
+    roundLabel: string;
+  }) => void;
   'tournament:eliminated': (data: { tournamentCode: string }) => void;
-  'tournament:finished': (data: { tournamentCode: string; winnerId: string; winnerName: string }) => void;
+  'tournament:finished': (data: {
+    tournamentCode: string;
+    winnerId: string;
+    winnerName: string;
+  }) => void;
 }

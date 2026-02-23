@@ -43,7 +43,7 @@ function rcToPos(row: number, col: number): number {
 
 function getDefenderPN(pieces: PiecePosition[]): number {
   // Defender has exactly 1 piece (the cannon); invader has 6 (some may be at 99)
-  return pieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
+  return pieces.filter((p) => p.playerNumber === 0).length === 1 ? 0 : 1;
 }
 
 export class StellarSiegeGame extends GameEngine {
@@ -58,11 +58,14 @@ export class StellarSiegeGame extends GameEngine {
       // Cannon: starts at row 5, center column (col 3)
       { playerNumber: defenderPN, pieceIndex: 0, position: rcToPos(5, 3) },
       // 6 aliens: start in row 0, one per column
-      ...Array.from({ length: ALIEN_COUNT }, (_, i): PiecePosition => ({
-        playerNumber: invaderPN,
-        pieceIndex: i,
-        position: rcToPos(0, i),
-      })),
+      ...Array.from(
+        { length: ALIEN_COUNT },
+        (_, i): PiecePosition => ({
+          playerNumber: invaderPN,
+          pieceIndex: i,
+          position: rcToPos(0, i),
+        }),
+      ),
     ];
 
     return {
@@ -88,7 +91,7 @@ export class StellarSiegeGame extends GameEngine {
     if (to < 0 || to >= TOTAL) return false;
 
     const piece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex
+      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex,
     );
     if (!piece || piece.position !== from) return false;
 
@@ -107,19 +110,19 @@ export class StellarSiegeGame extends GameEngine {
       if (toCol < 0 || toCol >= COLS) return false;
       if (Math.abs(toCol - fromCol) > board.diceRoll - 1) return false;
       // Cannot stack on another alive alien
-      if (board.pieces.some(p => p.playerNumber === invaderPN && p.position === to)) return false;
+      if (board.pieces.some((p) => p.playerNumber === invaderPN && p.position === to)) return false;
       return true;
     }
   }
 
   applyMove(board: BoardState, move: Move): BoardState {
-    const newPieces = board.pieces.map(p => ({ ...p }));
+    const newPieces = board.pieces.map((p) => ({ ...p }));
     const defenderPN = getDefenderPN(board.pieces);
     const invaderPN = 1 - defenderPN;
 
     if (board.currentTurn === defenderPN) {
       // Move cannon to destination
-      const cannon = newPieces.find(p => p.playerNumber === defenderPN && p.pieceIndex === 0);
+      const cannon = newPieces.find((p) => p.playerNumber === defenderPN && p.pieceIndex === 0);
       if (!cannon) return board;
       cannon.position = move.to;
 
@@ -141,16 +144,28 @@ export class StellarSiegeGame extends GameEngine {
         newPieces[targetIdx] = { ...newPieces[targetIdx], position: 99 };
       }
 
-      return { ...board, pieces: newPieces, currentTurn: invaderPN, diceRoll: null, lastMove: move };
+      return {
+        ...board,
+        pieces: newPieces,
+        currentTurn: invaderPN,
+        diceRoll: null,
+        lastMove: move,
+      };
     } else {
       // Move the selected alien one row down
       const alienIdx = newPieces.findIndex(
-        p => p.playerNumber === invaderPN && p.pieceIndex === move.pieceIndex
+        (p) => p.playerNumber === invaderPN && p.pieceIndex === move.pieceIndex,
       );
       if (alienIdx === -1) return board;
       newPieces[alienIdx] = { ...newPieces[alienIdx], position: move.to };
 
-      return { ...board, pieces: newPieces, currentTurn: defenderPN, diceRoll: null, lastMove: move };
+      return {
+        ...board,
+        pieces: newPieces,
+        currentTurn: defenderPN,
+        diceRoll: null,
+        lastMove: move,
+      };
     }
   }
 
@@ -160,14 +175,14 @@ export class StellarSiegeGame extends GameEngine {
 
     // Invaders win if any alien has reached row 5
     const invaded = board.pieces.some(
-      p => p.playerNumber === invaderPN && p.position !== 99 && posToRC(p.position)[0] >= 5
+      (p) => p.playerNumber === invaderPN && p.position !== 99 && posToRC(p.position)[0] >= 5,
     );
     if (invaded) return invaderPN;
 
     // Defender wins if all aliens are destroyed
     const allDestroyed = board.pieces
-      .filter(p => p.playerNumber === invaderPN)
-      .every(p => p.position === 99);
+      .filter((p) => p.playerNumber === invaderPN)
+      .every((p) => p.position === 99);
     if (allDestroyed) return defenderPN;
 
     return null;
@@ -179,17 +194,23 @@ export class StellarSiegeGame extends GameEngine {
     const invaderPN = 1 - defenderPN;
 
     if (playerNumber === defenderPN) {
-      const cannon = board.pieces.find(p => p.playerNumber === defenderPN && p.pieceIndex === 0);
+      const cannon = board.pieces.find((p) => p.playerNumber === defenderPN && p.pieceIndex === 0);
       if (!cannon) return [];
       const [, fromCol] = posToRC(cannon.position);
       for (let newCol = 0; newCol < COLS; newCol++) {
         if (Math.abs(newCol - fromCol) <= diceRoll) {
-          moves.push({ playerId: '', pieceIndex: 0, from: cannon.position, to: rcToPos(5, newCol), diceRoll });
+          moves.push({
+            playerId: '',
+            pieceIndex: 0,
+            from: cannon.position,
+            to: rcToPos(5, newCol),
+            diceRoll,
+          });
         }
       }
     } else {
       const aliveAliens = board.pieces.filter(
-        p => p.playerNumber === invaderPN && p.position !== 99
+        (p) => p.playerNumber === invaderPN && p.position !== 99,
       );
       for (const alien of aliveAliens) {
         const [fromRow, fromCol] = posToRC(alien.position);
@@ -199,8 +220,14 @@ export class StellarSiegeGame extends GameEngine {
           const newCol = fromCol + dc;
           if (newCol < 0 || newCol >= COLS) continue;
           const to = rcToPos(newRow, newCol);
-          if (board.pieces.some(p => p.playerNumber === invaderPN && p.position === to)) continue;
-          moves.push({ playerId: '', pieceIndex: alien.pieceIndex, from: alien.position, to, diceRoll });
+          if (board.pieces.some((p) => p.playerNumber === invaderPN && p.position === to)) continue;
+          moves.push({
+            playerId: '',
+            pieceIndex: alien.pieceIndex,
+            from: alien.position,
+            to,
+            diceRoll,
+          });
         }
       }
     }

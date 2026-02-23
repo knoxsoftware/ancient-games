@@ -1,4 +1,10 @@
-export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens' | 'rock-paper-scissors' | 'stellar-siege';
+export type GameType =
+  | 'ur'
+  | 'senet'
+  | 'morris'
+  | 'wolves-and-ravens'
+  | 'rock-paper-scissors'
+  | 'stellar-siege';
 
 export interface GameManifest {
   type: GameType;

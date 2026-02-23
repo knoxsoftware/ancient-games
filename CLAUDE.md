@@ -24,9 +24,19 @@ npm start
 
 # Docker
 docker compose up --build   # runs app + MongoDB together
+
+# Lint & format
+npm run lint                # ESLint (flat config)
+npm run lint:fix            # ESLint with auto-fix
+npm run format              # Prettier — write
+npm run format:check        # Prettier — check only
+
+# Tests (Vitest, backend only)
+npm test                    # run all tests once
+npm run test:watch --workspace=backend  # watch mode
 ```
 
-There are no tests or linters configured in this project.
+ESLint uses flat config (`eslint.config.mjs`) with TypeScript and React plugins. Prettier is configured in `.prettierrc`. Game engine tests are colocated (`*.test.ts`) next to the engine files in `backend/src/games/`.
 
 The frontend Vite config proxies `/api` and `/socket.io` to `localhost:3000`, so the frontend dev server on `:5173` talks to the backend on `:3000` transparently.
 
@@ -43,6 +53,7 @@ This is an **npm workspaces monorepo** with three packages:
 `server.ts` → Express HTTP + Socket.io on port 3000, MongoDB via Mongoose.
 
 **Session lifecycle (REST):**
+
 - `POST /api/sessions` — creates session, generates short code via nanoid, returns `{ session, playerId }`
 - `POST /api/sessions/join` — joins by session code
 - `GET /api/sessions/:code` — fetch state (used on page load/reconnect)
@@ -51,6 +62,7 @@ This is an **npm workspaces monorepo** with three packages:
 
 **Real-time flow (Socket.io):**
 All game events are in `backend/src/socket/gameHandlers.ts`. The important sequence:
+
 1. Client emits `session:join` after connecting — this subscribes them to the session room
 2. `game:start` (host only) initializes board via game engine
 3. `game:roll-dice` → server rolls, stores result on `board.diceRoll`, emits `game:dice-rolled`
@@ -72,20 +84,28 @@ Note: No changes needed to `Home.tsx` (data-driven from manifest), `MoveLog.tsx`
 ### Game engine interface
 
 Every game engine must implement (`backend/src/games/GameEngine.ts`):
+
 - `initializeBoard()` — starting `BoardState`
 - `rollDice()` — returns a number
 - `validateMove(board, move, player)` — returns boolean; server calls this before applying
 - `applyMove(board, move)` — returns new `BoardState`; must set `diceRoll: null` and advance `currentTurn`
 - `checkWinCondition(board)` — returns winning `playerNumber` or `null`
 - `getValidMoves(board, playerNumber, diceRoll)` — used by `canMove()` to check if turn must be skipped
+- `canMove(board, playerNumber, diceRoll)` — returns boolean; typically delegates to `getValidMoves().length > 0`
 
-Position encoding conventions (both games): `-1` = off-board/not entered, `0–N` = board positions, `99` = finished/exited.
+**Current games:** ur, senet, morris, wolves-and-ravens, rock-paper-scissors, stellar-siege
+
+Position encoding conventions (board games with pieces): `-1` = off-board/not entered, `0–N` = board positions, `99` = finished/exited. Not all games use this scheme (e.g. rock-paper-scissors).
 
 ### Frontend state
 
 `GameRoom.tsx` owns all socket listeners and holds `session` + `gameState` state. It passes them down as props to the board components — boards do not subscribe to sockets directly. Boards emit socket events themselves (roll, move) but receive state updates only through props.
 
 `socketService` (`frontend/src/services/socket.ts`) is a singleton that holds the Socket.io client connection; call `socketService.getSocket()` from any component.
+
+### Tournaments
+
+The shared types include a tournament system (`TournamentState`, `TournamentMatch`, `TournamentFormat`). Supported formats: bo1, bo3, bo5, bo7, round-robin.
 
 ### Shared types
 

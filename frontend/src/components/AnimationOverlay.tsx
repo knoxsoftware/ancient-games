@@ -97,8 +97,14 @@ export function AnimationOverlay({
       const toRect = getCellRect(animation, move.to);
       if (!toRect) { onComplete(); return; }
       const { x, y } = centerOf(toRect);
-      setStyle({ ...base, left: x, top: y, opacity: 0, transition: `opacity ${DURATION}ms ease-out` });
-      requestAnimationFrame(() => setStyle(s => ({ ...s, opacity: 1 })));
+      setStyle({
+        ...base,
+        left: x,
+        top: y,
+        opacity: 0,
+        transition: `opacity ${DURATION}ms ease-out`,
+      });
+      requestAnimationFrame(() => setStyle((s) => ({ ...s, opacity: 1 })));
       const timer = setTimeout(onComplete, DURATION + 50);
       return () => clearTimeout(timer);
     }
@@ -114,8 +120,14 @@ export function AnimationOverlay({
     if (validSteps.length === 0) {
       // No reachable destination rects: fade-out at source
       const src = centerOf(fromRect);
-      setStyle({ ...base, left: src.x, top: src.y, opacity: 1, transition: `opacity ${DURATION}ms ease-out` });
-      requestAnimationFrame(() => setStyle(s => ({ ...s, opacity: 0 })));
+      setStyle({
+        ...base,
+        left: src.x,
+        top: src.y,
+        opacity: 1,
+        transition: `opacity ${DURATION}ms ease-out`,
+      });
+      requestAnimationFrame(() => setStyle((s) => ({ ...s, opacity: 0 })));
       const timer = setTimeout(onComplete, DURATION + 50);
       return () => clearTimeout(timer);
     }
@@ -138,10 +150,14 @@ export function AnimationOverlay({
         if (move.to === 99) {
           // Fade out at the virtual exit position
           const last = validSteps[validSteps.length - 1];
-          setStyle(s => ({ ...s, left: last.x, top: last.y, transition: 'none' }));
+          setStyle((s) => ({ ...s, left: last.x, top: last.y, transition: 'none' }));
           requestAnimationFrame(() => {
             if (!cancelled) {
-              setStyle(s => ({ ...s, opacity: 0, transition: `opacity ${stepDuration}ms ease-out` }));
+              setStyle((s) => ({
+                ...s,
+                opacity: 0,
+                transition: `opacity ${stepDuration}ms ease-out`,
+              }));
             }
           });
           timers.push(setTimeout(onComplete, stepDuration + 50));
@@ -154,7 +170,7 @@ export function AnimationOverlay({
       const { x: nextX, y: nextY } = validSteps[stepIdx];
       stepIdx++;
 
-      setStyle(s => ({
+      setStyle((s) => ({
         ...s,
         left: nextX,
         top: nextY,
@@ -165,7 +181,9 @@ export function AnimationOverlay({
     };
 
     // Start after initial render so the browser paints the source position first
-    requestAnimationFrame(() => { if (!cancelled) runStep(); });
+    requestAnimationFrame(() => {
+      if (!cancelled) runStep();
+    });
 
     return () => {
       cancelled = true;
@@ -176,7 +194,9 @@ export function AnimationOverlay({
   const piece = animation.renderPiece(animation.playerNumber, animation.gameType === 'ur' ? 28 : 24);
 
   return createPortal(
-    <div style={style} aria-hidden="true">{piece}</div>,
-    document.body
+    <div style={style} aria-hidden="true">
+      {piece}
+    </div>,
+    document.body,
   );
 }

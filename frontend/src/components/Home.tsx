@@ -7,7 +7,7 @@ export default function Home() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<'create' | 'join' | null>(null);
   const [gameType, setGameType] = useState<GameType>('ur');
-  const [displayName, setDisplayName] = useState(localStorage.getItem('playerName') ?? '');
+  const [displayName, setDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
   const [sessionCode, setSessionCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,8 +23,8 @@ export default function Home() {
 
     try {
       const result = await api.createSession({ gameType, displayName: displayName.trim() });
-      localStorage.setItem('playerId', result.playerId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.playerId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       setError((err as Error).message);
@@ -53,8 +53,8 @@ export default function Home() {
         sessionCode: code,
         displayName: displayName.trim(),
       });
-      localStorage.setItem('playerId', result.playerId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.playerId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       if ((err as Error).message === 'Session has already started') {
@@ -74,9 +74,7 @@ export default function Home() {
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent">
             Ancient Games
           </h1>
-          <p className="text-gray-400 text-lg">
-            Play ancient board games online with friends
-          </p>
+          <p className="text-gray-400 text-lg">Play ancient board games online with friends</p>
         </div>
 
         {!mode ? (

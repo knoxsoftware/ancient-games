@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Session, TournamentFormat, getGameTitle } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
+import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../../services/storage';
 import { initPushNotifications } from '../../services/pushNotifications';
 import TournamentBracket from '../tournament/TournamentBracket';
 
@@ -34,9 +35,9 @@ export default function SessionLobby() {
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevSessionRef = useRef<Session | null>(null);
 
-  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
+  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem(PLAYER_ID_KEY));
 
-  const [displayName, setDisplayName] = useState(localStorage.getItem('playerName') ?? '');
+  const [displayName, setDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [spectateLoading, setSpectateLoading] = useState(false);
@@ -175,8 +176,8 @@ export default function SessionLobby() {
         sessionCode: sessionCode!,
         displayName: displayName.trim(),
       });
-      localStorage.setItem('playerId', result.playerId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.playerId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       setPlayerId(result.playerId);
       setSession(result.session);
     } catch (err) {
@@ -223,8 +224,8 @@ export default function SessionLobby() {
         sessionCode: sessionCode!,
         displayName: displayName.trim(),
       });
-      localStorage.setItem('playerId', result.spectatorId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.spectatorId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       setPlayerId(result.spectatorId);
       setSession(result.session);
     } catch (err) {
@@ -274,7 +275,7 @@ export default function SessionLobby() {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
     if (socket) socket.emit('session:leave', { sessionCode, playerId });
-    localStorage.removeItem('playerId');
+    localStorage.removeItem(PLAYER_ID_KEY);
     navigate('/');
   };
 
@@ -392,7 +393,8 @@ export default function SessionLobby() {
     session.spectators.some((s) => s.id === playerId);
   const isHost = session.hostId === playerId;
   const currentPlayer = session.players.find((p) => p.id === playerId);
-  const canStart = isHost && (format === 'single' ? session.players.length === 2 : session.players.length >= 2);
+  const canStart =
+    isHost && (format === 'single' ? session.players.length === 2 : session.players.length >= 2);
 
   // ── Tournament bracket view (tournament already started) ───────────────────
   if (session.tournamentState) {
@@ -557,8 +559,10 @@ export default function SessionLobby() {
                     onClick={() => handleFormatChange(opt.value)}
                     className="rounded-lg p-2.5 text-left transition-all border"
                     style={{
-                      background: format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
-                      borderColor: format === opt.value ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)',
+                      background:
+                        format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
+                      borderColor:
+                        format === opt.value ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)',
                       color: format === opt.value ? '#E8C870' : '#8A7A60',
                     }}
                   >
@@ -578,7 +582,8 @@ export default function SessionLobby() {
           {/* Format display for non-hosts */}
           {!isHost && (
             <div className="mb-6 text-sm" style={{ color: '#6A5A40' }}>
-              Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'} — waiting for host to start
+              Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'} —
+              waiting for host to start
             </div>
           )}
 

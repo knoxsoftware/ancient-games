@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Session, GameState, GameType, HistoricalMove, getGameTitle, GAME_MANIFESTS } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
+import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
 import { getScoreInfo } from '../utils/gameScoreInfo';
 
@@ -46,11 +47,15 @@ export default function GameRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [spectateDisplayName, setSpectateDisplayName] = useState(localStorage.getItem('playerName') ?? '');
+  const [spectateDisplayName, setSpectateDisplayName] = useState(
+    localStorage.getItem(PLAYER_NAME_KEY) ?? '',
+  );
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'game' | 'chat' | 'room' | 'history' | 'bracket'>('game');
+  const [activeTab, setActiveTab] = useState<'game' | 'chat' | 'room' | 'history' | 'bracket'>(
+    'game',
+  );
   const [showRules, setShowRules] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [unreadChat, setUnreadChat] = useState(0);
@@ -61,20 +66,12 @@ export default function GameRoom() {
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
   const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-    if (activeTab === 'chat') {
-      setUnreadChat(0);
-      if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
-      setChatToast(null);
-    }
-  }, [activeTab]);
-
+  // Synchronous ref updates — always reflects latest value without needing an effect
+  activeTabRef.current = activeTab;
   const gameStateRef = useRef<GameState | null>(null);
-  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
-
+  gameStateRef.current = gameState;
   const sessionRef = useRef<Session | null>(null);
-  useEffect(() => { sessionRef.current = session; }, [session]);
+  sessionRef.current = session;
 
   const animIdRef = useRef(0);
   const [pendingAnimation, setPendingAnimation] = useState<AnimationState | null>(null);
@@ -84,10 +81,10 @@ export default function GameRoom() {
   const replayIdRef = useRef(0);
   const [replayingEntryId, setReplayingEntryId] = useState<number | null>(null);
 
-  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
+  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem(PLAYER_ID_KEY));
   // True while waiting for server to respond to session:join (prevents premature name prompt
   // when a hub participant navigates to a match session — the server may auto-add them).
-  const [joiningSession, setJoiningSession] = useState(() => !!localStorage.getItem('playerId'));
+  const [joiningSession, setJoiningSession] = useState(() => !!localStorage.getItem(PLAYER_ID_KEY));
 
   const showTournamentToast = (msg: string) => {
     if (tournamentToastTimerRef.current) clearTimeout(tournamentToastTimerRef.current);
@@ -112,7 +109,10 @@ export default function GameRoom() {
   // Load hub session when we know there is one
   useEffect(() => {
     if (session?.tournamentHubCode) {
-      api.getSession(session.tournamentHubCode).then(setHubSession).catch(() => {});
+      api
+        .getSession(session.tournamentHubCode)
+        .then(setHubSession)
+        .catch(() => {});
     }
   }, [session?.tournamentHubCode]);
 
@@ -169,7 +169,13 @@ export default function GameRoom() {
           ...prev,
           {
             id: historyIdRef.current,
-            move: { playerId: skipPlayer?.id ?? '', pieceIndex: -1, from: -2, to: -2, diceRoll: roll },
+            move: {
+              playerId: skipPlayer?.id ?? '',
+              pieceIndex: -1,
+              from: -2,
+              to: -2,
+              diceRoll: roll,
+            },
             playerNumber,
             wasCapture: false,
             isSkip: true,
@@ -184,7 +190,7 @@ export default function GameRoom() {
       const currentSession = sessionRef.current;
 
       const playerNum =
-        currentSession?.players.find(p => p.id === move.playerId)?.playerNumber ?? 0;
+        currentSession?.players.find((p) => p.id === move.playerId)?.playerNumber ?? 0;
 
       setGameState(updatedGameState);
 
@@ -204,7 +210,7 @@ export default function GameRoom() {
       }
 
       historyIdRef.current += 1;
-      setMoveHistory(prev => [
+      setMoveHistory((prev) => [
         ...prev,
         { id: historyIdRef.current, move, playerNumber: playerNum, wasCapture },
       ]);
@@ -341,13 +347,15 @@ export default function GameRoom() {
       }
 
       if (sessionData.gameState.moveHistory && sessionData.gameState.moveHistory.length > 0) {
-        const entries: HistoryEntry[] = sessionData.gameState.moveHistory.map((hm: HistoricalMove, i: number) => ({
-          id: i + 1,
-          move: hm.move,
-          playerNumber: hm.playerNumber,
-          wasCapture: hm.wasCapture,
-          isSkip: hm.isSkip,
-        }));
+        const entries: HistoryEntry[] = sessionData.gameState.moveHistory.map(
+          (hm: HistoricalMove, i: number) => ({
+            id: i + 1,
+            move: hm.move,
+            playerNumber: hm.playerNumber,
+            wasCapture: hm.wasCapture,
+            isSkip: hm.isSkip,
+          }),
+        );
         historyIdRef.current = sessionData.gameState.moveHistory.length;
         setMoveHistory(entries);
       }
@@ -370,8 +378,8 @@ export default function GameRoom() {
         sessionCode: sessionCode!,
         displayName: spectateDisplayName.trim(),
       });
-      localStorage.setItem('playerId', result.spectatorId);
-      localStorage.setItem('playerName', spectateDisplayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.spectatorId);
+      localStorage.setItem(PLAYER_NAME_KEY, spectateDisplayName.trim());
       setPlayerId(result.spectatorId);
       setSession(result.session);
       setGameState(result.session.gameState);
@@ -399,7 +407,7 @@ export default function GameRoom() {
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
-    const isSeatedPlayer = session?.players.some(p => p.id === playerId) ?? false;
+    const isSeatedPlayer = session?.players.some((p) => p.id === playerId) ?? false;
     if (socket) {
       if (isSeatedPlayer) {
         // Stand up to free the seat — another player can then take it.
@@ -408,10 +416,10 @@ export default function GameRoom() {
       } else {
         // Already a spectator: fully remove and clear identity.
         socket.emit('session:leave', { sessionCode, playerId });
-        localStorage.removeItem('playerId');
+        localStorage.removeItem(PLAYER_ID_KEY);
       }
     } else if (!isSeatedPlayer) {
-      localStorage.removeItem('playerId');
+      localStorage.removeItem(PLAYER_ID_KEY);
     }
     navigate('/');
   };
@@ -448,17 +456,14 @@ export default function GameRoom() {
   // Build chat destinations for tournament matches
   const chatDestinations: ChatDestination[] | undefined = session?.tournamentHubCode
     ? (() => {
-        const opponent = session.players.find(p => p.id !== playerId);
-        const hubPeople = [
-          ...(hubSession?.players ?? []),
-          ...(hubSession?.spectators ?? []),
-        ]
-          .filter(p => p.id !== playerId)
+        const opponent = session.players.find((p) => p.id !== playerId);
+        const hubPeople = [...(hubSession?.players ?? []), ...(hubSession?.spectators ?? [])]
+          .filter((p) => p.id !== playerId)
           .sort((a, b) => a.displayName.localeCompare(b.displayName));
         const dests: ChatDestination[] = [
           { id: 'tournament', label: 'Tournament (all)' },
           { id: 'match', label: `Match vs ${opponent?.displayName ?? 'Opponent'}` },
-          ...hubPeople.map(p => ({ id: p.id, label: `DM: ${p.displayName}` })),
+          ...hubPeople.map((p) => ({ id: p.id, label: `DM: ${p.displayName}` })),
         ];
         return dests;
       })()
@@ -472,7 +477,12 @@ export default function GameRoom() {
     } else if (destinationId === 'tournament') {
       socket.emit('chat:send', { sessionCode, playerId, text, scope: 'tournament' });
     } else {
-      socket.emit('chat:send', { sessionCode, playerId, text, scope: { toPlayerId: destinationId } });
+      socket.emit('chat:send', {
+        sessionCode,
+        playerId,
+        text,
+        scope: { toPlayerId: destinationId },
+      });
     }
   };
 
@@ -564,7 +574,8 @@ export default function GameRoom() {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const isSpectator = !currentPlayer && session.spectators.some((s) => s.id === playerId);
   const bothSeated = session.players.length === 2;
-  const isMyTurn = bothSeated && !isSpectator && gameState.currentTurn === currentPlayer?.playerNumber;
+  const isMyTurn =
+    bothSeated && !isSpectator && gameState.currentTurn === currentPlayer?.playerNumber;
   const isTournamentMatch = !!session.tournamentHubCode;
 
   const animatingPiece = pendingAnimation
@@ -572,7 +583,13 @@ export default function GameRoom() {
     : null;
 
   type TabName = 'game' | 'chat' | 'room' | 'history' | 'bracket';
-  const tabs: TabName[] = ['game', 'chat', 'room', 'history', ...(isTournamentMatch ? ['bracket' as TabName] : [])];
+  const tabs: TabName[] = [
+    'game',
+    'chat',
+    'room',
+    'history',
+    ...(isTournamentMatch ? ['bracket' as TabName] : []),
+  ];
 
   return (
     <div className="min-h-screen p-4">
@@ -642,7 +659,14 @@ export default function GameRoom() {
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab === 'chat') {
+                  setUnreadChat(0);
+                  if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
+                  setChatToast(null);
+                }
+              }}
               className="px-4 py-2 text-sm font-medium transition-colors capitalize relative"
               style={{
                 color: activeTab === tab ? '#E8C870' : '#6A5A40',
@@ -691,10 +715,15 @@ export default function GameRoom() {
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span
                               className="flex-shrink-0 w-2 h-2 rounded-full"
-                              style={{ background: player.status === 'away' ? '#F59E0B' : '#22C55E' }}
+                              style={{
+                                background: player.status === 'away' ? '#F59E0B' : '#22C55E',
+                              }}
                               title={player.status === 'away' ? 'Away' : 'Active'}
                             />
-                            <span className="text-sm font-semibold truncate" style={{ color: '#E8D8B0' }}>
+                            <span
+                              className="text-sm font-semibold truncate"
+                              style={{ color: '#E8D8B0' }}
+                            >
                               {player.displayName}
                             </span>
                             {isActive && (
@@ -706,7 +735,12 @@ export default function GameRoom() {
                               </span>
                             )}
                             {isMe && !isActive && (
-                              <span className="ml-auto flex-shrink-0 text-xs" style={{ color: '#6A5A40' }}>you</span>
+                              <span
+                                className="ml-auto flex-shrink-0 text-xs"
+                                style={{ color: '#6A5A40' }}
+                              >
+                                you
+                              </span>
                             )}
                           </div>
                           {scoreInfo && (
@@ -721,11 +755,16 @@ export default function GameRoom() {
                             {seatIndex === 0 ? 'Player 1' : 'Player 2'}
                           </span>
                           {isSpectator ? (
-                            <button onClick={handleTakeSeat} className="btn btn-secondary text-xs py-0.5 px-2">
+                            <button
+                              onClick={handleTakeSeat}
+                              className="btn btn-secondary text-xs py-0.5 px-2"
+                            >
                               Take Seat
                             </button>
                           ) : (
-                            <span className="text-xs" style={{ color: '#3A2A1A' }}>Empty</span>
+                            <span className="text-xs" style={{ color: '#3A2A1A' }}>
+                              Empty
+                            </span>
                           )}
                         </div>
                       )}
@@ -765,9 +804,13 @@ export default function GameRoom() {
           {activeTab === 'room' && (
             <div className="tab-content-enter p-3 space-y-4">
               <div>
-                <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>Players</div>
+                <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
+                  Players
+                </div>
                 {session.players.length === 0 ? (
-                  <div className="text-xs" style={{ color: '#5A4A38' }}>No players seated</div>
+                  <div className="text-xs" style={{ color: '#5A4A38' }}>
+                    No players seated
+                  </div>
                 ) : (
                   <div className="space-y-1">
                     {session.players.map((p) => (
@@ -777,9 +820,13 @@ export default function GameRoom() {
                           style={{ background: p.status === 'away' ? '#F59E0B' : '#22C55E' }}
                           title={p.status === 'away' ? 'Away' : 'Active'}
                         />
-                        <span className="text-sm" style={{ color: '#D4C8A8' }}>{p.displayName}</span>
+                        <span className="text-sm" style={{ color: '#D4C8A8' }}>
+                          {p.displayName}
+                        </span>
                         {p.id === playerId && (
-                          <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>
+                          <span className="text-xs" style={{ color: '#6A5A40' }}>
+                            you
+                          </span>
                         )}
                       </div>
                     ))}
@@ -800,9 +847,13 @@ export default function GameRoom() {
                           style={{ background: s.status === 'away' ? '#F59E0B' : '#22C55E' }}
                           title={s.status === 'away' ? 'Away' : 'Active'}
                         />
-                        <span className="text-xs" style={{ color: '#A09070' }}>{s.displayName}</span>
+                        <span className="text-xs" style={{ color: '#A09070' }}>
+                          {s.displayName}
+                        </span>
                         {s.id === playerId && (
-                          <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>
+                          <span className="text-xs" style={{ color: '#6A5A40' }}>
+                            you
+                          </span>
                         )}
                       </div>
                     ))}
@@ -812,7 +863,9 @@ export default function GameRoom() {
 
               {/* Spectator invite link */}
               <div>
-                <div className="text-xs font-medium mb-1" style={{ color: '#8A7A60' }}>Invite spectators</div>
+                <div className="text-xs font-medium mb-1" style={{ color: '#8A7A60' }}>
+                  Invite spectators
+                </div>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/game/${sessionCode}`);
@@ -976,7 +1029,10 @@ export default function GameRoom() {
       {replayAnimation && (
         <AnimationOverlay
           animation={replayAnimation}
-          onComplete={() => { setReplayAnimation(null); setReplayingEntryId(null); }}
+          onComplete={() => {
+            setReplayAnimation(null);
+            setReplayingEntryId(null);
+          }}
         />
       )}
 
@@ -994,7 +1050,11 @@ export default function GameRoom() {
             <button
               onClick={() => setShowRules(false)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
-              style={{ background: 'rgba(80,60,30,0.5)', color: '#E8C870', border: '1px solid rgba(196,160,48,0.25)' }}
+              style={{
+                background: 'rgba(80,60,30,0.5)',
+                color: '#E8C870',
+                border: '1px solid rgba(196,160,48,0.25)',
+              }}
               title="Close"
             >
               ✕

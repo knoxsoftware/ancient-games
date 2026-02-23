@@ -3,27 +3,50 @@
 @tailwind utilities;
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 .toast-animate {
   animation: toast-in 0.2s ease-out both;
 }
 
 @keyframes dice-shake {
-  0%, 100% { transform: translateX(-50%) rotate(0deg); }
-  20%       { transform: translateX(-50%) rotate(-8deg); }
-  40%       { transform: translateX(-50%) rotate(8deg); }
-  60%       { transform: translateX(-50%) rotate(-6deg); }
-  80%       { transform: translateX(-50%) rotate(6deg); }
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  20% {
+    transform: translateX(-50%) rotate(-8deg);
+  }
+  40% {
+    transform: translateX(-50%) rotate(8deg);
+  }
+  60% {
+    transform: translateX(-50%) rotate(-6deg);
+  }
+  80% {
+    transform: translateX(-50%) rotate(6deg);
+  }
 }
 .dice-shake {
   animation: dice-shake 0.5s ease-in-out;
 }
 
 @keyframes tab-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .tab-content-enter {
   animation: tab-fade-in 0.15s ease-out both;

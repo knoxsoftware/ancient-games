@@ -33,7 +33,7 @@ export class RockPaperScissorsGame extends GameEngine {
     if (
       (p0Choice === 1 && p1Choice === 3) || // rock beats scissors
       (p0Choice === 3 && p1Choice === 2) || // scissors beats paper
-      (p0Choice === 2 && p1Choice === 1)    // paper beats rock
+      (p0Choice === 2 && p1Choice === 1) // paper beats rock
     ) {
       return 0;
     }
@@ -70,10 +70,10 @@ export class RockPaperScissorsGame extends GameEngine {
   }
 
   applyMove(board: BoardState, move: Move): BoardState {
-    const newPieces = board.pieces.map(p => ({ ...p }));
+    const newPieces = board.pieces.map((p) => ({ ...p }));
 
-    const p0ChoiceIdx = newPieces.findIndex(p => p.playerNumber === 0 && p.pieceIndex === 0);
-    const p1ChoiceIdx = newPieces.findIndex(p => p.playerNumber === 1 && p.pieceIndex === 0);
+    const p0ChoiceIdx = newPieces.findIndex((p) => p.playerNumber === 0 && p.pieceIndex === 0);
+    const p1ChoiceIdx = newPieces.findIndex((p) => p.playerNumber === 1 && p.pieceIndex === 0);
     const p0Pos = newPieces[p0ChoiceIdx].position;
     const p1Pos = newPieces[p1ChoiceIdx].position;
 
@@ -108,8 +108,13 @@ export class RockPaperScissorsGame extends GameEngine {
       // Update score
       const roundWinner = this.getRoundWinner(p0Choice, p1Choice);
       if (roundWinner !== null) {
-        const scoreIdx = newPieces.findIndex(p => p.playerNumber === roundWinner && p.pieceIndex === 1);
-        newPieces[scoreIdx] = { ...newPieces[scoreIdx], position: newPieces[scoreIdx].position + 1 };
+        const scoreIdx = newPieces.findIndex(
+          (p) => p.playerNumber === roundWinner && p.pieceIndex === 1,
+        );
+        newPieces[scoreIdx] = {
+          ...newPieces[scoreIdx],
+          position: newPieces[scoreIdx].position + 1,
+        };
       }
 
       return {
@@ -124,7 +129,9 @@ export class RockPaperScissorsGame extends GameEngine {
 
   checkWinCondition(board: BoardState): number | null {
     for (let playerNumber = 0; playerNumber < 2; playerNumber++) {
-      const scorePiece = board.pieces.find(p => p.playerNumber === playerNumber && p.pieceIndex === 1);
+      const scorePiece = board.pieces.find(
+        (p) => p.playerNumber === playerNumber && p.pieceIndex === 1,
+      );
       if (scorePiece && scorePiece.position >= this.WINS_NEEDED) return playerNumber;
     }
     return null;

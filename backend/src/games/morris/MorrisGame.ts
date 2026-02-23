@@ -60,13 +60,25 @@ const ADJACENT: number[][] = [
 
 const MILLS: number[][] = [
   // Outer square sides
-  [0, 1, 2], [2, 14, 23], [21, 22, 23], [0, 9, 21],
+  [0, 1, 2],
+  [2, 14, 23],
+  [21, 22, 23],
+  [0, 9, 21],
   // Middle square sides
-  [3, 4, 5], [5, 13, 20], [18, 19, 20], [3, 10, 18],
+  [3, 4, 5],
+  [5, 13, 20],
+  [18, 19, 20],
+  [3, 10, 18],
   // Inner square sides
-  [6, 7, 8], [8, 12, 17], [15, 16, 17], [6, 11, 15],
+  [6, 7, 8],
+  [8, 12, 17],
+  [15, 16, 17],
+  [6, 11, 15],
   // Spokes (midpoint connectors)
-  [1, 4, 7], [14, 13, 12], [22, 19, 16], [9, 10, 11],
+  [1, 4, 7],
+  [14, 13, 12],
+  [22, 19, 16],
+  [9, 10, 11],
 ];
 
 const PIECES_PER_PLAYER = 9;
@@ -92,22 +104,22 @@ export class MorrisGame extends GameEngine {
 
   private getPhase(board: BoardState, playerNumber: number): 1 | 2 | 3 {
     const unplaced = board.pieces.filter(
-      p => p.playerNumber === playerNumber && p.position === -1
+      (p) => p.playerNumber === playerNumber && p.position === -1,
     ).length;
     if (unplaced > 0) return 1;
     const onBoard = board.pieces.filter(
-      p => p.playerNumber === playerNumber && p.position >= 0 && p.position <= 23
+      (p) => p.playerNumber === playerNumber && p.position >= 0 && p.position <= 23,
     ).length;
     return onBoard === 3 ? 3 : 2;
   }
 
   private isInMill(board: BoardState, position: number, playerNumber: number): boolean {
     return MILLS.some(
-      mill =>
+      (mill) =>
         mill.includes(position) &&
-        mill.every(pos =>
-          board.pieces.some(p => p.playerNumber === playerNumber && p.position === pos)
-        )
+        mill.every((pos) =>
+          board.pieces.some((p) => p.playerNumber === playerNumber && p.position === pos),
+        ),
     );
   }
 
@@ -127,17 +139,18 @@ export class MorrisGame extends GameEngine {
       // Removal: must be to:99, targeting an opponent piece
       if (to !== 99) return false;
       const target = board.pieces.find(
-        p => p.playerNumber !== playerNumber && p.position === from && p.pieceIndex === pieceIndex
+        (p) =>
+          p.playerNumber !== playerNumber && p.position === from && p.pieceIndex === pieceIndex,
       );
       if (!target) return false;
 
       // Piece must not be in a mill, unless ALL opponent pieces are in mills
       if (this.isInMill(board, from, 1 - playerNumber)) {
         const opponentOnBoard = board.pieces.filter(
-          p => p.playerNumber !== playerNumber && p.position >= 0 && p.position <= 23
+          (p) => p.playerNumber !== playerNumber && p.position >= 0 && p.position <= 23,
         );
-        const allInMills = opponentOnBoard.every(p =>
-          this.isInMill(board, p.position, 1 - playerNumber)
+        const allInMills = opponentOnBoard.every((p) =>
+          this.isInMill(board, p.position, 1 - playerNumber),
         );
         if (!allInMills) return false;
       }
@@ -152,21 +165,21 @@ export class MorrisGame extends GameEngine {
       // Placement: from must be -1, to must be empty board position
       if (from !== -1) return false;
       const piece = board.pieces.find(
-        p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex && p.position === -1
+        (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex && p.position === -1,
       );
       if (!piece) return false;
       if (to < 0 || to > 23) return false;
-      return !board.pieces.some(p => p.position === to);
+      return !board.pieces.some((p) => p.position === to);
     }
 
     // Movement / flying: must move an on-board piece to an empty position
     const piece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex && p.position === from
+      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex && p.position === from,
     );
     if (!piece) return false;
     if (from < 0 || from > 23) return false;
     if (to < 0 || to > 23) return false;
-    if (board.pieces.some(p => p.position === to)) return false;
+    if (board.pieces.some((p) => p.position === to)) return false;
 
     if (phase === 2) {
       return ADJACENT[from].includes(to);
@@ -176,14 +189,15 @@ export class MorrisGame extends GameEngine {
   }
 
   applyMove(board: BoardState, move: Move): BoardState {
-    const newPieces = board.pieces.map(p => ({ ...p }));
+    const newPieces = board.pieces.map((p) => ({ ...p }));
     const { from, to, pieceIndex } = move;
     const playerNumber = board.currentTurn;
 
     if (board.diceRoll === 2) {
       // Removal move: send opponent piece off the board
       const idx = newPieces.findIndex(
-        p => p.playerNumber !== playerNumber && p.position === from && p.pieceIndex === pieceIndex
+        (p) =>
+          p.playerNumber !== playerNumber && p.position === from && p.pieceIndex === pieceIndex,
       );
       if (idx !== -1) newPieces[idx].position = 99;
 
@@ -198,7 +212,7 @@ export class MorrisGame extends GameEngine {
 
     // Normal move (diceRoll === 1)
     const idx = newPieces.findIndex(
-      p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex
+      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex,
     );
     if (idx === -1) return board;
     newPieces[idx].position = to;
@@ -210,7 +224,7 @@ export class MorrisGame extends GameEngine {
     if (millFormed) {
       const opponent = (playerNumber + 1) % 2;
       const opponentOnBoard = newPieces.filter(
-        p => p.playerNumber === opponent && p.position >= 0 && p.position <= 23
+        (p) => p.playerNumber === opponent && p.position >= 0 && p.position <= 23,
       );
       if (opponentOnBoard.length > 0) {
         // Same player goes again to remove a piece
@@ -239,10 +253,10 @@ export class MorrisGame extends GameEngine {
 
     for (let p = 0; p < 2; p++) {
       const unplaced = board.pieces.filter(
-        piece => piece.playerNumber === p && piece.position === -1
+        (piece) => piece.playerNumber === p && piece.position === -1,
       ).length;
       const onBoard = board.pieces.filter(
-        piece => piece.playerNumber === p && piece.position >= 0 && piece.position <= 23
+        (piece) => piece.playerNumber === p && piece.position >= 0 && piece.position <= 23,
       ).length;
 
       // Win: opponent placed all pieces but has fewer than 3 remaining on board
@@ -250,7 +264,7 @@ export class MorrisGame extends GameEngine {
     }
 
     // Win: after placement, current player has no valid moves (they lose)
-    const allPlaced = board.pieces.every(p => p.position !== -1);
+    const allPlaced = board.pieces.every((p) => p.position !== -1);
     if (allPlaced) {
       const validMoves = this.getValidMoves(board, board.currentTurn, 1);
       if (validMoves.length === 0) return 1 - board.currentTurn;
@@ -264,24 +278,29 @@ export class MorrisGame extends GameEngine {
       // Removal: can take any opponent piece not in a mill (or any if all in mills)
       const opponent = (playerNumber + 1) % 2;
       const opponentOnBoard = board.pieces.filter(
-        p => p.playerNumber === opponent && p.position >= 0 && p.position <= 23
+        (p) => p.playerNumber === opponent && p.position >= 0 && p.position <= 23,
       );
-      const notInMill = opponentOnBoard.filter(p => !this.isInMill(board, p.position, opponent));
+      const notInMill = opponentOnBoard.filter((p) => !this.isInMill(board, p.position, opponent));
       const removable = notInMill.length > 0 ? notInMill : opponentOnBoard;
-      return removable.map(p => ({ playerId: '', pieceIndex: p.pieceIndex, from: p.position, to: 99 }));
+      return removable.map((p) => ({
+        playerId: '',
+        pieceIndex: p.pieceIndex,
+        from: p.position,
+        to: 99,
+      }));
     }
 
     if (diceRoll !== 1) return [];
 
     const phase = this.getPhase(board, playerNumber);
     const occupied = new Set(
-      board.pieces.filter(p => p.position >= 0 && p.position <= 23).map(p => p.position)
+      board.pieces.filter((p) => p.position >= 0 && p.position <= 23).map((p) => p.position),
     );
     const moves: Move[] = [];
 
     if (phase === 1) {
       const unplacedPieces = board.pieces.filter(
-        p => p.playerNumber === playerNumber && p.position === -1
+        (p) => p.playerNumber === playerNumber && p.position === -1,
       );
       for (let pos = 0; pos < 24; pos++) {
         if (occupied.has(pos)) continue;
@@ -291,19 +310,24 @@ export class MorrisGame extends GameEngine {
       }
     } else if (phase === 2) {
       const onBoard = board.pieces.filter(
-        p => p.playerNumber === playerNumber && p.position >= 0 && p.position <= 23
+        (p) => p.playerNumber === playerNumber && p.position >= 0 && p.position <= 23,
       );
       for (const piece of onBoard) {
         for (const adj of ADJACENT[piece.position]) {
           if (!occupied.has(adj)) {
-            moves.push({ playerId: '', pieceIndex: piece.pieceIndex, from: piece.position, to: adj });
+            moves.push({
+              playerId: '',
+              pieceIndex: piece.pieceIndex,
+              from: piece.position,
+              to: adj,
+            });
           }
         }
       }
     } else {
       // Phase 3: fly anywhere
       const onBoard = board.pieces.filter(
-        p => p.playerNumber === playerNumber && p.position >= 0 && p.position <= 23
+        (p) => p.playerNumber === playerNumber && p.position >= 0 && p.position <= 23,
       );
       for (let pos = 0; pos < 24; pos++) {
         if (occupied.has(pos)) continue;
