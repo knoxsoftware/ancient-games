@@ -1,47 +1,44 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Move } from '@ancient-games/shared';
-import { UrPiece } from './games/ur/UrBoard';
-import { ConePiece, SpoolPiece } from './games/senet/SenetBoard';
+import { Move, GameType } from '@ancient-games/shared';
 
 const DURATION = 420; // ms
 
 export interface AnimationState {
   move: Move;
   playerNumber: number;
-  gameType: 'ur' | 'senet';
+  gameType: GameType;
   id: number;
+  renderPiece: (playerNumber: number, size: number) => React.ReactNode;
+  getExitSelector: (playerNumber: number) => string;
 }
 
 // Returns a virtual DOMRect just off the edge of the last board cell in the
 // direction the piece is travelling, used as the exit destination.
-function getExitRect(gameType: 'ur' | 'senet', playerNumber: number): DOMRect | null {
-  const selector =
-    gameType === 'ur'
-      ? `[data-cell="ur-p${playerNumber}-13"]`
-      : `[data-cell="senet-pos-29"]`;
+function getExitRect(anim: AnimationState): DOMRect | null {
+  const selector = anim.getExitSelector(anim.playerNumber);
   const el = document.querySelector(selector);
   if (!el) return null;
   const rect = el.getBoundingClientRect();
-  // Ur end lane runs right→left (pos 12 col 7, pos 13 col 6), so exit goes left.
-  // Senet row 2 runs left→right, so exit goes right.
-  const offsetX = gameType === 'ur' ? -rect.width * 1.5 : rect.width * 1.5;
+  // Ur end lane runs right->left (pos 12 col 7, pos 13 col 6), so exit goes left.
+  // Senet row 2 runs left->right, so exit goes right.
+  const offsetX = anim.gameType === 'ur' ? -rect.width * 1.5 : rect.width * 1.5;
   return new DOMRect(rect.left + offsetX, rect.top, rect.width, rect.height);
 }
 
 function getCellRect(
-  gameType: 'ur' | 'senet',
+  anim: AnimationState,
   position: number,
-  playerNumber: number
 ): DOMRect | null {
+  const { gameType, playerNumber } = anim;
   let selector: string;
   if (gameType === 'ur') {
     if (position === -1) selector = `[data-cell="ur-offboard-${playerNumber}"]`;
-    else if (position === 99) return getExitRect(gameType, playerNumber);
+    else if (position === 99) return getExitRect(anim);
     else if (position >= 4 && position <= 11) selector = `[data-cell="ur-shared-${position}"]`;
     else selector = `[data-cell="ur-p${playerNumber}-${position}"]`;
   } else {
-    if (position === 99) return getExitRect(gameType, playerNumber);
+    if (position === 99) return getExitRect(anim);
     if (position < 0 || position >= 30) return null;
     selector = `[data-cell="senet-pos-${position}"]`;
   }
@@ -52,7 +49,7 @@ function getCellRect(
 // Returns the ordered list of board positions the piece travels through,
 // not including `from`, including `to` (and the virtual exit pos 99 if exiting).
 function getPathPositions(
-  gameType: 'ur' | 'senet',
+  gameType: GameType,
   from: number,
   to: number,
 ): number[] {
@@ -77,7 +74,7 @@ export function AnimationOverlay({
   const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
 
   useEffect(() => {
-    const { move, playerNumber, gameType } = animation;
+    const { move, gameType } = animation;
     const PIECE_SIZE = gameType === 'ur' ? 28 : 24;
 
     const base: React.CSSProperties = {
@@ -93,11 +90,11 @@ export function AnimationOverlay({
       y: r.top + r.height / 2 - PIECE_SIZE / 2,
     });
 
-    const fromRect = getCellRect(gameType, move.from, playerNumber);
+    const fromRect = getCellRect(animation, move.from);
 
     if (!fromRect) {
       // No source rect (shouldn't happen in practice): fade-in at destination
-      const toRect = getCellRect(gameType, move.to, playerNumber);
+      const toRect = getCellRect(animation, move.to);
       if (!toRect) { onComplete(); return; }
       const { x, y } = centerOf(toRect);
       setStyle({ ...base, left: x, top: y, opacity: 0, transition: `opacity ${DURATION}ms ease-out` });
@@ -110,7 +107,7 @@ export function AnimationOverlay({
     const pathPositions = getPathPositions(gameType, move.from, move.to);
     const validSteps: Array<{ x: number; y: number }> = [];
     for (const pos of pathPositions) {
-      const rect = getCellRect(gameType, pos, playerNumber);
+      const rect = getCellRect(animation, pos);
       if (rect) validSteps.push(centerOf(rect));
     }
 
@@ -176,15 +173,7 @@ export function AnimationOverlay({
     };
   }, [animation.id]);
 
-  const { playerNumber, gameType } = animation;
-  const piece =
-    gameType === 'ur' ? (
-      <UrPiece playerNumber={playerNumber} size={28} />
-    ) : playerNumber === 0 ? (
-      <ConePiece size={24} />
-    ) : (
-      <SpoolPiece size={24} />
-    );
+  const piece = animation.renderPiece(animation.playerNumber, animation.gameType === 'ur' ? 28 : 24);
 
   return createPortal(
     <div style={style} aria-hidden="true">{piece}</div>,

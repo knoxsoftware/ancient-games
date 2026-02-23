@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, GameState, GameType, HistoricalMove, getGameTitle } from '@ancient-games/shared';
+import { Session, GameState, GameType, HistoricalMove, getGameTitle, GAME_MANIFESTS } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
@@ -15,6 +15,8 @@ const boardComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   'stellar-siege': lazy(() => import('./games/stellar-siege/StellarSiegeBoard')),
 };
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
+import { renderPiece as urRenderPiece, getExitSelector as urGetExitSelector } from './games/ur/urAnimationHelpers';
+import { renderPiece as senetRenderPiece, getExitSelector as senetGetExitSelector } from './games/senet/senetAnimationHelpers';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
 import GameControls from './GameControls';
@@ -186,15 +188,18 @@ export default function GameRoom() {
 
       setGameState(updatedGameState);
 
-      const supportsAnimation = currentSession?.gameType === 'ur' || currentSession?.gameType === 'senet';
-      if (supportsAnimation) {
+      const gt = currentSession?.gameType ?? 'ur';
+      if (GAME_MANIFESTS[gt].supportsAnimation) {
         animIdRef.current += 1;
-        const animId = animIdRef.current;
+        const animHelpers = gt === 'ur'
+          ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
+          : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
         setPendingAnimation({
           move,
           playerNumber: playerNum,
-          gameType: currentSession?.gameType as 'ur' | 'senet',
-          id: animId,
+          gameType: gt,
+          id: animIdRef.current,
+          ...animHelpers,
         });
       }
 
@@ -425,13 +430,17 @@ export default function GameRoom() {
 
   const handleReplay = (entry: HistoryEntry) => {
     const gt = session?.gameType;
-    if (gt !== 'ur' && gt !== 'senet') return;
+    if (!gt || !GAME_MANIFESTS[gt].supportsAnimation) return;
     replayIdRef.current += 1;
+    const animHelpers = gt === 'ur'
+      ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
+      : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
     setReplayAnimation({
       move: entry.move,
       playerNumber: entry.playerNumber,
       gameType: gt,
       id: replayIdRef.current,
+      ...animHelpers,
     });
     setReplayingEntryId(entry.id);
   };

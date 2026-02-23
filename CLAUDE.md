@@ -57,12 +57,17 @@ All game events are in `backend/src/socket/gameHandlers.ts`. The important seque
 4. `game:move` → server validates, applies move, clears `diceRoll`, emits `game:move-made` + `game:state-updated`
 5. If no valid moves exist after a roll, `game:skip-turn` advances the turn
 
-**Adding a new game:**
-1. Create `backend/src/games/<name>/<Name>Game.ts` extending `GameEngine`
+**Adding a new game** _(use the `/add-game` skill to scaffold all required files)_:
+1. Create `backend/src/games/<name>/<Name>Game.ts` extending `GameEngine` (including `isCaptureMove`)
 2. Register it in `GameRegistry.ts`
 3. Add the game type to the `GameType` union in `shared/types/game.ts`
-4. Create `frontend/src/components/games/<name>/<Name>Board.tsx`
-5. Add the route case in `GameRoom.tsx`
+4. Add a `GameManifest` entry in `GAME_MANIFESTS` in `shared/types/game.ts`
+5. Create `frontend/src/components/games/<name>/<Name>Board.tsx` (default export)
+6. Create `frontend/src/components/games/<name>/<Name>Rules.tsx` (default export)
+7. Optionally create `<Name>Controls.tsx`, `<name>ScoreInfo.ts`, and animation helpers in the game folder
+8. Register in lookup records: `boardComponents` in `GameRoom.tsx`, `rulesComponents` in `GameRules.tsx`, optionally `controlComponents` in `GameControls.tsx`, score registry in `gameScoreInfo.ts`
+
+Note: No changes needed to `Home.tsx` (data-driven from manifest), `MoveLog.tsx` (uses manifest colors), or `gameHandlers.ts` (uses engine methods).
 
 ### Game engine interface
 
