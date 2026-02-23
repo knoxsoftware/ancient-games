@@ -14,6 +14,8 @@ export interface ClientToServerEvents {
   'chat:send': (data: { sessionCode: string; playerId: string; text: string; scope?: 'tournament' | { toPlayerId: string } }) => void;
   'session:stand-up': (data: { sessionCode: string; playerId: string }) => void;
   'session:take-seat': (data: { sessionCode: string; playerId: string }) => void;
+  'session:host-stand-up': (data: { sessionCode: string; playerId: string; targetPlayerId: string }) => void;
+  'session:host-take-seat': (data: { sessionCode: string; playerId: string; targetPlayerId: string }) => void;
   'player:away':   (data: { sessionCode: string; playerId: string }) => void;
   'player:active': (data: { sessionCode: string; playerId: string }) => void;
   'session:set-format': (data: { sessionCode: string; playerId: string; format: TournamentFormat | 'single' }) => void;

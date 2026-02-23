@@ -191,6 +191,53 @@ export function registerGameHandlers(
     }
   });
 
+  // Host forces a seated player to become a spectator
+  socket.on('session:host-stand-up', async ({ sessionCode, playerId, targetPlayerId }) => {
+    try {
+      const currentSession = await sessionService.getSession(sessionCode);
+      if (!currentSession) {
+        socket.emit('session:error', { message: 'Session not found' });
+        return;
+      }
+      if (currentSession.hostId !== playerId) {
+        socket.emit('session:error', { message: 'Only the host can move players' });
+        return;
+      }
+      const session = await sessionService.playerToSpectator(sessionCode, targetPlayerId);
+      if (session) {
+        io.to(sessionCode).emit('session:updated', session);
+      }
+    } catch (error) {
+      socket.emit('session:error', { message: (error as Error).message });
+    }
+  });
+
+  // Host forces a spectator to take a seat
+  socket.on('session:host-take-seat', async ({ sessionCode, playerId, targetPlayerId }) => {
+    try {
+      const currentSession = await sessionService.getSession(sessionCode);
+      if (!currentSession) {
+        socket.emit('session:error', { message: 'Session not found' });
+        return;
+      }
+      if (currentSession.hostId !== playerId) {
+        socket.emit('session:error', { message: 'Only the host can move players' });
+        return;
+      }
+      const maxPlayers = (currentSession.lobbyFormat ?? 'single') === 'single' ? 2 : 8;
+      if (currentSession.players.length >= maxPlayers) {
+        socket.emit('session:error', { message: 'No seats available' });
+        return;
+      }
+      const session = await sessionService.spectatorToPlayer(sessionCode, targetPlayerId);
+      if (session) {
+        io.to(sessionCode).emit('session:updated', session);
+      }
+    } catch (error) {
+      socket.emit('session:error', { message: (error as Error).message });
+    }
+  });
+
   // Toggle ready status
   socket.on('session:ready', async ({ sessionCode, playerId, ready }) => {
     try {

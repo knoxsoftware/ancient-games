@@ -265,6 +265,20 @@ export default function SessionLobby() {
     socket.emit('session:take-seat', { sessionCode, playerId });
   };
 
+  const handleHostStandUp = (targetPlayerId: string) => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:host-stand-up', { sessionCode, playerId, targetPlayerId });
+  };
+
+  const handleHostTakeSeat = (targetPlayerId: string) => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:host-take-seat', { sessionCode, playerId, targetPlayerId });
+  };
+
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
@@ -489,6 +503,15 @@ export default function SessionLobby() {
                     </span>
                   )}
                 </div>
+                {isHost && player.id !== playerId && (
+                  <button
+                    onClick={() => handleHostStandUp(player.id)}
+                    className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
+                    title="Move to spectators"
+                  >
+                    Stand
+                  </button>
+                )}
               </div>
             ))}
 
@@ -506,14 +529,25 @@ export default function SessionLobby() {
                 {session.spectators.map((spec) => (
                   <div
                     key={spec.id}
-                    className="flex items-center gap-3 bg-gray-700/20 rounded-lg p-3 mb-1"
+                    className="flex items-center justify-between bg-gray-700/20 rounded-lg p-3 mb-1"
                   >
-                    <span className="text-gray-400 text-sm">👁</span>
-                    <span className="text-gray-300 text-sm">{spec.displayName}</span>
-                    {spec.id === playerId && (
-                      <span className="text-xs bg-gray-600/50 text-gray-400 px-2 py-0.5 rounded">
-                        You
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-400 text-sm">👁</span>
+                      <span className="text-gray-300 text-sm">{spec.displayName}</span>
+                      {spec.id === playerId && (
+                        <span className="text-xs bg-gray-600/50 text-gray-400 px-2 py-0.5 rounded">
+                          You
+                        </span>
+                      )}
+                    </div>
+                    {isHost && session.players.length < (format === 'single' ? 2 : 8) && (
+                      <button
+                        onClick={() => handleHostTakeSeat(spec.id)}
+                        className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
+                        title="Move to players"
+                      >
+                        Seat
+                      </button>
                     )}
                   </div>
                 ))}
