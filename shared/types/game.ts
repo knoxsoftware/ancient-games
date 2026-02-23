@@ -65,9 +65,9 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     type: 'stellar-siege',
     title: 'Stellar Siege',
     emoji: '\u{1F680}',
-    description: 'Asymmetric defense (coming soon!)',
+    description: 'Asymmetric defense',
     playerColors: ['#80DFFF', '#7FFF5A'],
-    disabled: true,
+    disabled: false,
     aiGenerated: true,
   },
 };
