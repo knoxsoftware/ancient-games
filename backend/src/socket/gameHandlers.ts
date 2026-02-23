@@ -37,8 +37,22 @@ export function registerGameHandlers(
       }
 
       const joiningPlayer = session.players.find(p => p.id === playerId);
-      const joiningSpectator = !joiningPlayer ? session.spectators.find(s => s.id === playerId) : undefined;
+      let joiningSpectator = !joiningPlayer ? session.spectators.find(s => s.id === playerId) : undefined;
       const isFirstConnect = (joiningPlayer?.socketId === 'temp') || (joiningSpectator?.socketId === 'temp');
+
+      // Auto-add hub participants as spectators in tournament match sessions
+      if (!joiningPlayer && !joiningSpectator && session.tournamentHubCode) {
+        const hubSession = await sessionService.getSession(session.tournamentHubCode);
+        if (hubSession) {
+          const hubIdentity =
+            hubSession.players.find(p => p.id === playerId) ??
+            hubSession.spectators.find(s => s.id === playerId);
+          if (hubIdentity) {
+            await sessionService.addSpectatorWithId(sessionCode, playerId, hubIdentity.displayName, socket.id);
+            joiningSpectator = { id: playerId, displayName: hubIdentity.displayName, socketId: socket.id };
+          }
+        }
+      }
 
       await sessionService.updatePlayerSocketId(sessionCode, playerId, socket.id);
 
@@ -50,13 +64,19 @@ export function registerGameHandlers(
         await sessionService.updatePlayerSocketId(session.tournamentHubCode, playerId, socket.id);
       }
 
-      io.to(sessionCode).emit('session:updated', session);
+      // Re-fetch after potential auto-add so session:updated reflects the new spectator
+      const freshSession = await sessionService.getSession(sessionCode) ?? session;
 
-      socket.emit('game:history', session.gameState.moveHistory ?? []);
-      socket.emit('chat:history', session.chatHistory ?? []);
+      io.to(sessionCode).emit('session:updated', freshSession);
+
+      // Send current game state directly to the joining client only
+      socket.emit('game:state-updated', freshSession.gameState);
+
+      socket.emit('game:history', freshSession.gameState.moveHistory ?? []);
+      socket.emit('chat:history', freshSession.chatHistory ?? []);
 
       if (isFirstConnect && joiningPlayer) {
-        for (const other of session.players) {
+        for (const other of freshSession.players) {
           if (other.id !== playerId) {
             await pushService.sendNotification(other.id, {
               title: 'Player joined!',

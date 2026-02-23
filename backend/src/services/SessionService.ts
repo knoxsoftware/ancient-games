@@ -322,6 +322,21 @@ export class SessionService {
     return { session: this.toSession(session), spectatorId };
   }
 
+  async addSpectatorWithId(
+    sessionCode: string,
+    spectatorId: string,
+    displayName: string,
+    socketId: string
+  ): Promise<void> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) return;
+    if (session.players.some(p => p.id === spectatorId)) return;
+    if (session.spectators.some(s => s.id === spectatorId)) return;
+    session.spectators.push({ id: spectatorId, displayName, socketId });
+    session.lastActivity = new Date();
+    await session.save();
+  }
+
   async removeSpectator(sessionCode: string, spectatorId: string): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;

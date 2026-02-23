@@ -77,6 +77,9 @@ export default function GameRoom() {
   const [replayingEntryId, setReplayingEntryId] = useState<number | null>(null);
 
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
+  // True while waiting for server to respond to session:join (prevents premature name prompt
+  // when a hub participant navigates to a match session — the server may auto-add them).
+  const [joiningSession, setJoiningSession] = useState(() => !!localStorage.getItem('playerId'));
 
   const showTournamentToast = (msg: string) => {
     if (tournamentToastTimerRef.current) clearTimeout(tournamentToastTimerRef.current);
@@ -111,6 +114,7 @@ export default function GameRoom() {
     const socket = socketService.connect();
 
     const rejoin = () => {
+      setJoiningSession(true);
       socket.emit('session:join', { sessionCode, playerId });
     };
     socket.on('connect', rejoin);
@@ -128,8 +132,10 @@ export default function GameRoom() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     socket.on('session:updated', (updatedSession) => {
+      setJoiningSession(false);
       setSession(updatedSession);
-      setGameState(updatedSession.gameState);
+      // Don't update gameState here — game state comes from game:state-updated,
+      // game:move-made, etc. to avoid overwriting newer state when a spectator joins.
     });
 
     socket.on('game:state-updated', (updatedGameState) => {
@@ -377,8 +383,20 @@ export default function GameRoom() {
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
-    if (socket) socket.emit('session:leave', { sessionCode, playerId });
-    localStorage.removeItem('playerId');
+    const isSeatedPlayer = session?.players.some(p => p.id === playerId) ?? false;
+    if (socket) {
+      if (isSeatedPlayer) {
+        // Stand up to free the seat — another player can then take it.
+        // Keep playerId in localStorage so the player can rejoin as a spectator.
+        socket.emit('session:stand-up', { sessionCode, playerId });
+      } else {
+        // Already a spectator: fully remove and clear identity.
+        socket.emit('session:leave', { sessionCode, playerId });
+        localStorage.removeItem('playerId');
+      }
+    } else if (!isSeatedPlayer) {
+      localStorage.removeItem('playerId');
+    }
     navigate('/');
   };
 
@@ -465,6 +483,16 @@ export default function GameRoom() {
       session.spectators.some((s) => s.id === playerId));
 
   if (!knownToSession) {
+    // If we have an identity but haven't heard back from the server yet, the server
+    // may be auto-adding us (e.g. hub participant joining a tournament match). Wait.
+    if (playerId && joiningSession) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-xl">Joining game...</div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="card max-w-md w-full">
