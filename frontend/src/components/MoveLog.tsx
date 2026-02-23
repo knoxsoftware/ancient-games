@@ -11,7 +11,7 @@ export interface HistoryEntry {
 
 interface MoveLogProps {
   entries: HistoryEntry[];
-  gameType: 'ur' | 'senet' | 'morris' | 'wolves-and-ravens' | 'dominos';
+  gameType: 'ur' | 'senet' | 'morris' | 'wolves-and-ravens';
   session: Session;
   onReplay: (entry: HistoryEntry) => void;
   replayingId: number | null;

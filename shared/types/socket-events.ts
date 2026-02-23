@@ -1,4 +1,4 @@
-import { Session, GameState, Move, DominoPrivateState, HistoricalMove, ChatMessage } from './index';
+import { Session, GameState, Move, HistoricalMove, ChatMessage } from './index';
 
 // Client to Server events
 export interface ClientToServerEvents {
@@ -32,5 +32,4 @@ export interface ServerToClientEvents {
   'chat:message': (data: ChatMessage) => void;
   'game:history': (moves: HistoricalMove[]) => void;
   'chat:history': (messages: ChatMessage[]) => void;
-  'game:private-state': (data: DominoPrivateState) => void;
 }

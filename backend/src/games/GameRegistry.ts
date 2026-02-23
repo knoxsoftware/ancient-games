@@ -3,7 +3,6 @@ import { UrGame } from './ur/UrGame';
 import { SenetGame } from './senet/SenetGame';
 import { MorrisGame } from './morris/MorrisGame';
 import { WolvesAndRavensGame } from './wolves-and-ravens/WolvesAndRavensGame';
-import { DominosGame } from './dominos/DominosGame';
 import { GameType } from '@ancient-games/shared';
 
 export class GameRegistry {
@@ -12,7 +11,6 @@ export class GameRegistry {
     ['senet', new SenetGame() as GameEngine],
     ['morris', new MorrisGame() as GameEngine],
     ['wolves-and-ravens', new WolvesAndRavensGame() as GameEngine],
-    ['dominos', new DominosGame() as GameEngine],
   ]);
 
   static getGame(gameType: GameType): GameEngine {

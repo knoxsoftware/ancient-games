@@ -1,13 +1,5 @@
 import { Router } from 'express';
 import { SessionService } from '../services/SessionService';
-import { GameState } from '@ancient-games/shared';
-
-function stripPrivateData(gameState: GameState): GameState {
-  const board = gameState.board as any;
-  if (!board.dominoHands && !board.dominoBoneyard) return gameState;
-  const { dominoHands, dominoBoneyard, ...publicBoard } = board;
-  return { ...gameState, board: publicBoard };
-}
 
 export function createSessionRoutes(sessionService: SessionService): Router {
   const router = Router();
@@ -76,11 +68,7 @@ export function createSessionRoutes(sessionService: SessionService): Router {
         return res.status(404).json({ error: 'Session not found' });
       }
 
-      const safeSession = {
-        ...session,
-        gameState: stripPrivateData(session.gameState),
-      };
-      res.json(safeSession);
+      res.json(session);
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }

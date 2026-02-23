@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, GameState, DominoTile, HistoricalMove } from '@ancient-games/shared';
+import { Session, GameState, HistoricalMove } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { initPushNotifications } from '../services/pushNotifications';
@@ -8,7 +8,6 @@ import UrBoard from './games/ur/UrBoard';
 import SenetBoard from './games/senet/SenetBoard';
 import MorrisBoard from './games/morris/MorrisBoard';
 import WolvesAndRavensBoard from './games/wolves-and-ravens/WolvesAndRavensBoard';
-import DominosBoard from './games/dominos/DominosBoard';
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
@@ -72,7 +71,6 @@ export default function GameRoom() {
   const [replayingEntryId, setReplayingEntryId] = useState<number | null>(null);
 
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
-  const [dominoHand, setDominoHand] = useState<DominoTile[]>([]);
 
   useEffect(() => {
     if (!sessionCode) {
@@ -207,7 +205,6 @@ export default function GameRoom() {
             gameType === 'ur' ? 'Royal Game of Ur' :
             gameType === 'morris' ? "Nine Men's Morris" :
             gameType === 'wolves-and-ravens' ? 'Wolves & Ravens' :
-            gameType === 'dominos' ? 'Dominos' :
             'Senet';
           showNotification('Your turn!', `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`);
         }
@@ -233,7 +230,6 @@ export default function GameRoom() {
       setReplayAnimation(null);
       setReplayingEntryId(null);
       setMessage('');
-      setDominoHand([]);
     });
 
     socket.on('game:error', (error) => {
@@ -273,13 +269,6 @@ export default function GameRoom() {
       setChatMessages(messages);
     });
 
-    socket.on('game:private-state', ({ playerNumber, hand }) => {
-      const currentSession = sessionRef.current;
-      const myPlayerNumber = currentSession?.players.find(p => p.id === playerId)?.playerNumber;
-      if (playerNumber === myPlayerNumber) {
-        setDominoHand(hand);
-      }
-    });
 
     return () => {
       socket.off('connect', rejoin);
@@ -295,7 +284,6 @@ export default function GameRoom() {
       socket.off('chat:message');
       socket.off('game:history');
       socket.off('chat:history');
-      socket.off('game:private-state');
     };
   }, [sessionCode, playerId]);
 
@@ -490,7 +478,6 @@ export default function GameRoom() {
             {session.gameType === 'ur' ? 'Royal Game of Ur'
               : session.gameType === 'morris' ? "Nine Men's Morris"
               : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
-              : session.gameType === 'dominos' ? 'Dominos'
               : 'Senet'}
           </h1>
           <button
@@ -611,10 +598,6 @@ export default function GameRoom() {
                         const alive = boardPieces.filter(p => p.playerNumber === ravenPN && p.position !== 99).length;
                         return `Ravens · ${alive} alive`;
                       }
-                    }
-                    if (session.gameType === 'dominos') {
-                      const count = gameState.board.dominoHandSizes?.[seatIndex] ?? 0;
-                      return `${count} tile${count !== 1 ? 's' : ''} in hand`;
                     }
                     return null;
                   })();
@@ -764,7 +747,7 @@ export default function GameRoom() {
             <div className="pt-3">
               <MoveLog
                 entries={moveHistory}
-                gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens' | 'dominos'}
+                gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens'}
                 session={session}
                 onReplay={handleReplay}
                 replayingId={replayingEntryId}
@@ -807,15 +790,6 @@ export default function GameRoom() {
               gameState={gameState}
               playerId={playerId!}
               isMyTurn={isMyTurn}
-            />
-          )}
-          {session.gameType === 'dominos' && (
-            <DominosBoard
-              session={session}
-              gameState={gameState}
-              playerId={playerId!}
-              isMyTurn={isMyTurn}
-              hand={dominoHand}
             />
           )}
         </div>

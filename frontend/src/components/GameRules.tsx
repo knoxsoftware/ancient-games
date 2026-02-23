@@ -14,7 +14,6 @@ export default function GameRules({ gameType }: GameRulesProps) {
       {gameType === 'ur' && <UrRules />}
       {gameType === 'senet' && <SenetRules />}
       {gameType === 'morris' && <MorrisRules />}
-      {gameType === 'dominos' && <DominosRules />}
     </div>
   );
 }
@@ -141,44 +140,6 @@ function SenetRules() {
       </Section>
       <Section title="Winning">
         <p>Move all your pieces safely off square 30. Pieces that land on the Water square are sent back.</p>
-      </Section>
-    </>
-  );
-}
-
-function DominosRules() {
-  return (
-    <>
-      <div className="text-center pb-1">
-        <div className="text-2xl mb-1">🁣</div>
-        <p className="font-bold" style={{ color: '#F0D090' }}>Draw Dominos</p>
-        <p className="text-xs mt-1" style={{ color: '#7A6A50' }}>2 players · Double-6 set · 7 tiles each</p>
-      </div>
-      <Section title="Goal">
-        <p>Be the first player to play all tiles from your hand. If the game blocks, the player with the lower pip total wins.</p>
-      </Section>
-      <Section title="Setup">
-        <p>28 tiles (all combinations of 0–6 pips) are shuffled. Each player draws 7 tiles (kept secret from the opponent). The remaining 14 form the boneyard. The player holding the highest double goes first.</p>
-      </Section>
-      <Section title="Playing a Tile">
-        <ul className="list-disc list-inside space-y-1">
-          <li>On your turn, play a tile from your hand that matches one of the open chain ends.</li>
-          <li>If a tile matches both ends, click the tile then choose which end to play it on.</li>
-          <li>If a tile matches only one end, it is played there automatically.</li>
-          <li>Doubles are placed sideways (rotated 90°).</li>
-        </ul>
-      </Section>
-      <Section title="Drawing">
-        <p>If you have no tiles that match either chain end, click <strong>Draw Tile</strong> to draw from the boneyard. Keep drawing until you get a playable tile or the boneyard is empty.</p>
-      </Section>
-      <Section title="Passing">
-        <p>If the boneyard is empty and you still have no valid play, click <strong>Pass Turn</strong> to pass.</p>
-      </Section>
-      <Section title="Winning">
-        <ul className="list-disc list-inside space-y-1">
-          <li><strong>Normal win:</strong> Play your last tile first.</li>
-          <li><strong>Blocked game:</strong> When neither player can move and the boneyard is empty, the player with the lower total pip count wins (ties go to Player 1).</li>
-        </ul>
       </Section>
     </>
   );
