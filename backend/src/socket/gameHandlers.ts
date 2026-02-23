@@ -81,6 +81,12 @@ export function registerGameHandlers(
 
       await sessionService.updatePlayerSocketId(sessionCode, playerId, socket.id);
 
+      // Leave any previously joined session rooms before joining the new one,
+      // so stale events from old sessions don't bleed into new sessions.
+      for (const room of Array.from(socket.rooms)) {
+        if (room !== socket.id) socket.leave(room);
+      }
+
       socket.join(sessionCode);
 
       // If this is a tournament match session, also join the hub room and update hub socketId

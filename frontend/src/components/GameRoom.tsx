@@ -244,6 +244,7 @@ export default function GameRoom() {
     });
 
     socket.on('game:started', (updatedSession) => {
+      if (updatedSession.sessionCode !== sessionCode) return;
       setSession(updatedSession);
       setGameState(updatedSession.gameState);
       setMoveHistory([]);
@@ -251,6 +252,7 @@ export default function GameRoom() {
     });
 
     socket.on('game:restarted', (newSession) => {
+      if (newSession.sessionCode !== sessionCode) return;
       setSession(newSession);
       setGameState(newSession.gameState);
       setMoveHistory([]);
