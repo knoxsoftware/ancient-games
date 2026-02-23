@@ -24,6 +24,8 @@ const ChatMessageSchema = new Schema<ChatMessage>({
   text: { type: String, required: true },
   timestamp: { type: Number, required: true },
   isSpectator: { type: Boolean, default: false },
+  chatScope: { type: String, enum: ['tournament', 'match', 'dm'], default: null },
+  toPlayerId: { type: String, default: null },
 });
 
 const GameStateSchema = new Schema<GameState>({
@@ -46,6 +48,9 @@ const SessionSchema = new Schema<SessionDocument>({
   createdAt: { type: Date, default: Date.now },
   lastActivity: { type: Date, default: Date.now },
   chatHistory: { type: [ChatMessageSchema], default: [] },
+  tournamentState: { type: Schema.Types.Mixed, default: null },
+  tournamentHubCode: { type: String, default: null },
+  tournamentMatchId: { type: String, default: null },
 });
 
 // Auto-cleanup sessions older than 24 hours with no activity

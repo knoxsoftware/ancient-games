@@ -1,5 +1,43 @@
 export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens';
 
+export type TournamentFormat = 'bo1' | 'bo3' | 'bo5' | 'bo7' | 'round-robin';
+
+export interface TournamentParticipant {
+  id: string;
+  displayName: string;
+  seed: number;
+  eliminated: boolean;
+}
+
+export interface TournamentMatch {
+  matchId: string;
+  roundIndex: number;
+  matchIndex: number;
+  player1Id: string | null;
+  player2Id: string | null;
+  player1Wins: number;
+  player2Wins: number;
+  winnerId: string | null;
+  currentSessionCode: string | null;
+  status: 'pending' | 'in_progress' | 'finished' | 'bye';
+}
+
+export interface TournamentStanding {
+  playerId: string;
+  wins: number;
+  losses: number;
+  matchesPlayed: number;
+}
+
+export interface TournamentState {
+  format: TournamentFormat;
+  rounds: TournamentMatch[][];
+  currentRound: number;
+  participants: TournamentParticipant[];
+  standings?: TournamentStanding[];
+  winnerId: string | null;
+}
+
 export interface Player {
   id: string;
   displayName: string;

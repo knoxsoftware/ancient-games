@@ -12,7 +12,8 @@ import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
 import GameControls from './GameControls';
-import ChatPanel, { ChatMessage } from './ChatPanel';
+import ChatPanel, { ChatMessage, ChatDestination } from './ChatPanel';
+import TournamentBracket from './tournament/TournamentBracket';
 
 async function showNotification(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -33,6 +34,7 @@ export default function GameRoom() {
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [hubSession, setHubSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -40,13 +42,17 @@ export default function GameRoom() {
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'game' | 'chat' | 'room' | 'history'>('game');
+  const [activeTab, setActiveTab] = useState<'game' | 'chat' | 'room' | 'history' | 'bracket'>('game');
   const [showRules, setShowRules] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [unreadChat, setUnreadChat] = useState(0);
   const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
   const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeTabRef = useRef<'game' | 'chat' | 'room' | 'history'>('game');
+  const activeTabRef = useRef<'game' | 'chat' | 'room' | 'history' | 'bracket'>('game');
+  const [copiedSpectatorLink, setCopiedSpectatorLink] = useState(false);
+  const [tournamentToast, setTournamentToast] = useState<string | null>(null);
+  const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     activeTabRef.current = activeTab;
     if (activeTab === 'chat') {
@@ -72,6 +78,12 @@ export default function GameRoom() {
 
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
 
+  const showTournamentToast = (msg: string) => {
+    if (tournamentToastTimerRef.current) clearTimeout(tournamentToastTimerRef.current);
+    setTournamentToast(msg);
+    tournamentToastTimerRef.current = setTimeout(() => setTournamentToast(null), 4000);
+  };
+
   useEffect(() => {
     if (!sessionCode) {
       navigate('/');
@@ -80,33 +92,30 @@ export default function GameRoom() {
     loadSession();
   }, [sessionCode]);
 
-  // Register service worker and subscribe to push notifications on mount
   useEffect(() => {
     if (playerId) {
       initPushNotifications(playerId);
     }
   }, [playerId]);
 
+  // Load hub session when we know there is one
+  useEffect(() => {
+    if (session?.tournamentHubCode) {
+      api.getSession(session.tournamentHubCode).then(setHubSession).catch(() => {});
+    }
+  }, [session?.tournamentHubCode]);
+
   useEffect(() => {
     if (!sessionCode || !playerId) return;
 
     const socket = socketService.connect();
 
-
-    // Re-join the session room and pull latest state on every (re)connection.
-    // The server responds with session:updated which carries the full game state,
-    // so no separate REST call is needed on reconnect.
     const rejoin = () => {
       socket.emit('session:join', { sessionCode, playerId });
     };
     socket.on('connect', rejoin);
-    // If the socket is already connected (e.g. navigating back to this page),
-    // the 'connect' event won't fire again — call immediately.
     if (socket.connected) rejoin();
 
-    // When the tab becomes visible again, refresh state. On Android the socket
-    // often looks "connected" but has gone stale while backgrounded, so we
-    // re-join whenever visible rather than only when visibly disconnected.
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         if (socket.connected) {
@@ -155,10 +164,6 @@ export default function GameRoom() {
       const playerNum =
         currentSession?.players.find(p => p.id === move.playerId)?.playerNumber ?? 0;
 
-      // Captures are only possible in Ur's shared section (positions 4–11).
-      // Private lane positions use the same numbers for both players but
-      // occupy separate physical paths, so a position match there is not a
-      // capture and must be excluded.
       const isCapturablePosition =
         currentSession?.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
 
@@ -172,7 +177,6 @@ export default function GameRoom() {
 
       setGameState(updatedGameState);
 
-      // Morris and Wolves & Ravens have no path animation support
       const supportsAnimation = currentSession?.gameType === 'ur' || currentSession?.gameType === 'senet';
       if (supportsAnimation) {
         animIdRef.current += 1;
@@ -191,7 +195,6 @@ export default function GameRoom() {
         { id: historyIdRef.current, move, playerNumber: playerNum, wasCapture },
       ]);
 
-      // Browser notification when the tab is inactive and it's now my turn
       if (
         'Notification' in window &&
         Notification.permission === 'granted' &&
@@ -238,16 +241,14 @@ export default function GameRoom() {
     });
 
     socket.on('chat:message', (msg) => {
-      setChatMessages((prev) => [...prev, msg]);
+      setChatMessages((prev) => [...prev, msg as ChatMessage]);
       if (activeTabRef.current !== 'chat') {
         setUnreadChat((n) => n + 1);
-        // Toast when the game is visible but chat tab is not active
         if (!document.hidden) {
           if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
           setChatToast({ displayName: msg.displayName, text: msg.text });
           chatToastTimerRef.current = setTimeout(() => setChatToast(null), 3000);
         } else {
-          // Push notification when the tab is not active
           showNotification(msg.displayName, msg.text);
         }
       }
@@ -266,9 +267,26 @@ export default function GameRoom() {
     });
 
     socket.on('chat:history', (messages) => {
-      setChatMessages(messages);
+      setChatMessages(messages as ChatMessage[]);
     });
 
+    socket.on('tournament:updated', (updatedHubSession) => {
+      setHubSession(updatedHubSession);
+    });
+
+    socket.on('tournament:match-ready', ({ matchSessionCode, opponentName, roundLabel }) => {
+      showTournamentToast(`Next match ready vs ${opponentName} — ${roundLabel}!`);
+      setTimeout(() => navigate(`/game/${matchSessionCode}`), 3000);
+    });
+
+    socket.on('tournament:eliminated', ({ tournamentCode }) => {
+      showTournamentToast('You have been eliminated. Returning to bracket...');
+      setTimeout(() => navigate(`/session/${tournamentCode}`), 3000);
+    });
+
+    socket.on('tournament:finished', ({ winnerName }) => {
+      showTournamentToast(`Tournament over! ${winnerName} wins!`);
+    });
 
     return () => {
       socket.off('connect', rejoin);
@@ -284,6 +302,10 @@ export default function GameRoom() {
       socket.off('chat:message');
       socket.off('game:history');
       socket.off('chat:history');
+      socket.off('tournament:updated');
+      socket.off('tournament:match-ready');
+      socket.off('tournament:eliminated');
+      socket.off('tournament:finished');
     };
   }, [sessionCode, playerId]);
 
@@ -294,7 +316,7 @@ export default function GameRoom() {
       setGameState(sessionData.gameState);
 
       if (sessionData.chatHistory && sessionData.chatHistory.length > 0) {
-        setChatMessages(sessionData.chatHistory);
+        setChatMessages(sessionData.chatHistory as ChatMessage[]);
       }
 
       if (sessionData.gameState.moveHistory && sessionData.gameState.moveHistory.length > 0) {
@@ -354,12 +376,8 @@ export default function GameRoom() {
 
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
-
     const socket = socketService.getSocket();
-    if (socket) {
-      socket.emit('session:leave', { sessionCode, playerId });
-    }
-
+    if (socket) socket.emit('session:leave', { sessionCode, playerId });
     localStorage.removeItem('playerId');
     navigate('/');
   };
@@ -370,9 +388,15 @@ export default function GameRoom() {
     socket.emit('game:rematch', { sessionCode, playerId });
   };
 
+  const handleReturnToBracket = () => {
+    if (session?.tournamentHubCode) {
+      navigate(`/session/${session.tournamentHubCode}`);
+    }
+  };
+
   const handleReplay = (entry: HistoryEntry) => {
     const gt = session?.gameType;
-    if (gt !== 'ur' && gt !== 'senet') return; // only animated games support replay
+    if (gt !== 'ur' && gt !== 'senet') return;
     replayIdRef.current += 1;
     setReplayAnimation({
       move: entry.move,
@@ -381,6 +405,35 @@ export default function GameRoom() {
       id: replayIdRef.current,
     });
     setReplayingEntryId(entry.id);
+  };
+
+  // Build chat destinations for tournament matches
+  const chatDestinations: ChatDestination[] | undefined = session?.tournamentHubCode
+    ? (() => {
+        const participants = hubSession?.tournamentState?.participants ?? [];
+        const opponent = session.players.find(p => p.id !== playerId);
+        const dests: ChatDestination[] = [
+          { id: 'tournament', label: 'Tournament (all)' },
+          { id: 'match', label: `Match vs ${opponent?.displayName ?? 'Opponent'}` },
+          ...participants
+            .filter(p => p.id !== playerId)
+            .sort((a, b) => a.displayName.localeCompare(b.displayName))
+            .map(p => ({ id: p.id, label: `DM: ${p.displayName}` })),
+        ];
+        return dests;
+      })()
+    : undefined;
+
+  const handleChatSend = (text: string, destinationId?: string) => {
+    const socket = socketService.getSocket();
+    if (!socket || !sessionCode || !playerId) return;
+    if (!destinationId || destinationId === 'match') {
+      socket.emit('chat:send', { sessionCode, playerId, text });
+    } else if (destinationId === 'tournament') {
+      socket.emit('chat:send', { sessionCode, playerId, text, scope: 'tournament' });
+    } else {
+      socket.emit('chat:send', { sessionCode, playerId, text, scope: { toPlayerId: destinationId } });
+    }
   };
 
   if (loading) {
@@ -406,7 +459,6 @@ export default function GameRoom() {
     );
   }
 
-  // Show spectate form when visitor has no ID or their ID isn't recognised in this session
   const knownToSession =
     playerId &&
     (session.players.some((p) => p.id === playerId) ||
@@ -460,14 +512,17 @@ export default function GameRoom() {
   }
 
   const currentPlayer = session.players.find((p) => p.id === playerId);
-  const isSpectator =
-    !currentPlayer && session.spectators.some((s) => s.id === playerId);
+  const isSpectator = !currentPlayer && session.spectators.some((s) => s.id === playerId);
   const bothSeated = session.players.length === 2;
   const isMyTurn = bothSeated && !isSpectator && gameState.currentTurn === currentPlayer?.playerNumber;
+  const isTournamentMatch = !!session.tournamentHubCode;
 
   const animatingPiece = pendingAnimation
     ? { playerNumber: pendingAnimation.playerNumber, pieceIndex: pendingAnimation.move.pieceIndex }
     : null;
+
+  type TabName = 'game' | 'chat' | 'room' | 'history' | 'bracket';
+  const tabs: TabName[] = ['game', 'chat', 'room', 'history', ...(isTournamentMatch ? ['bracket' as TabName] : [])];
 
   return (
     <div className="min-h-screen p-4">
@@ -494,7 +549,6 @@ export default function GameRoom() {
           </button>
         </div>
 
-        {/* Inline error */}
         {error && (
           <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 mb-4 text-center text-red-200">
             {error}
@@ -515,22 +569,30 @@ export default function GameRoom() {
               {session.players[gameState.winner]?.displayName} is the winner!
             </div>
             {!isSpectator && (
-              <button
-                onClick={handleRematch}
-                className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
-              >
-                Play Again
-              </button>
+              <div className="flex gap-3 justify-center flex-wrap">
+                {isTournamentMatch ? (
+                  <button
+                    onClick={handleReturnToBracket}
+                    className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
+                  >
+                    Return to Bracket
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRematch}
+                    className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
+                  >
+                    Play Again
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
 
         {/* Tab bar */}
-        <div
-          className="flex gap-0 border-b"
-          style={{ borderColor: 'rgba(42,30,14,0.8)' }}
-        >
-          {(['game', 'chat', 'room', 'history'] as const).map((tab) => (
+        <div className="flex gap-0 border-b" style={{ borderColor: 'rgba(42,30,14,0.8)' }}>
+          {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -542,7 +604,7 @@ export default function GameRoom() {
                 background: 'transparent',
               }}
             >
-              {tab === 'game' ? 'Game' : tab === 'chat' ? 'Chat' : tab === 'room' ? 'Room' : 'History'}
+              {tab === 'bracket' ? 'Bracket' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               {tab === 'chat' && unreadChat > 0 && (
                 <span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-xs font-bold"
@@ -555,12 +617,10 @@ export default function GameRoom() {
           ))}
         </div>
 
-        {/* Tab content — fixed height so the board below stays anchored */}
+        {/* Tab content */}
         <div className="h-64 overflow-y-auto mb-4">
-          {/* Game tab: player seats + dice / controls */}
           {activeTab === 'game' && (
             <div>
-              {/* Player seats — always 2 slots */}
               <div className="grid grid-cols-2 gap-2 p-2">
                 {([0, 1] as const).map((seatIndex) => {
                   const player = session.players.find((p) => p.playerNumber === seatIndex);
@@ -654,7 +714,6 @@ export default function GameRoom() {
                 })}
               </div>
 
-              {/* Dice / controls */}
               {bothSeated ? (
                 <GameControls
                   session={session}
@@ -671,28 +730,19 @@ export default function GameRoom() {
             </div>
           )}
 
-          {/* Chat tab */}
           {activeTab === 'chat' && (
             <ChatPanel
               messages={chatMessages}
               currentPlayerId={playerId!}
-              onSend={(text) => {
-                const socket = socketService.getSocket();
-                if (socket && sessionCode) {
-                  socket.emit('chat:send', { sessionCode, playerId: playerId!, text });
-                }
-              }}
+              chatDestinations={chatDestinations}
+              onSend={handleChatSend}
             />
           )}
 
-          {/* Room tab */}
           {activeTab === 'room' && (
             <div className="p-3 space-y-4">
-              {/* Seated players */}
               <div>
-                <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
-                  Players
-                </div>
+                <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>Players</div>
                 {session.players.length === 0 ? (
                   <div className="text-xs" style={{ color: '#5A4A38' }}>No players seated</div>
                 ) : (
@@ -709,7 +759,6 @@ export default function GameRoom() {
                 )}
               </div>
 
-              {/* Spectators */}
               {session.spectators.length > 0 && (
                 <div>
                   <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
@@ -728,11 +777,31 @@ export default function GameRoom() {
                 </div>
               )}
 
-              {/* Action buttons */}
+              {/* Spectator invite link */}
+              <div>
+                <div className="text-xs font-medium mb-1" style={{ color: '#8A7A60' }}>Invite spectators</div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/game/${sessionCode}`);
+                    setCopiedSpectatorLink(true);
+                    setTimeout(() => setCopiedSpectatorLink(false), 2000);
+                  }}
+                  className="text-sm transition-colors"
+                  style={{ color: copiedSpectatorLink ? '#90C870' : '#6A9A60' }}
+                >
+                  {copiedSpectatorLink ? '✓ Copied spectator link' : 'Copy spectator link'}
+                </button>
+              </div>
+
               <div className="flex flex-col gap-2 pt-1">
                 {!isSpectator && (
                   <button onClick={handleStandUp} className="btn btn-outline text-sm">
                     Stand Up
+                  </button>
+                )}
+                {isTournamentMatch && (
+                  <button onClick={handleReturnToBracket} className="btn btn-outline text-sm">
+                    View Bracket
                   </button>
                 )}
                 <button onClick={handleLeave} className="btn btn-outline text-sm">
@@ -742,7 +811,6 @@ export default function GameRoom() {
             </div>
           )}
 
-          {/* History tab: move log */}
           {activeTab === 'history' && (
             <div className="pt-3">
               <MoveLog
@@ -754,9 +822,26 @@ export default function GameRoom() {
               />
             </div>
           )}
+
+          {activeTab === 'bracket' && isTournamentMatch && (
+            <div className="p-3">
+              {hubSession?.tournamentState ? (
+                <TournamentBracket
+                  tournament={hubSession.tournamentState}
+                  participants={hubSession.tournamentState.participants}
+                  currentPlayerId={playerId!}
+                  onWatchMatch={(code) => navigate(`/game/${code}`)}
+                />
+              ) : (
+                <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
+                  Loading bracket…
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Board — always visible regardless of active tab */}
+        {/* Board */}
         <div>
           {session.gameType === 'ur' && (
             <UrBoard
@@ -795,7 +880,7 @@ export default function GameRoom() {
         </div>
       </div>
 
-      {/* Non-layout-shifting toast for transient messages */}
+      {/* Toasts */}
       {message && (
         <div
           key={message}
@@ -807,13 +892,13 @@ export default function GameRoom() {
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+            transform: 'translateX(-50%)',
           }}
         >
           {message}
         </div>
       )}
 
-      {/* Chat message toast — shown when a message arrives and chat tab is not active */}
       {chatToast && (
         <div
           key={chatToast.displayName + chatToast.text}
@@ -825,6 +910,7 @@ export default function GameRoom() {
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+            transform: 'translateX(-50%)',
           }}
         >
           <span style={{ color: '#E8C870' }}>{chatToast.displayName}:</span>{' '}
@@ -832,7 +918,24 @@ export default function GameRoom() {
         </div>
       )}
 
-      {/* Skip-turn notice — amber/warning styling distinct from normal toast */}
+      {tournamentToast && (
+        <div
+          key={tournamentToast}
+          className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
+          style={{
+            background: 'rgba(10,20,10,0.95)',
+            border: '1px solid rgba(100,180,100,0.5)',
+            color: '#C0E8C0',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
+            transform: 'translateX(-50%)',
+          }}
+        >
+          {tournamentToast}
+        </div>
+      )}
+
       {skipNotice && (
         <div
           key={skipNotice.playerName}
@@ -844,6 +947,7 @@ export default function GameRoom() {
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(220,140,20,0.2)',
+            transform: 'translateX(-50%)',
           }}
         >
           No valid moves — {skipNotice.playerName}&apos;s turn passes
@@ -863,7 +967,6 @@ export default function GameRoom() {
         />
       )}
 
-      {/* Rules overlay modal */}
       {showRules && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"

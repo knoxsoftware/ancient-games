@@ -12,6 +12,15 @@ function gameTitle(gameType: string): string {
   return 'Senet';
 }
 
+function getRoundLabel(format: string, roundIndex: number, totalRounds: number): string {
+  if (format === 'round-robin') return `Round ${roundIndex + 1}`;
+  const remaining = totalRounds - roundIndex;
+  if (remaining === 1) return 'Final';
+  if (remaining === 2) return 'Semi-final';
+  if (remaining === 3) return 'Quarter-final';
+  return `Round of ${Math.pow(2, remaining)}`;
+}
+
 export function registerGameHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents>,
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
@@ -27,25 +36,25 @@ export function registerGameHandlers(
         return;
       }
 
-      // Detect first-ever socket connection (socketId is 'temp' until then)
       const joiningPlayer = session.players.find(p => p.id === playerId);
       const joiningSpectator = !joiningPlayer ? session.spectators.find(s => s.id === playerId) : undefined;
       const isFirstConnect = (joiningPlayer?.socketId === 'temp') || (joiningSpectator?.socketId === 'temp');
 
-      // Update socket ID for reconnections (checks players then spectators)
       await sessionService.updatePlayerSocketId(sessionCode, playerId, socket.id);
 
-      // Join the room
       socket.join(sessionCode);
 
-      // Notify everyone in the room
+      // If this is a tournament match session, also join the hub room and update hub socketId
+      if (session.tournamentHubCode) {
+        socket.join(session.tournamentHubCode);
+        await sessionService.updatePlayerSocketId(session.tournamentHubCode, playerId, socket.id);
+      }
+
       io.to(sessionCode).emit('session:updated', session);
 
-      // Send move and chat history to this socket only
       socket.emit('game:history', session.gameState.moveHistory ?? []);
       socket.emit('chat:history', session.chatHistory ?? []);
 
-      // Push notification when a new player first connects to the lobby (not spectators)
       if (isFirstConnect && joiningPlayer) {
         for (const other of session.players) {
           if (other.id !== playerId) {
@@ -65,7 +74,6 @@ export function registerGameHandlers(
   // Leave a session
   socket.on('session:leave', async ({ sessionCode, playerId }) => {
     try {
-      // Try removing as player first, fall back to spectator
       const currentSession = await sessionService.getSession(sessionCode);
       const isPlayer = currentSession?.players.some(p => p.id === playerId) ?? false;
 
@@ -117,7 +125,6 @@ export function registerGameHandlers(
       if (session) {
         io.to(sessionCode).emit('session:updated', session);
 
-        // Push notification to other lobby players about ready status change
         const player = session.players.find(p => p.id === playerId);
         if (player) {
           const statusText = ready ? `${player.displayName} is ready!` : `${player.displayName} is not ready`;
@@ -137,12 +144,47 @@ export function registerGameHandlers(
     }
   });
 
-  // Start the game
-  socket.on('game:start', async ({ sessionCode, playerId }) => {
+  // Start the game (or tournament)
+  socket.on('game:start', async ({ sessionCode, playerId, tournamentFormat }) => {
     try {
-      const session = await sessionService.startGame(sessionCode, playerId);
-      if (session) {
-        io.to(sessionCode).emit('game:started', session);
+      if (tournamentFormat) {
+        const { hubSession, matchSessions } = await sessionService.startTournament(
+          sessionCode,
+          playerId,
+          tournamentFormat
+        );
+
+        io.to(sessionCode).emit('tournament:updated', hubSession);
+
+        const ts = hubSession.tournamentState!;
+        for (const ms of matchSessions) {
+          const p1 = ts.participants.find(p => p.id === ms.player1Id);
+          const p2 = ts.participants.find(p => p.id === ms.player2Id);
+          const roundLabel = getRoundLabel(tournamentFormat, 0, ts.rounds.length);
+
+          const p1Player = hubSession.players.find(p => p.id === ms.player1Id);
+          const p2Player = hubSession.players.find(p => p.id === ms.player2Id);
+
+          if (p1Player && p2) {
+            io.to(p1Player.socketId).emit('tournament:match-ready', {
+              matchSessionCode: ms.sessionCode,
+              opponentName: p2.displayName,
+              roundLabel,
+            });
+          }
+          if (p2Player && p1) {
+            io.to(p2Player.socketId).emit('tournament:match-ready', {
+              matchSessionCode: ms.sessionCode,
+              opponentName: p1.displayName,
+              roundLabel,
+            });
+          }
+        }
+      } else {
+        const session = await sessionService.startGame(sessionCode, playerId);
+        if (session) {
+          io.to(sessionCode).emit('game:started', session);
+        }
       }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
@@ -188,15 +230,12 @@ export function registerGameHandlers(
         canMove,
       });
 
-      // Check if player can move with this roll
       if (!canMove) {
-        // No valid moves, skip turn
         const nextTurn = (session.gameState.currentTurn + 1) % 2;
         session.gameState.board.diceRoll = null;
         session.gameState.board.currentTurn = nextTurn;
         session.gameState.currentTurn = nextTurn;
 
-        // Record skip in history
         if (!session.gameState.moveHistory) session.gameState.moveHistory = [];
         session.gameState.moveHistory.push({
           move: { playerId, pieceIndex: -1, from: -2, to: -2, diceRoll: roll },
@@ -212,7 +251,6 @@ export function registerGameHandlers(
           currentTurn: session.gameState.currentTurn,
         });
 
-        // Notify the next player — the current player had no valid moves
         const nextPlayer = session.players.find(p => p.playerNumber === nextTurn);
         if (nextPlayer) {
           await pushService.sendNotification(nextPlayer.id, {
@@ -251,13 +289,11 @@ export function registerGameHandlers(
 
       const gameEngine = GameRegistry.getGame(session.gameType);
 
-      // Validate move
       if (!gameEngine.validateMove(session.gameState.board, move, player)) {
         socket.emit('game:error', { message: 'Invalid move' });
         return;
       }
 
-      // Capture detection: check if an opponent piece occupies the destination
       const isCapturablePosition = session.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
       const wasCapture =
         move.to !== 99 &&
@@ -266,19 +302,16 @@ export function registerGameHandlers(
           (p) => p.playerNumber !== player.playerNumber && p.position === move.to
         );
 
-      // Apply move
       const newBoard = gameEngine.applyMove(session.gameState.board, move);
       session.gameState.board = newBoard;
       session.gameState.currentTurn = newBoard.currentTurn;
 
-      // Check win condition
       const winner = gameEngine.checkWinCondition(newBoard);
       if (winner !== null) {
         session.gameState.winner = winner;
         session.gameState.finished = true;
       }
 
-      // Record move in history
       if (!session.gameState.moveHistory) session.gameState.moveHistory = [];
       session.gameState.moveHistory.push({
         move,
@@ -289,7 +322,6 @@ export function registerGameHandlers(
 
       await sessionService.updateGameState(sessionCode, session.gameState);
 
-      // Notify all players
       io.to(sessionCode).emit('game:move-made', {
         move,
         gameState: session.gameState,
@@ -300,12 +332,87 @@ export function registerGameHandlers(
           winner,
           gameState: session.gameState,
         });
+
+        // Handle tournament game ended
+        if (session.tournamentHubCode) {
+          try {
+            const tournResult = await sessionService.handleTournamentGameEnded(sessionCode, winner);
+            const hubSession = tournResult.hubSession;
+            const ts = hubSession.tournamentState!;
+
+            io.to(session.tournamentHubCode).emit('tournament:updated', hubSession);
+
+            if (tournResult.seriesContinued && tournResult.seriesNextSessionCode) {
+              const nextCode = tournResult.seriesNextSessionCode;
+              const match = ts.rounds.flat().find(m => m.currentSessionCode === nextCode);
+              const roundLabel = getRoundLabel(ts.format, match?.roundIndex ?? 0, ts.rounds.length);
+              const p1Id = match?.player1Id ?? session.players[0].id;
+              const p2Id = match?.player2Id ?? session.players[1].id;
+              const p1 = ts.participants.find(p => p.id === p1Id);
+              const p2 = ts.participants.find(p => p.id === p2Id);
+
+              const p1Sock = hubSession.players.find(p => p.id === p1Id);
+              const p2Sock = hubSession.players.find(p => p.id === p2Id);
+              if (p1Sock && p2) io.to(p1Sock.socketId).emit('tournament:match-ready', {
+                matchSessionCode: nextCode,
+                opponentName: p2.displayName,
+                roundLabel,
+              });
+              if (p2Sock && p1) io.to(p2Sock.socketId).emit('tournament:match-ready', {
+                matchSessionCode: nextCode,
+                opponentName: p1.displayName,
+                roundLabel,
+              });
+            }
+
+            if (tournResult.matchFinished) {
+              if (tournResult.eliminatedPlayerId) {
+                const elimSock = hubSession.players.find(p => p.id === tournResult.eliminatedPlayerId);
+                if (elimSock) {
+                  io.to(elimSock.socketId).emit('tournament:eliminated', {
+                    tournamentCode: session.tournamentHubCode,
+                  });
+                }
+              }
+
+              for (const nm of tournResult.nextRoundMatches) {
+                const p1 = ts.participants.find(p => p.id === nm.player1Id);
+                const p2 = ts.participants.find(p => p.id === nm.player2Id);
+                const nextMatch = ts.rounds.flat().find(m => m.currentSessionCode === nm.sessionCode);
+                const roundLabel = getRoundLabel(ts.format, nextMatch?.roundIndex ?? 0, ts.rounds.length);
+
+                const p1Sock = hubSession.players.find(p => p.id === nm.player1Id);
+                const p2Sock = hubSession.players.find(p => p.id === nm.player2Id);
+                if (p1Sock && p2) io.to(p1Sock.socketId).emit('tournament:match-ready', {
+                  matchSessionCode: nm.sessionCode,
+                  opponentName: p2.displayName,
+                  roundLabel,
+                });
+                if (p2Sock && p1) io.to(p2Sock.socketId).emit('tournament:match-ready', {
+                  matchSessionCode: nm.sessionCode,
+                  opponentName: p1.displayName,
+                  roundLabel,
+                });
+              }
+            }
+
+            if (tournResult.tournamentFinished && ts.winnerId) {
+              const winnerParticipant = ts.participants.find(p => p.id === ts.winnerId);
+              io.to(session.tournamentHubCode).emit('tournament:finished', {
+                tournamentCode: session.tournamentHubCode,
+                winnerId: ts.winnerId,
+                winnerName: winnerParticipant?.displayName ?? 'Unknown',
+              });
+            }
+          } catch (tournError) {
+            console.error('Tournament game end handling failed:', tournError);
+          }
+        }
       } else {
         io.to(sessionCode).emit('game:turn-changed', {
           currentTurn: session.gameState.currentTurn,
         });
 
-        // Push notification to the player whose turn it now is
         const nextPlayer = session.players.find(
           p => p.playerNumber === session.gameState.currentTurn
         );
@@ -358,7 +465,7 @@ export function registerGameHandlers(
     }
   });
 
-  // Rematch — reset game state for the same two players
+  // Rematch
   socket.on('game:rematch', async ({ sessionCode, playerId }) => {
     try {
       const session = await sessionService.getSession(sessionCode);
@@ -374,7 +481,6 @@ export function registerGameHandlers(
       }
 
       if (session.status !== 'finished') {
-        // Already restarted by the other player; client will receive game:restarted
         return;
       }
 
@@ -388,7 +494,7 @@ export function registerGameHandlers(
   });
 
   // Chat message
-  socket.on('chat:send', async ({ sessionCode, playerId, text }) => {
+  socket.on('chat:send', async ({ sessionCode, playerId, text, scope }) => {
     try {
       const session = await sessionService.getSession(sessionCode);
       if (!session) return;
@@ -401,17 +507,50 @@ export function registerGameHandlers(
       const trimmed = text.trim().slice(0, 500);
       if (!trimmed) return;
 
-      const message = {
-        id: nanoid(),
-        playerId,
-        displayName: sender.displayName,
-        text: trimmed,
-        timestamp: Date.now(),
-        isSpectator: !!spectator,
-      };
-
-      await sessionService.addChatMessage(sessionCode, message);
-      io.to(sessionCode).emit('chat:message', message);
+      if (scope === 'tournament' && session.tournamentHubCode) {
+        const message = {
+          id: nanoid(),
+          playerId,
+          displayName: sender.displayName,
+          text: trimmed,
+          timestamp: Date.now(),
+          isSpectator: !!spectator,
+          chatScope: 'tournament' as const,
+        };
+        await sessionService.addChatMessage(session.tournamentHubCode, message);
+        io.to(session.tournamentHubCode).emit('chat:message', message);
+      } else if (scope && typeof scope === 'object' && 'toPlayerId' in scope) {
+        // DM — ephemeral, not stored
+        const target = session.players.find(p => p.id === scope.toPlayerId)
+          ?? session.spectators.find(s => s.id === scope.toPlayerId);
+        if (target && target.socketId !== 'temp') {
+          const dmMessage = {
+            id: nanoid(),
+            playerId,
+            displayName: sender.displayName,
+            text: trimmed,
+            timestamp: Date.now(),
+            isSpectator: !!spectator,
+            chatScope: 'dm' as const,
+            toPlayerId: scope.toPlayerId,
+          };
+          io.to(target.socketId).emit('chat:message', dmMessage);
+          socket.emit('chat:message', dmMessage);
+        }
+      } else {
+        // Default: match/session chat
+        const message = {
+          id: nanoid(),
+          playerId,
+          displayName: sender.displayName,
+          text: trimmed,
+          timestamp: Date.now(),
+          isSpectator: !!spectator,
+          chatScope: session.tournamentHubCode ? ('match' as const) : undefined,
+        };
+        await sessionService.addChatMessage(sessionCode, message);
+        io.to(sessionCode).emit('chat:message', message);
+      }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
     }
@@ -419,7 +558,6 @@ export function registerGameHandlers(
 
   // Handle disconnection
   socket.on('disconnect', () => {
-    // Socket rooms will be automatically cleaned up
     console.log('Client disconnected:', socket.id);
   });
 }

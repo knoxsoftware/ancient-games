@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session } from '@ancient-games/shared';
+import { Session, TournamentFormat } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 import { initPushNotifications } from '../../services/pushNotifications';
+import TournamentBracket from '../tournament/TournamentBracket';
 
 const GAME_NAMES: Record<string, string> = {
   ur: 'Royal Game of Ur',
@@ -11,6 +12,15 @@ const GAME_NAMES: Record<string, string> = {
   morris: "Nine Men's Morris",
   'wolves-and-ravens': 'Wolves & Ravens',
 };
+
+const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string; desc: string }[] = [
+  { value: 'single', label: 'Single Match', desc: '1 game, 2 players only' },
+  { value: 'bo1', label: 'Best of 1', desc: 'Elimination, 1 game per match' },
+  { value: 'bo3', label: 'Best of 3', desc: 'Elimination, first to 2 wins' },
+  { value: 'bo5', label: 'Best of 5', desc: 'Elimination, first to 3 wins' },
+  { value: 'bo7', label: 'Best of 7', desc: 'Elimination, first to 4 wins' },
+  { value: 'round-robin', label: 'Round Robin', desc: 'Everyone plays everyone' },
+];
 
 export default function SessionLobby() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
@@ -21,20 +31,18 @@ export default function SessionLobby() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [format, setFormat] = useState<TournamentFormat | 'single'>('single');
 
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevSessionRef = useRef<Session | null>(null);
 
-  // Make playerId reactive so the socket useEffect re-fires after joining
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
 
-  // Join-form state (shown when visitor has no playerId)
   const [displayName, setDisplayName] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [spectateLoading, setSpectateLoading] = useState(false);
 
-  // Register push notifications whenever we have a playerId
   useEffect(() => {
     if (playerId) initPushNotifications(playerId);
   }, [playerId]);
@@ -42,9 +50,8 @@ export default function SessionLobby() {
   const showNotice = (msg: string) => {
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
     setNotice(msg);
-    noticeTimerRef.current = setTimeout(() => setNotice(null), 3000);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 3500);
 
-    // Also show a browser notification when the tab is not in focus
     if (
       'Notification' in window &&
       Notification.permission === 'granted' &&
@@ -54,7 +61,6 @@ export default function SessionLobby() {
     }
   };
 
-  // Always fetch session so we can show game context on the join form
   useEffect(() => {
     if (!sessionCode) {
       navigate('/');
@@ -63,23 +69,17 @@ export default function SessionLobby() {
     loadSession();
   }, [sessionCode]);
 
-  // Only connect socket once we have a playerId
   useEffect(() => {
     if (!sessionCode || !playerId) return;
 
     const socket = socketService.connect();
 
-    // Re-join the session room on every (re)connection so the server sends
-    // a fresh session:updated with the latest lobby state.
     const rejoin = () => {
       socket.emit('session:join', { sessionCode, playerId });
     };
     socket.on('connect', rejoin);
     if (socket.connected) rejoin();
 
-    // If the tab becomes visible again, refresh state. On Android the socket
-    // often looks "connected" but has gone stale while backgrounded, so we
-    // re-join whenever visible rather than only when visibly disconnected.
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         if (socket.connected) {
@@ -94,19 +94,10 @@ export default function SessionLobby() {
     socket.on('session:updated', (updatedSession) => {
       const prev = prevSessionRef.current;
       if (prev) {
-        // Detect new players
         const prevIds = new Set(prev.players.map((p) => p.id));
         for (const p of updatedSession.players) {
           if (!prevIds.has(p.id) && p.id !== playerId) {
             showNotice(`${p.displayName} has joined`);
-          }
-        }
-        // Detect ready-status changes for other players
-        for (const p of updatedSession.players) {
-          if (p.id === playerId) continue;
-          const prevPlayer = prev.players.find((pp) => pp.id === p.id);
-          if (prevPlayer && prevPlayer.ready !== p.ready) {
-            showNotice(p.ready ? `${p.displayName} is ready` : `${p.displayName} is not ready`);
           }
         }
       }
@@ -138,6 +129,16 @@ export default function SessionLobby() {
       navigate(`/game/${sessionCode}`);
     });
 
+    socket.on('tournament:updated', (updatedSession) => {
+      prevSessionRef.current = updatedSession;
+      setSession(updatedSession);
+    });
+
+    socket.on('tournament:match-ready', ({ matchSessionCode, opponentName, roundLabel }) => {
+      showNotice(`Match ready vs ${opponentName} — ${roundLabel}!`);
+      setTimeout(() => navigate(`/game/${matchSessionCode}`), 2000);
+    });
+
     socket.on('session:error', (err) => setError(err.message));
 
     return () => {
@@ -147,6 +148,8 @@ export default function SessionLobby() {
       socket.off('session:player-joined');
       socket.off('session:player-left');
       socket.off('game:started');
+      socket.off('tournament:updated');
+      socket.off('tournament:match-ready');
       socket.off('session:error');
     };
   }, [sessionCode, playerId]);
@@ -184,19 +187,15 @@ export default function SessionLobby() {
     }
   };
 
-  const handleReady = () => {
-    if (!sessionCode || !playerId) return;
-    const socket = socketService.getSocket();
-    if (!socket) return;
-    const currentPlayer = session?.players.find((p) => p.id === playerId);
-    socket.emit('session:ready', { sessionCode, playerId, ready: !currentPlayer?.ready });
-  };
-
   const handleStartGame = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
     if (!socket) return;
-    socket.emit('game:start', { sessionCode, playerId });
+    if (format === 'single') {
+      socket.emit('game:start', { sessionCode, playerId });
+    } else {
+      socket.emit('game:start', { sessionCode, playerId, tournamentFormat: format });
+    }
   };
 
   const handleCopyLink = () => {
@@ -257,7 +256,7 @@ export default function SessionLobby() {
     navigate('/');
   };
 
-  // ── Loading state ─────────────────────────────────────────────────────────
+  // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -266,7 +265,6 @@ export default function SessionLobby() {
     );
   }
 
-  // ── Session not found / hard error ────────────────────────────────────────
   if (error && !session) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -282,15 +280,15 @@ export default function SessionLobby() {
     );
   }
 
-  // ── Join form — visitor has no playerId, or has a stale one from a different session ──
   const knownToSession =
     playerId &&
     session &&
     (session.players.some((p) => p.id === playerId) ||
       session.spectators.some((s) => s.id === playerId));
 
+  // ── Join form ──────────────────────────────────────────────────────────────
   if (!knownToSession) {
-    const isFull = session && session.players.length >= 2;
+    const isFull = session && session.players.length >= 8;
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="card max-w-md w-full">
@@ -365,7 +363,6 @@ export default function SessionLobby() {
     );
   }
 
-  // ── Normal lobby ──────────────────────────────────────────────────────────
   if (!session) return null;
 
   const isSpectator =
@@ -373,9 +370,53 @@ export default function SessionLobby() {
     session.spectators.some((s) => s.id === playerId);
   const isHost = session.hostId === playerId;
   const currentPlayer = session.players.find((p) => p.id === playerId);
-  const allReady = session.players.every((p) => p.ready);
-  const canStart = isHost && session.players.length === 2 && allReady;
+  const canStart = isHost && (format === 'single' ? session.players.length === 2 : session.players.length >= 2);
 
+  // ── Tournament bracket view (tournament already started) ───────────────────
+  if (session.tournamentState) {
+    return (
+      <div className="min-h-screen p-4">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Tournament</h1>
+              <p className="text-gray-400 text-sm">{GAME_NAMES[session.gameType] ?? session.gameType}</p>
+            </div>
+            <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
+              Leave
+            </button>
+          </div>
+
+          <TournamentBracket
+            tournament={session.tournamentState}
+            participants={session.tournamentState.participants}
+            currentPlayerId={playerId!}
+            onWatchMatch={(matchCode) => navigate(`/game/${matchCode}`)}
+          />
+        </div>
+
+        {notice && (
+          <div
+            key={notice}
+            className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
+            style={{
+              background: 'rgba(20,12,0,0.92)',
+              border: '1px solid rgba(196,168,107,0.5)',
+              color: '#F0E6C8',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
+              transform: 'translateX(-50%)',
+            }}
+          >
+            {notice}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Normal lobby ───────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="max-w-2xl w-full space-y-6">
@@ -390,6 +431,7 @@ export default function SessionLobby() {
             </button>
           </div>
 
+          {/* Session code */}
           <div className="bg-gray-700/50 rounded-lg p-4 mb-6">
             <div className="text-sm text-gray-400 mb-1">Session Code</div>
             <div className="flex items-center gap-3">
@@ -406,9 +448,10 @@ export default function SessionLobby() {
             </button>
           </div>
 
+          {/* Players list */}
           <div className="space-y-3 mb-6">
             <div className="text-sm font-medium text-gray-400">
-              Players ({session.players.length}/2)
+              Players ({session.players.length})
             </div>
             {session.players.map((player) => (
               <div
@@ -416,11 +459,7 @@ export default function SessionLobby() {
                 className="flex items-center justify-between bg-gray-700/30 rounded-lg p-3"
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      player.ready ? 'bg-green-500' : 'bg-gray-500'
-                    }`}
-                  />
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
                   <span className="font-medium">{player.displayName}</span>
                   {player.id === session.hostId && (
                     <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-1 rounded">
@@ -432,9 +471,6 @@ export default function SessionLobby() {
                       You
                     </span>
                   )}
-                </div>
-                <div className="text-sm text-gray-400">
-                  {player.ready ? 'Ready' : 'Not ready'}
                 </div>
               </div>
             ))}
@@ -468,24 +504,51 @@ export default function SessionLobby() {
             )}
           </div>
 
+          {/* Format selector — host only */}
+          {isHost && (
+            <div className="mb-6">
+              <div className="text-sm font-medium text-gray-400 mb-2">Format</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {FORMAT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFormat(opt.value)}
+                    className="rounded-lg p-2.5 text-left transition-all border"
+                    style={{
+                      background: format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
+                      borderColor: format === opt.value ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)',
+                      color: format === opt.value ? '#E8C870' : '#8A7A60',
+                    }}
+                  >
+                    <div className="text-sm font-semibold">{opt.label}</div>
+                    <div className="text-xs mt-0.5 opacity-70">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+              {format === 'single' && session.players.length > 2 && (
+                <div className="text-xs mt-2" style={{ color: '#E8A030' }}>
+                  Single Match requires exactly 2 players seated.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Format display for non-hosts */}
+          {!isHost && session.players.length >= 2 && (
+            <div className="mb-6 text-sm" style={{ color: '#6A5A40' }}>
+              The host will choose the format when starting.
+            </div>
+          )}
+
+          {/* Action buttons */}
           <div className="flex gap-3 flex-wrap">
-            {!isSpectator && currentPlayer && (
-              <button
-                onClick={handleReady}
-                className={`btn flex-1 ${
-                  currentPlayer.ready ? 'btn-outline' : 'btn-secondary'
-                }`}
-              >
-                {currentPlayer.ready ? 'Not Ready' : 'Ready'}
-              </button>
-            )}
             {!isSpectator && isHost && (
               <button
                 onClick={handleStartGame}
                 disabled={!canStart}
                 className="btn btn-primary flex-1"
               >
-                Start Game
+                {format === 'single' ? 'Start Game' : 'Start Tournament'}
               </button>
             )}
             {!isSpectator && currentPlayer && (
@@ -504,13 +567,14 @@ export default function SessionLobby() {
             <div className="text-sm text-gray-400 text-center mt-2">
               {session.players.length < 2
                 ? 'Waiting for another player to join'
-                : 'All players must be ready to start'}
+                : format === 'single' && session.players.length > 2
+                  ? 'Single Match requires exactly 2 players'
+                  : ''}
             </div>
           )}
         </div>
       </div>
 
-      {/* Lobby notification toast */}
       {notice && (
         <div
           key={notice}
@@ -522,6 +586,7 @@ export default function SessionLobby() {
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+            transform: 'translateX(-50%)',
           }}
         >
           {notice}

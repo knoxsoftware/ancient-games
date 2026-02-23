@@ -7,17 +7,32 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   isSpectator?: boolean;
+  chatScope?: 'tournament' | 'match' | 'dm';
+  toPlayerId?: string;
+}
+
+export interface ChatDestination {
+  id: string;   // 'tournament' | 'match' | playerId
+  label: string;
 }
 
 interface ChatPanelProps {
   messages: ChatMessage[];
-  onSend: (text: string) => void;
+  onSend: (text: string, destinationId?: string) => void;
   currentPlayerId: string;
+  chatDestinations?: ChatDestination[];
 }
 
-export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPanelProps) {
+export default function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
+  const [destination, setDestination] = useState<string>('match');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatDestinations && chatDestinations.length > 0) {
+      setDestination(chatDestinations[0].id);
+    }
+  }, [chatDestinations?.length]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -29,7 +44,7 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
     e.preventDefault();
     const trimmed = draft.trim();
     if (!trimmed) return;
-    onSend(trimmed);
+    onSend(trimmed, chatDestinations ? destination : undefined);
     setDraft('');
   };
 
@@ -37,6 +52,12 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  function getScopeBadge(msg: ChatMessage): string | null {
+    if (msg.chatScope === 'tournament') return '[Tournament]';
+    if (msg.chatScope === 'dm') return '[DM]';
+    return null;
+  }
 
   return (
     <div
@@ -59,9 +80,10 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
         )}
         {messages.map((msg, i) => {
           const isMe = msg.playerId === currentPlayerId;
+          const badge = getScopeBadge(msg);
           return (
             <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className="flex items-baseline gap-2 mb-0.5">
+              <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
                 <span
                   className="text-xs font-semibold"
                   style={{ color: isMe ? '#E8C870' : '#A09070' }}
@@ -73,6 +95,23 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
                     spectating
                   </span>
                 )}
+                {badge && (
+                  <span
+                    className="text-xs px-1 rounded"
+                    style={{
+                      fontSize: '10px',
+                      background: msg.chatScope === 'tournament'
+                        ? 'rgba(196,160,48,0.15)'
+                        : 'rgba(80,60,120,0.25)',
+                      color: msg.chatScope === 'tournament' ? '#C8A840' : '#A080D0',
+                      border: `1px solid ${msg.chatScope === 'tournament'
+                        ? 'rgba(196,160,48,0.3)'
+                        : 'rgba(120,80,180,0.3)'}`,
+                    }}
+                  >
+                    {badge}
+                  </span>
+                )}
                 <span className="text-xs" style={{ color: '#5A4A38', fontSize: '10px' }}>
                   {formatTime(msg.timestamp)}
                 </span>
@@ -80,8 +119,16 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
               <div
                 className="rounded-lg px-3 py-1.5 text-sm max-w-[85%] break-words"
                 style={{
-                  background: isMe ? 'rgba(196,160,48,0.15)' : 'rgba(42,30,14,0.6)',
-                  border: `1px solid ${isMe ? 'rgba(196,160,48,0.3)' : 'rgba(42,30,14,0.8)'}`,
+                  background: msg.chatScope === 'dm'
+                    ? 'rgba(80,60,120,0.2)'
+                    : isMe
+                      ? 'rgba(196,160,48,0.15)'
+                      : 'rgba(42,30,14,0.6)',
+                  border: `1px solid ${msg.chatScope === 'dm'
+                    ? 'rgba(120,80,180,0.3)'
+                    : isMe
+                      ? 'rgba(196,160,48,0.3)'
+                      : 'rgba(42,30,14,0.8)'}`,
                   color: '#D4C8A8',
                 }}
               >
@@ -91,6 +138,31 @@ export default function ChatPanel({ messages, onSend, currentPlayerId }: ChatPan
           );
         })}
       </div>
+
+      {/* Destination selector */}
+      {chatDestinations && chatDestinations.length > 1 && (
+        <div
+          className="px-3 pt-2 pb-1 border-t"
+          style={{ borderColor: '#2A1E0E' }}
+        >
+          <select
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            className="w-full rounded-lg px-2 py-1 text-xs outline-none"
+            style={{
+              background: 'rgba(42,30,14,0.5)',
+              border: '1px solid rgba(42,30,14,0.8)',
+              color: '#A09070',
+            }}
+          >
+            {chatDestinations.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Input */}
       <form

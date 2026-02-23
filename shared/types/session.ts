@@ -1,4 +1,4 @@
-import { GameType, GameState, Player, Spectator } from './game';
+import { GameType, GameState, Player, Spectator, TournamentState } from './game';
 
 export type SessionStatus = 'lobby' | 'playing' | 'finished';
 
@@ -9,6 +9,8 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   isSpectator?: boolean;
+  chatScope?: 'tournament' | 'match' | 'dm';
+  toPlayerId?: string;
 }
 
 export interface Session {
@@ -23,6 +25,9 @@ export interface Session {
   createdAt: Date;
   lastActivity: Date;
   chatHistory?: ChatMessage[];
+  tournamentState?: TournamentState;
+  tournamentHubCode?: string;
+  tournamentMatchId?: string;
 }
 
 export interface CreateSessionRequest {
