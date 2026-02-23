@@ -11,6 +11,7 @@ const GAME_NAMES: Record<string, string> = {
   senet: 'Senet',
   morris: "Nine Men's Morris",
   'wolves-and-ravens': 'Wolves & Ravens',
+  'rock-paper-scissors': 'Rock Paper Scissors',
 };
 
 const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string; desc: string }[] = [

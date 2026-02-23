@@ -8,6 +8,7 @@ import UrBoard from './games/ur/UrBoard';
 import SenetBoard from './games/senet/SenetBoard';
 import MorrisBoard from './games/morris/MorrisBoard';
 import WolvesAndRavensBoard from './games/wolves-and-ravens/WolvesAndRavensBoard';
+import RockPaperScissorsBoard from './games/rock-paper-scissors/RockPaperScissorsBoard';
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
@@ -223,6 +224,7 @@ export default function GameRoom() {
             gameType === 'ur' ? 'Royal Game of Ur' :
             gameType === 'morris' ? "Nine Men's Morris" :
             gameType === 'wolves-and-ravens' ? 'Wolves & Ravens' :
+            gameType === 'rock-paper-scissors' ? 'Rock Paper Scissors' :
             'Senet';
           showNotification('Your turn!', `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`);
         }
@@ -572,6 +574,7 @@ export default function GameRoom() {
             {session.gameType === 'ur' ? 'Royal Game of Ur'
               : session.gameType === 'morris' ? "Nine Men's Morris"
               : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
+              : session.gameType === 'rock-paper-scissors' ? 'Rock Paper Scissors'
               : 'Senet'}
           </h1>
           <button
@@ -928,6 +931,14 @@ export default function GameRoom() {
           )}
           {session.gameType === 'wolves-and-ravens' && (
             <WolvesAndRavensBoard
+              session={session}
+              gameState={gameState}
+              playerId={playerId!}
+              isMyTurn={isMyTurn}
+            />
+          )}
+          {session.gameType === 'rock-paper-scissors' && (
+            <RockPaperScissorsBoard
               session={session}
               gameState={gameState}
               playerId={playerId!}

@@ -185,6 +185,19 @@ export default function Home() {
                         <div className="font-semibold text-sm">Wolves &amp; Ravens</div>
                         <div className="text-xs text-gray-400 mt-1">Asymmetric hunt</div>
                       </button>
+
+                      <button
+                        onClick={() => setGameType('rock-paper-scissors')}
+                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                          gameType === 'rock-paper-scissors'
+                            ? 'border-primary-500 bg-primary-500/20'
+                            : 'border-gray-600 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2">✂️</div>
+                        <div className="font-semibold text-sm">Rock Paper Scissors</div>
+                        <div className="text-xs text-gray-400 mt-1">Single battle</div>
+                      </button>
                     </div>
                   </div>
 

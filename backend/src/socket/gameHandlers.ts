@@ -12,6 +12,7 @@ function gameTitle(gameType: string): string {
   if (gameType === 'ur') return 'Royal Game of Ur';
   if (gameType === 'morris') return "Nine Men's Morris";
   if (gameType === 'wolves-and-ravens') return 'Wolves & Ravens';
+  if (gameType === 'rock-paper-scissors') return 'Rock Paper Scissors';
   return 'Senet';
 }
 
