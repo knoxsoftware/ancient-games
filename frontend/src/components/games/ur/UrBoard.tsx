@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -17,6 +17,8 @@ const SHARED_END = 11;
 // Thin disk piece viewed from slightly above — 5 pips (center + 4 cardinal)
 // Player 0: white disk, blue pips  |  Player 1: black disk, brown pips
 export function UrPiece({ playerNumber, size = '100%' }: { playerNumber: number; size?: number | string }) {
+  const uid = useId();
+  const gradId = `ur-hl-${uid}`;
   const isWhite = playerNumber === 0;
   const face   = isWhite ? '#F2EEE4' : '#1C1C1C';
   const edge   = isWhite ? '#C0BAA8' : '#080808';
@@ -29,14 +31,23 @@ export function UrPiece({ playerNumber, size = '100%' }: { playerNumber: number;
       height={size}
       style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))' }}
     >
+      <defs>
+        {/* Radial gradient: soft specular highlight from top-left, fades across face */}
+        <radialGradient id={gradId} cx="36%" cy="30%" r="55%" fx="36%" fy="30%">
+          <stop offset="0%"   stopColor="rgba(255,255,255,0.5)" />
+          <stop offset="60%"  stopColor="rgba(255,255,255,0.08)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
+      </defs>
+
       {/* Thin edge — offset ellipse beneath face gives depth */}
       <ellipse cx="20" cy="23" rx="16.5" ry="3.5" fill={edge} />
 
       {/* Disk face */}
       <circle cx="20" cy="20" r="17" fill={face} stroke="white" strokeWidth="1.8" />
 
-      {/* Subtle highlight arc (top-left) to sell the round disk shape */}
-      <ellipse cx="15" cy="14" rx="7" ry="4.5" fill="rgba(255,255,255,0.22)" />
+      {/* Specular highlight — radial gradient overlay confined to the face circle */}
+      <circle cx="20" cy="20" r="17" fill={`url(#${gradId})`} />
 
       {/* 5 pips */}
       <circle cx="20" cy="20" r="2.6" fill={pip} />  {/* center */}
