@@ -57,6 +57,8 @@ All game events are in `backend/src/socket/gameHandlers.ts`. The important seque
 4. `game:move` → server validates, applies move, clears `diceRoll`, emits `game:move-made` + `game:state-updated`
 5. If no valid moves exist after a roll, `game:skip-turn` advances the turn
 
+**In-game chat:** Real-time chat is available during sessions via `chat:message` socket events.
+
 **Adding a new game** *(use the `/add-game` skill to scaffold all required files)*:
 1. Create `backend/src/games/<name>/<Name>Game.ts` extending `GameEngine`
 2. Register it in `GameRegistry.ts`

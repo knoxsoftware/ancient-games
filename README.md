@@ -11,6 +11,7 @@ A mobile-friendly web application for playing ancient and classic board games on
 - 🔄 **Real-time Updates**: Instant game state synchronization
 - 🏆 **Tournaments**: Bo1/Bo3/Bo5/Bo7 and round-robin formats
 - 🐳 **Containerized**: Docker and Kubernetes ready
+- 💬 **In-Game Chat**: Real-time chat during sessions
 - 🔒 **Production Ready**: Health checks, TLS, and resource limits
 
 ## Tech Stack
@@ -387,5 +388,4 @@ Contributions welcome! Please open an issue or PR.
 - Game replays
 - Additional games (Mancala, etc.)
 - AI opponents
-- In-game chat
 - Sound effects and animations
