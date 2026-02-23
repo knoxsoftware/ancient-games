@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { Move, Session, GAME_MANIFESTS, GameType } from '@ancient-games/shared';
 
 export interface HistoryEntry {

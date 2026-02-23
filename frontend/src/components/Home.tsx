@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { GameType, GAME_MANIFESTS, GameManifest } from '@ancient-games/shared';
+import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 
 export default function Home() {
   const navigate = useNavigate();

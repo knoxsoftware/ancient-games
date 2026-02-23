@@ -31,9 +31,10 @@ RUN npm run build --workspace=frontend
 FROM node:18-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
+COPY shared/package*.json ./shared/
 COPY backend/package*.json ./backend/
-# Install production dependencies for backend workspace
-RUN npm ci --omit=dev --workspace=backend
+# Install production dependencies for backend workspace (includes shared workspace link)
+RUN npm ci --omit=dev --workspace=backend --workspace=shared
 
 # Stage 3: Production image
 FROM node:18-alpine AS production
@@ -45,10 +46,14 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # Copy package.json files
 COPY package*.json ./
+COPY shared/package*.json ./shared/
 COPY backend/package*.json ./backend/
 
 # Copy node_modules from deps stage (installed at root for workspace)
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy built shared package (required at runtime by backend)
+COPY --chown=nodejs:nodejs --from=builder /app/shared/dist ./shared/dist
 
 # Copy built files with nodejs ownership
 COPY --chown=nodejs:nodejs --from=builder /app/backend/dist ./backend/dist
