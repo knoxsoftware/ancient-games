@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Session, GameState, HistoricalMove } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
-import UrBoard from './games/ur/UrBoard';
-import SenetBoard from './games/senet/SenetBoard';
-import MorrisBoard from './games/morris/MorrisBoard';
-import WolvesAndRavensBoard from './games/wolves-and-ravens/WolvesAndRavensBoard';
-import RockPaperScissorsBoard from './games/rock-paper-scissors/RockPaperScissorsBoard';
-import StellarSiegeBoard from './games/stellar-siege/StellarSiegeBoard';
+const UrBoard = lazy(() => import('./games/ur/UrBoard'));
+const SenetBoard = lazy(() => import('./games/senet/SenetBoard'));
+const MorrisBoard = lazy(() => import('./games/morris/MorrisBoard'));
+const WolvesAndRavensBoard = lazy(() => import('./games/wolves-and-ravens/WolvesAndRavensBoard'));
+const RockPaperScissorsBoard = lazy(() => import('./games/rock-paper-scissors/RockPaperScissorsBoard'));
+const StellarSiegeBoard = lazy(() => import('./games/stellar-siege/StellarSiegeBoard'));
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
@@ -928,6 +928,7 @@ export default function GameRoom() {
         </div>
 
         {/* Board */}
+        <Suspense fallback={<div className="flex items-center justify-center py-16 text-sm" style={{ color: 'rgba(196,168,107,0.5)' }}>Loading…</div>}>
         <div>
           {session.gameType === 'ur' && (
             <UrBoard
@@ -980,6 +981,7 @@ export default function GameRoom() {
             />
           )}
         </div>
+        </Suspense>
       </div>
 
       {/* Toasts */}
