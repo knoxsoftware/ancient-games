@@ -124,6 +124,7 @@ export default function Home() {
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateSession()}
                       placeholder="Enter your name"
                       className="input w-full"
                       maxLength={20}
@@ -135,7 +136,7 @@ export default function Home() {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setGameType('ur')}
-                        className={`p-4 rounded-lg border-2 transition-all ${
+                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                           gameType === 'ur'
                             ? 'border-primary-500 bg-primary-500/20'
                             : 'border-gray-600 hover:border-gray-500'
@@ -148,7 +149,7 @@ export default function Home() {
 
                       <button
                         onClick={() => setGameType('senet')}
-                        className={`p-4 rounded-lg border-2 transition-all ${
+                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                           gameType === 'senet'
                             ? 'border-primary-500 bg-primary-500/20'
                             : 'border-gray-600 hover:border-gray-500'
@@ -161,7 +162,7 @@ export default function Home() {
 
                       <button
                         onClick={() => setGameType('morris')}
-                        className={`p-4 rounded-lg border-2 transition-all ${
+                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                           gameType === 'morris'
                             ? 'border-primary-500 bg-primary-500/20'
                             : 'border-gray-600 hover:border-gray-500'
@@ -174,7 +175,7 @@ export default function Home() {
 
                       <button
                         onClick={() => setGameType('wolves-and-ravens')}
-                        className={`p-4 rounded-lg border-2 transition-all ${
+                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                           gameType === 'wolves-and-ravens'
                             ? 'border-primary-500 bg-primary-500/20'
                             : 'border-gray-600 hover:border-gray-500'
@@ -215,6 +216,7 @@ export default function Home() {
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleJoinSession()}
                       placeholder="Enter your name"
                       className="input w-full"
                       maxLength={20}
@@ -227,6 +229,7 @@ export default function Home() {
                       type="text"
                       value={sessionCode}
                       onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === 'Enter' && handleJoinSession()}
                       placeholder="Enter 6-character code"
                       className="input w-full text-2xl tracking-wider text-center font-mono"
                       maxLength={6}

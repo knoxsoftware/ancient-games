@@ -659,7 +659,7 @@ export default function GameRoom() {
         {/* Tab content */}
         <div className="h-64 overflow-y-auto mb-4">
           {activeTab === 'game' && (
-            <div>
+            <div className="tab-content-enter">
               <div className="grid grid-cols-2 gap-2 p-2">
                 {([0, 1] as const).map((seatIndex) => {
                   const player = session.players.find((p) => p.playerNumber === seatIndex);
@@ -775,17 +775,19 @@ export default function GameRoom() {
           )}
 
           {activeTab === 'chat' && (
-            <ChatPanel
-              messages={chatMessages}
-              currentPlayerId={playerId!}
-              chatDestinations={chatDestinations}
-              onSend={handleChatSend}
-              session={session}
-            />
+            <div className="tab-content-enter h-full">
+              <ChatPanel
+                messages={chatMessages}
+                currentPlayerId={playerId!}
+                chatDestinations={chatDestinations}
+                onSend={handleChatSend}
+                session={session}
+              />
+            </div>
           )}
 
           {activeTab === 'room' && (
-            <div className="p-3 space-y-4">
+            <div className="tab-content-enter p-3 space-y-4">
               <div>
                 <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>Players</div>
                 {session.players.length === 0 ? (
@@ -867,7 +869,7 @@ export default function GameRoom() {
           )}
 
           {activeTab === 'history' && (
-            <div className="pt-3">
+            <div className="tab-content-enter pt-3">
               <MoveLog
                 entries={moveHistory}
                 gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens'}
@@ -879,7 +881,7 @@ export default function GameRoom() {
           )}
 
           {activeTab === 'bracket' && isTournamentMatch && (
-            <div className="p-3">
+            <div className="tab-content-enter p-3">
               {hubSession?.tournamentState ? (
                 <TournamentBracket
                   tournament={hubSession.tournamentState}
