@@ -9,6 +9,7 @@ import SenetBoard from './games/senet/SenetBoard';
 import MorrisBoard from './games/morris/MorrisBoard';
 import WolvesAndRavensBoard from './games/wolves-and-ravens/WolvesAndRavensBoard';
 import RockPaperScissorsBoard from './games/rock-paper-scissors/RockPaperScissorsBoard';
+import StellarSiegeBoard from './games/stellar-siege/StellarSiegeBoard';
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
@@ -140,7 +141,7 @@ export default function GameRoom() {
     socket.on('session:updated', (updatedSession) => {
       if (updatedSession.sessionCode === sessionRef.current?.tournamentHubCode) {
         setHubSession(updatedSession);
-      } else {
+      } else if (updatedSession.sessionCode === sessionCode) {
         setJoiningSession(false);
         setSession(updatedSession);
       }
@@ -226,6 +227,7 @@ export default function GameRoom() {
             gameType === 'morris' ? "Nine Men's Morris" :
             gameType === 'wolves-and-ravens' ? 'Wolves & Ravens' :
             gameType === 'rock-paper-scissors' ? 'Rock Paper Scissors' :
+            gameType === 'stellar-siege' ? 'Stellar Siege' :
             'Senet';
           showNotification('Your turn!', `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`);
         }
@@ -577,6 +579,7 @@ export default function GameRoom() {
               : session.gameType === 'morris' ? "Nine Men's Morris"
               : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
               : session.gameType === 'rock-paper-scissors' ? 'Rock Paper Scissors'
+              : session.gameType === 'stellar-siege' ? 'Stellar Siege'
               : 'Senet'}
           </h1>
           <button
@@ -691,6 +694,17 @@ export default function GameRoom() {
                       return unplaced > 0
                         ? `${onBoard} on board · ${unplaced} to place`
                         : `${onBoard} on board · ${captured} lost`;
+                    }
+                    if (session.gameType === 'stellar-siege') {
+                      const defenderPN = boardPieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
+                      const invaderPN = 1 - defenderPN;
+                      if (seatIndex === defenderPN) {
+                        const shotDown = boardPieces.filter(p => p.playerNumber === invaderPN && p.position === 99).length;
+                        return `Defender · ${shotDown}/6 shot down`;
+                      } else {
+                        const alive = boardPieces.filter(p => p.playerNumber === invaderPN && p.position !== 99).length;
+                        return `Invaders · ${alive}/6 remaining`;
+                      }
                     }
                     if (session.gameType === 'wolves-and-ravens') {
                       const wolfPN = boardPieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
@@ -941,6 +955,14 @@ export default function GameRoom() {
           )}
           {session.gameType === 'rock-paper-scissors' && (
             <RockPaperScissorsBoard
+              session={session}
+              gameState={gameState}
+              playerId={playerId!}
+              isMyTurn={isMyTurn}
+            />
+          )}
+          {session.gameType === 'stellar-siege' && (
+            <StellarSiegeBoard
               session={session}
               gameState={gameState}
               playerId={playerId!}
