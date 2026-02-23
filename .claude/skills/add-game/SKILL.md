@@ -6,9 +6,16 @@ argument-hint: <game-id> "<Display Name>" "<emoji>"
 
 You are helping add a new game to the Ancient Games platform. This is a full-stack TypeScript monorepo (npm workspaces) with:
 
-- `shared/` — types only
+- `shared/` — types and game manifests
 - `backend/` — Node.js + Express + Socket.io + game logic
 - `frontend/` — React 18 + Vite + Tailwind CSS
+
+## Architecture: Game Isolation
+
+Each game is self-contained in its own folder. The platform uses registries and manifests so that **adding a new game never requires modifying shared UI components** (Home.tsx, MoveLog, etc.). Changes are limited to:
+
+1. **Engine-level changes** (shared types, backend engine, backend registry) — committed first
+2. **Game-specific resources** (board, rules, controls, score, manifest entry) — committed second
 
 ## Arguments
 
@@ -30,19 +37,41 @@ Before writing any code, if the game rules are not obvious or well-known, ask th
 4. Win condition
 5. Any special squares, captures, or multi-phase mechanics
 
-## Step 1: Shared types — add GameType
+---
+
+## COMMIT 1: Engine & Shared Types
+
+This commit adds the game engine and all shared type changes. No frontend changes.
+
+### Step 1: Shared types — add GameType and GameManifest entry
 
 Edit `shared/types/game.ts`:
 
-```typescript
-// Before:
-export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens';
+**1a. Add to the `GameType` union:**
 
-// After (add your game-id to the union):
-export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens' | 'GAME_ID';
+```typescript
+export type GameType = ... | 'GAME_ID';
 ```
 
-## Step 2: Backend — create the game engine
+**1b. Add entry to `GAME_MANIFESTS`:**
+
+```typescript
+'GAME_ID': {
+  type: 'GAME_ID',
+  title: 'DISPLAY NAME',
+  emoji: 'EMOJI',
+  description: '2 players',  // or appropriate description
+  playerColors: ['#COLOR1', '#COLOR2'],  // choose distinct colors for each player
+  supportsHistory: true,      // set true if the game has a move log
+  // supportsAnimation: true, // only if implementing piece animation
+  // disabled: true,          // if not yet playable
+  // aiGenerated: true,       // if AI-designed game
+},
+```
+
+The manifest drives: Home.tsx game picker, MoveLog player colors, title display everywhere, and animation gating. No manual changes to those files needed.
+
+### Step 2: Backend — create the game engine
 
 Create `backend/src/games/GAME_ID/GAMECLASSGame.ts`:
 
@@ -50,20 +79,10 @@ Create `backend/src/games/GAME_ID/GAMECLASSGame.ts`:
 import { GameEngine } from '../GameEngine';
 import { BoardState, Move, Player, PiecePosition } from '@ancient-games/shared';
 
-/**
- * [DISPLAY NAME] Implementation
- *
- * Board layout: [describe positions]
- * Position encoding:
- *   -1 = not on board / waiting
- *   0–N = board positions
- *   99 = finished / captured / removed
- */
 export class GAMECLASSGame extends GameEngine {
   gameType = 'GAME_ID' as const;
   playerCount = 2;
 
-  // --- constants ---
   private readonly PIECES_PER_PLAYER = N;
 
   initializeBoard(): BoardState {
@@ -75,7 +94,7 @@ export class GAMECLASSGame extends GameEngine {
     }
     return {
       pieces,
-      currentTurn: Math.floor(Math.random() * 2), // or 0 if first player is fixed
+      currentTurn: Math.floor(Math.random() * 2),
       diceRoll: null,
       lastMove: null,
     };
@@ -85,23 +104,16 @@ export class GAMECLASSGame extends GameEngine {
     // Standard d6: return Math.ceil(Math.random() * 6);
     // Binary dice (0–4): sum of 4 coin flips
     // No dice (Morris-style): return 1;
-    // Implement based on game rules
     return Math.ceil(Math.random() * 6);
   }
 
   validateMove(board: BoardState, move: Move, player: Player): boolean {
-    const { pieceIndex, to } = move;
-    const playerNumber = player.playerNumber;
     const piece = board.pieces.find(
-      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex,
+      (p) => p.playerNumber === player.playerNumber && p.pieceIndex === move.pieceIndex,
     );
     if (!piece) return false;
     if (board.diceRoll === null) return false;
-
     // TODO: implement game-specific validation
-    // - Check destination is reachable with the dice roll
-    // - Check destination not blocked by own piece
-    // - Check captures allowed
     return false;
   }
 
@@ -112,16 +124,12 @@ export class GAMECLASSGame extends GameEngine {
     );
     if (pieceIdx === -1) return board;
 
-    // Handle captures if needed:
-    // const capturedIdx = newPieces.findIndex(p => p.playerNumber !== board.currentTurn && p.position === move.to);
-    // if (capturedIdx !== -1) newPieces[capturedIdx] = { ...newPieces[capturedIdx], position: 99 };
-
     newPieces[pieceIdx] = { ...newPieces[pieceIdx], position: move.to };
 
     // IMPORTANT: applyMove must always:
     //   1. Advance currentTurn (unless extra-turn rule applies)
     //   2. Set diceRoll: null
-    const extraTurn = false; // set true if game grants extra turns
+    const extraTurn = false;
     return {
       ...board,
       pieces: newPieces,
@@ -134,7 +142,6 @@ export class GAMECLASSGame extends GameEngine {
   checkWinCondition(board: BoardState): number | null {
     for (let playerNumber = 0; playerNumber < 2; playerNumber++) {
       const playerPieces = board.pieces.filter((p) => p.playerNumber === playerNumber);
-      // TODO: define win condition — e.g. all pieces at position 99
       if (playerPieces.every((p) => p.position === 99)) return playerNumber;
     }
     return null;
@@ -145,52 +152,49 @@ export class GAMECLASSGame extends GameEngine {
     const playerPieces = board.pieces.filter(
       (p) => p.playerNumber === playerNumber && p.position !== 99,
     );
-
     for (const piece of playerPieces) {
       // TODO: compute legal destinations from piece.position + diceRoll
-      // Push each valid { playerId: '', pieceIndex, from: piece.position, to, diceRoll }
     }
-
     return moves;
   }
 
   canMove(board: BoardState, playerNumber: number, diceRoll: number): boolean {
     return this.getValidMoves(board, playerNumber, diceRoll).length > 0;
   }
+
+  isCaptureMove(board: BoardState, move: Move): boolean {
+    // Return true if this move captures an opponent piece by landing on it.
+    // Return false if game has no capture-by-landing mechanic (e.g. Morris).
+    return false;
+  }
 }
 ```
 
-### Key rules to enforce in applyMove:
+### Key rules for applyMove:
 
 - Always set `diceRoll: null` — the server checks this to know a move was applied
 - Always advance `currentTurn` to `(currentTurn + 1) % 2`, unless the game has an extra-turn mechanic
 - Return a new `BoardState` object (spread `...board`, then override fields) — never mutate in place
 
-## Step 2b: Backend — add to Mongoose schema enum
+### Step 2b: Backend — add to Mongoose schema enum
 
 Edit `backend/src/models/Session.ts`. The `gameType` field has a hardcoded enum that MongoDB validates against — if you skip this step, session creation will fail with "not a valid enum value":
 
 ```typescript
-// Before:
-gameType: { type: String, enum: ['ur', 'senet', 'morris', 'wolves-and-ravens'], required: true },
-
-// After:
-gameType: { type: String, enum: ['ur', 'senet', 'morris', 'wolves-and-ravens', 'GAME_ID'], required: true },
+gameType: { type: String, enum: [..., 'GAME_ID'], required: true },
 ```
 
-## Step 3: Backend — register in GameRegistry
+### Step 3: Backend — register in GameRegistry
 
 Edit `backend/src/games/GameRegistry.ts`:
 
 ```typescript
-// Add import at top:
 import { GAMECLASSGame } from './GAME_ID/GAMECLASSGame';
-
 // Add to the Map:
 ['GAME_ID', new GAMECLASSGame() as GameEngine],
 ```
 
-## Step 3b: Backend — write game engine tests
+### Step 3b: Backend — write game engine tests
 
 Create `backend/src/games/GAME_ID/GAMECLASSGame.test.ts` (colocated with the engine):
 
@@ -211,7 +215,6 @@ describe('GAMECLASSGame', () => {
       const board = game.initializeBoard();
       expect(board.pieces).toHaveLength(EXPECTED_TOTAL);
       expect(board.pieces.filter((p) => p.playerNumber === 0)).toHaveLength(EXPECTED_PER_PLAYER);
-      expect(board.pieces.filter((p) => p.playerNumber === 1)).toHaveLength(EXPECTED_PER_PLAYER);
     });
 
     it('starts with null diceRoll', () => {
@@ -238,29 +241,18 @@ describe('GAMECLASSGame', () => {
       const move: Move = { playerId: '', pieceIndex: 0, from: -1, to: 0 };
       expect(game.validateMove(board, move, makePlayer(board.currentTurn))).toBe(false);
     });
-
-    // TODO: add game-specific validation tests:
-    // - valid move accepted
-    // - move to occupied square rejected
-    // - out-of-range move rejected
-    // - capture rules tested
+    // TODO: add game-specific validation tests
   });
 
   describe('applyMove', () => {
-    // TODO: add game-specific tests:
-    // - piece moves to target position
-    // - diceRoll is cleared to null
-    // - currentTurn advances (or stays for extra turn)
-    // - captures work correctly
+    // TODO: test piece movement, diceRoll cleared, currentTurn advances, captures
   });
 
   describe('checkWinCondition', () => {
     it('returns null at game start', () => {
       expect(game.checkWinCondition(game.initializeBoard())).toBeNull();
     });
-
-    // TODO: add game-specific win condition tests:
-    // - returns winner player number when condition met
+    // TODO: test win detection
   });
 
   describe('getValidMoves', () => {
@@ -274,15 +266,27 @@ describe('GAMECLASSGame', () => {
 });
 ```
 
-### Test guidelines:
+Replace `EXPECTED_TOTAL`, `EXPECTED_PER_PLAYER`, `MIN_ROLL`, `MAX_ROLL`, `TYPICAL_ROLL` with actual values. Fill in all TODO sections with concrete tests.
 
-- Replace `EXPECTED_TOTAL`, `EXPECTED_PER_PLAYER`, `MIN_ROLL`, `MAX_ROLL`, `TYPICAL_ROLL` with actual values for this game
-- Fill in all `TODO` sections with concrete tests for this game's specific mechanics
-- Every `describe` block should have at least 2-3 tests
-- Test edge cases: captures, blocked moves, win detection, extra turns
-- Run `npm test` to verify all tests pass before moving to frontend work
+### Step 3c: Verify and commit
 
-## Step 4: Frontend — create the board component
+```bash
+npm run build --workspace=shared
+npm run build --workspace=backend
+npm test  # or: cd backend && npx vitest run
+```
+
+**Commit message:** `feat: add DISPLAY NAME game engine`
+
+This commit touches: `shared/types/game.ts`, `backend/src/games/GAME_ID/`, `backend/src/games/GameRegistry.ts`, `backend/src/models/Session.ts`
+
+---
+
+## COMMIT 2: Game-Specific Frontend Resources
+
+This commit adds all frontend pieces. It should NOT modify any shared platform files (GameRoom.tsx board dispatch, Home.tsx, GameControls.tsx dispatcher, etc.) — only add new files to the game folder and register in lookup records.
+
+### Step 4: Frontend — create the board component
 
 Create `frontend/src/components/games/GAME_ID/GAMECLASSBoard.tsx`:
 
@@ -303,45 +307,31 @@ export default function GAMECLASSBoard({
   gameState,
   playerId,
   isMyTurn,
-  animatingPiece,
 }: GAMECLASSBoardProps) {
-  const socket = socketService.getSocket();
   const { board } = gameState;
-  const currentPlayer = session.players.find(p => p.id === playerId);
 
   function handleRollDice() {
     if (!isMyTurn || board.diceRoll !== null) return;
-    const socket = socketService.getSocket();
-    if (!socket) return;
-    socket.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId: playerId! });
+    socketService.getSocket()?.emit('game:roll-dice', {
+      sessionCode: session.sessionCode,
+      playerId,
+    });
   }
 
   function handleMove(pieceIndex: number, from: number, to: number) {
     if (!isMyTurn || board.diceRoll === null) return;
-    const socket = socketService.getSocket();
-    if (!socket) return;
-    socket.emit('game:move', {
+    socketService.getSocket()?.emit('game:move', {
       sessionCode: session.sessionCode,
-      playerId: playerId!,
-      move: {
-        playerId: playerId!,
-        pieceIndex,
-        from,
-        to,
-        diceRoll: board.diceRoll,
-      },
+      playerId,
+      move: { playerId, pieceIndex, from, to, diceRoll: board.diceRoll },
     });
   }
 
   // TODO: render the board, pieces, and controls
   return (
     <div className="flex flex-col items-center gap-4 p-4">
-      {/* Dice area */}
       {isMyTurn && board.diceRoll === null && !gameState.finished && (
-        <button
-          onClick={handleRollDice}
-          className="btn btn-primary px-6 py-3 text-lg font-semibold"
-        >
+        <button onClick={handleRollDice} className="btn btn-primary px-6 py-3 text-lg font-semibold">
           Roll Dice
         </button>
       )}
@@ -350,130 +340,26 @@ export default function GAMECLASSBoard({
           Roll: {board.diceRoll}
         </div>
       )}
-
-      {/* Board SVG or grid goes here */}
-      <div className="text-gray-400 text-sm">
-        [Board rendering not yet implemented]
-      </div>
+      <div className="text-gray-400 text-sm">[Board rendering not yet implemented]</div>
     </div>
   );
 }
 ```
 
-### Board rendering notes:
-
+Board rendering notes:
 - Use SVG or CSS grid — look at `UrBoard.tsx` for SVG patterns, `MorrisBoard.tsx` for grid patterns
 - Pieces are in `board.pieces`, filtered by `playerNumber` and `position`
-- Highlight valid moves client-side for UX (server validates for security)
-- The `animatingPiece` prop can be used to suppress rendering the piece during animation
+- Use `session.sessionCode` (not `session.code`) when emitting socket events
+- `game:move` requires top-level `playerId` in the payload
 
-## Step 5: Frontend — wire into GameRoom
+### Step 5: Frontend — create rules component
 
-Edit `frontend/src/components/GameRoom.tsx`:
-
-### 5a. Add import (with other board imports at top):
-
-```typescript
-import GAMECLASSBoard from './games/GAME_ID/GAMECLASSBoard';
-```
-
-### 5b. Add board render (around line 929, after last `{session.gameType === ...}`):
-
-```typescript
-{session.gameType === 'GAME_ID' && (
-  <GAMECLASSBoard
-    session={session}
-    gameState={gameState}
-    playerId={playerId!}
-    isMyTurn={isMyTurn}
-  />
-)}
-```
-
-### 5c. Add title display (around line 572–575, in the `{session.gameType === ...}` ternary chain):
-
-```typescript
-// Change the final fallback from 'Senet' to the new chain:
-{
-  session.gameType === 'ur'
-    ? 'Royal Game of Ur'
-    : session.gameType === 'morris'
-      ? "Nine Men's Morris"
-      : session.gameType === 'wolves-and-ravens'
-        ? 'Wolves & Ravens'
-        : session.gameType === 'GAME_ID'
-          ? 'DISPLAY NAME'
-          : 'Senet';
-}
-```
-
-Similarly update the same ternary around line 223 (notification text).
-
-### 5d. Add score info (around line 690, inside the `scoreInfo` IIFE):
-
-```typescript
-if (session.gameType === 'GAME_ID') {
-  const finished = boardPieces.filter(
-    (p) => p.playerNumber === seatIndex && p.position === 99,
-  ).length;
-  const onBoard = boardPieces.filter(
-    (p) => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99,
-  ).length;
-  return `${onBoard} on board · ${finished} finished`;
-}
-```
-
-### 5e. (Optional) Animation support — around line 195:
-
-```typescript
-// Only add if the board component supports animatingPiece
-const supportsAnimation =
-  session?.gameType === 'ur' || session?.gameType === 'senet' || session?.gameType === 'GAME_ID';
-```
-
-## Step 6: Frontend — add to game picker (Home.tsx)
-
-Edit `frontend/src/components/Home.tsx`. Add a button in the `grid grid-cols-2 gap-3` div (around line 136):
+Create `frontend/src/components/games/GAME_ID/GAMECLASSRules.tsx`:
 
 ```tsx
-<button
-  onClick={() => setGameType('GAME_ID')}
-  className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-    gameType === 'GAME_ID'
-      ? 'border-primary-500 bg-primary-500/20'
-      : 'border-gray-600 hover:border-gray-500'
-  }`}
->
-  <div className="text-2xl mb-2">EMOJI</div>
-  <div className="font-semibold text-sm">DISPLAY NAME</div>
-  <div className="text-xs text-gray-400 mt-1">2 players</div>
-</button>
-```
+import { Section } from '../../GameRules';
 
-## Step 7: Frontend — add to SessionLobby GAME_NAMES
-
-Edit `frontend/src/components/lobby/SessionLobby.tsx`, around line 9:
-
-```typescript
-const GAME_NAMES: Record<string, string> = {
-  ur: 'Royal Game of Ur',
-  senet: 'Senet',
-  morris: "Nine Men's Morris",
-  'wolves-and-ravens': 'Wolves & Ravens',
-  GAME_ID: 'DISPLAY NAME', // ← add this line
-};
-```
-
-## Step 8: Frontend — add rules to GameRules.tsx
-
-Edit `frontend/src/components/GameRules.tsx`:
-
-```typescript
-// In the main component, add:
-{gameType === 'GAME_ID' && <GAMECLASSRules />}
-
-// Add a new rules function at the bottom:
-function GAMECLASSRules() {
+export default function GAMECLASSRules() {
   return (
     <>
       <div className="text-center pb-1">
@@ -489,31 +375,116 @@ function GAMECLASSRules() {
 }
 ```
 
+### Step 6: Frontend — create score info (optional)
+
+Create `frontend/src/components/games/GAME_ID/gameIdScoreInfo.ts` if the game has meaningful score display:
+
+```ts
+import { PiecePosition } from '@ancient-games/shared';
+
+export function getScoreInfo(pieces: PiecePosition[], seatIndex: number): string | null {
+  const finished = pieces.filter(p => p.playerNumber === seatIndex && p.position === 99).length;
+  const onBoard = pieces.filter(
+    p => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99,
+  ).length;
+  return `${onBoard} on board \u00B7 ${finished} finished`;
+}
+```
+
+### Step 7: Frontend — create controls (optional)
+
+Create `frontend/src/components/games/GAME_ID/GAMECLASSControls.tsx` if the game needs custom dice/controls UI beyond what the board component provides. Import `GameControlsProps` from `../../GameControls`.
+
+### Step 8: Register in frontend lookup records
+
+These are the **only** shared files that need editing — adding entries to lookup records:
+
+**8a. `frontend/src/components/GameRoom.tsx`** — add to `boardComponents` record:
+
+```typescript
+'GAME_ID': lazy(() => import('./games/GAME_ID/GAMECLASSBoard')),
+```
+
+**8b. `frontend/src/components/GameRules.tsx`** — add to `rulesComponents` record:
+
+```typescript
+'GAME_ID': lazy(() => import('./games/GAME_ID/GAMECLASSRules')),
+```
+
+**8c. `frontend/src/utils/gameScoreInfo.ts`** — add import and registry entry (if score info created):
+
+```typescript
+import { getScoreInfo as gameIdScore } from '../components/games/GAME_ID/gameIdScoreInfo';
+// In registry:
+'GAME_ID': gameIdScore,
+```
+
+**8d. `frontend/src/components/GameControls.tsx`** — add to `controlComponents` record (if controls created):
+
+```typescript
+'GAME_ID': lazy(() => import('./games/GAME_ID/GAMECLASSControls')),
+```
+
+**8e. `frontend/src/components/lobby/SessionLobby.tsx`** — replace `GAME_NAMES` usage with `getGameTitle`:
+
+Note: SessionLobby still has a local `GAME_NAMES` record. Replace it with `getGameTitle` from `@ancient-games/shared`, or add the new entry to the existing record until that cleanup is done:
+
+```typescript
+GAME_ID: 'DISPLAY NAME',
+```
+
+### Step 8f: Verify and commit
+
+```bash
+npm run build
+npm run lint 2>&1 | head -20  # fix errors if any
+```
+
+**Commit message:** `feat: add DISPLAY NAME frontend (board, rules, controls)`
+
+---
+
+## Files NOT touched when adding a game
+
+Thanks to the manifest and registry architecture, these files need **no changes**:
+
+- `Home.tsx` — reads from `GAME_MANIFESTS` automatically
+- `MoveLog.tsx` — reads player colors from manifest
+- `gameHandlers.ts` — uses `GameRegistry` and engine methods (including `isCaptureMove`)
+- `AnimationOverlay.tsx` — only activated for games with `supportsAnimation: true`
+
+## Common pitfalls
+
+1. **`applyMove` must set `diceRoll: null`** — the server checks this to know a move was applied
+2. **`applyMove` must advance `currentTurn`** — or the same player moves forever
+3. **`validateMove` reads `board.diceRoll`**, not the move's `diceRoll` — the server stores the roll on `board` before calling validate
+4. **Position 99 = finished**, not "captured" — filter `!== 99` when computing available pieces
+5. **Morris exception**: `diceRoll` is repurposed as a phase indicator. Only do this if your game needs multi-phase turns.
+6. **Mongoose enum must be updated** — `backend/src/models/Session.ts` has a separate hardcoded `enum` array. MongoDB will reject session creation with "not a valid enum value" until this is updated.
+7. **`session.sessionCode` not `session.code`** — use `session.sessionCode` in socket events
+8. **`game:move` requires top-level `playerId`** — payload is `{ sessionCode, playerId, move }`
+9. **`isCaptureMove` must be implemented** — even if just returning `false`. The server calls this on every move to determine capture status.
+
 ## Checklist
 
 After implementing, verify:
 
+**Commit 1 (Engine):**
 - [ ] `shared/types/game.ts` — `GameType` union updated
-- [ ] `backend/src/models/Session.ts` — Mongoose `gameType` enum updated (**required or session creation fails**)
-- [ ] `backend/src/games/GAME_ID/GAMECLASSGame.ts` — engine created
+- [ ] `shared/types/game.ts` — `GAME_MANIFESTS` entry added (with title, emoji, description, colors)
+- [ ] `backend/src/models/Session.ts` — Mongoose `gameType` enum updated
+- [ ] `backend/src/games/GAME_ID/GAMECLASSGame.ts` — engine created with `isCaptureMove`
 - [ ] `backend/src/games/GameRegistry.ts` — engine registered
-- [ ] `backend/src/games/GAME_ID/GAMECLASSGame.test.ts` — engine tests written and passing (`npm test`)
-- [ ] `frontend/src/components/games/GAME_ID/GAMECLASSBoard.tsx` — board created
-- [ ] `GameRoom.tsx` — import, render, title, score info updated
-- [ ] `Home.tsx` — game picker button added
-- [ ] `SessionLobby.tsx` — GAME_NAMES entry added
-- [ ] `GameRules.tsx` — rules component added
-- [ ] `npm test` passes (all game engine tests green)
+- [ ] `backend/src/games/GAME_ID/GAMECLASSGame.test.ts` — tests written and passing
+
+**Commit 2 (Frontend):**
+- [ ] `frontend/src/components/games/GAME_ID/GAMECLASSBoard.tsx` — board created (default export)
+- [ ] `frontend/src/components/games/GAME_ID/GAMECLASSRules.tsx` — rules created (default export)
+- [ ] `frontend/src/components/games/GAME_ID/gameIdScoreInfo.ts` — score info (if applicable)
+- [ ] `frontend/src/components/games/GAME_ID/GAMECLASSControls.tsx` — controls (if applicable)
+- [ ] `GameRoom.tsx` — `boardComponents` record entry added
+- [ ] `GameRules.tsx` — `rulesComponents` record entry added
+- [ ] `gameScoreInfo.ts` — registry entry added (if applicable)
+- [ ] `GameControls.tsx` — `controlComponents` record entry added (if applicable)
+- [ ] `SessionLobby.tsx` — `GAME_NAMES` entry added
 - [ ] `npm run build` passes with no TypeScript errors
-
-## Common pitfalls
-
-1. **`applyMove` must set `diceRoll: null`** — if it doesn't, the server will think no move was applied and the client will be stuck
-2. **`applyMove` must advance `currentTurn`** — or the same player moves forever
-3. **`validateMove` reads `board.diceRoll`**, not the move's `diceRoll` — the server stores the roll on `board` before calling validate
-4. **Position 99 = finished**, not "captured" (unless your game uses capture-as-elimination like Wolves & Ravens) — filter `!== 99` when computing available pieces
-5. **Morris exception**: `diceRoll` is repurposed as a phase indicator (`null` = auto-step, `1` = move, `2` = remove). Only do this if your game needs multi-phase turns.
-6. **TypeScript cast in GameRoom** — `GameRules` receives `gameType` cast as the union literal type; since you've updated `GameType`, it will just work
-7. **Mongoose enum must be updated** — `backend/src/models/Session.ts` has a separate hardcoded `enum` array for `gameType`. Updating `shared/types/game.ts` alone is not enough; MongoDB will reject session creation with "not a valid enum value" until this is also updated.
-8. **`session.sessionCode` not `session.code`** — the `Session` type uses `sessionCode` as the field name. Board components must use `session.sessionCode` when emitting socket events.
-9. **`game:move` requires top-level `playerId`** — the socket event payload is `{ sessionCode, playerId, move }`, not just `{ sessionCode, move }`. Both the top-level `playerId` and the one inside `move` are required.
