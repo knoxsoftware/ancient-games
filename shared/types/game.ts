@@ -44,12 +44,15 @@ export interface Player {
   socketId: string;
   ready: boolean;
   playerNumber: number; // 0 or 1
+  status: 'active' | 'away';
 }
 
 export interface Spectator {
   id: string;
   displayName: string;
   socketId: string;
+  status: 'active' | 'away';
+  originalSeatNumber?: number; // set only when auto-converted on disconnect
 }
 
 export interface Move {

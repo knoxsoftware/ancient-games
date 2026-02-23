@@ -9,12 +9,15 @@ const PlayerSchema = new Schema<Player>({
   socketId: { type: String, required: true },
   ready: { type: Boolean, default: false },
   playerNumber: { type: Number, required: true },
+  status: { type: String, enum: ['active', 'away'], default: 'active' },
 });
 
 const SpectatorSchema = new Schema<Spectator>({
   id: { type: String, required: true },
   displayName: { type: String, required: true },
   socketId: { type: String, required: true },
+  status: { type: String, enum: ['active', 'away'], default: 'active' },
+  originalSeatNumber: { type: Number, default: null },
 });
 
 const ChatMessageSchema = new Schema<ChatMessage>({

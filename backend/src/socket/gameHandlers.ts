@@ -5,6 +5,9 @@ import { PushService } from '../services/PushService';
 import { GameRegistry } from '../games/GameRegistry';
 import { ClientToServerEvents, ServerToClientEvents, GameState, Session, HistoricalMove } from '@ancient-games/shared';
 
+const socketToSession = new Map<string, { sessionCode: string; playerId: string }>();
+const disconnectTimers = new Map<string, NodeJS.Timeout>(); // keyed by playerId
+
 function gameTitle(gameType: string): string {
   if (gameType === 'ur') return 'Royal Game of Ur';
   if (gameType === 'morris') return "Nine Men's Morris";
@@ -40,6 +43,27 @@ export function registerGameHandlers(
       let joiningSpectator = !joiningPlayer ? session.spectators.find(s => s.id === playerId) : undefined;
       const isFirstConnect = (joiningPlayer?.socketId === 'temp') || (joiningSpectator?.socketId === 'temp');
 
+      // Register socket→session mapping
+      socketToSession.set(socket.id, { sessionCode, playerId });
+
+      // Cancel pending disconnect timer and try to reclaim seat if applicable
+      const pendingTimer = disconnectTimers.get(playerId);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        disconnectTimers.delete(playerId);
+        // Player was converted to spectator during grace period — try to reclaim seat
+        const cur = await sessionService.getSession(sessionCode);
+        if (cur) {
+          const asSpec = cur.spectators.find(s => s.id === playerId);
+          if (asSpec && (asSpec as any).originalSeatNumber != null) {
+            const seatFree = !cur.players.some(p => p.playerNumber === (asSpec as any).originalSeatNumber);
+            if (seatFree) {
+              await sessionService.spectatorToPlayer(sessionCode, playerId, (asSpec as any).originalSeatNumber);
+            }
+          }
+        }
+      }
+
       // Auto-add hub participants as spectators in tournament match sessions
       if (!joiningPlayer && !joiningSpectator && session.tournamentHubCode) {
         const hubSession = await sessionService.getSession(session.tournamentHubCode);
@@ -49,7 +73,7 @@ export function registerGameHandlers(
             hubSession.spectators.find(s => s.id === playerId);
           if (hubIdentity) {
             await sessionService.addSpectatorWithId(sessionCode, playerId, hubIdentity.displayName, socket.id);
-            joiningSpectator = { id: playerId, displayName: hubIdentity.displayName, socketId: socket.id };
+            joiningSpectator = { id: playerId, displayName: hubIdentity.displayName, socketId: socket.id, status: 'active' };
           }
         }
       }
@@ -577,7 +601,63 @@ export function registerGameHandlers(
   });
 
   // Handle disconnection
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log('Client disconnected:', socket.id);
+    const mapping = socketToSession.get(socket.id);
+    if (!mapping) return;
+    socketToSession.delete(socket.id);
+    const { sessionCode, playerId } = mapping;
+
+    const session = await sessionService.getSession(sessionCode);
+    if (!session) return;
+    const isSeatedPlayer = session.players.some(p => p.id === playerId);
+    const isSpectator = !isSeatedPlayer && session.spectators.some(s => s.id === playerId);
+    if (!isSeatedPlayer && !isSpectator) return;
+
+    const timer = setTimeout(async () => {
+      disconnectTimers.delete(playerId);
+      try {
+        const latest = await sessionService.getSession(sessionCode);
+        if (!latest) return;
+
+        if (isSeatedPlayer) {
+          const stillSeated = latest.players.find(p => p.id === playerId);
+          if (!stillSeated) return; // already manually stood up
+          const updated = await sessionService.playerToSpectator(
+            sessionCode, playerId, { storeOriginalSeat: true }
+          );
+          if (updated) io.to(sessionCode).emit('session:updated', updated);
+        } else {
+          const stillSpectating = latest.spectators.some(s => s.id === playerId);
+          if (!stillSpectating) return;
+          const updated = await sessionService.removeSpectator(sessionCode, playerId);
+          if (updated) io.to(sessionCode).emit('session:updated', updated);
+        }
+      } catch (err) {
+        console.error('Disconnect grace period handler failed:', err);
+      }
+    }, 20_000);
+
+    disconnectTimers.set(playerId, timer);
+  });
+
+  // Presence: player went away (tab hidden)
+  socket.on('player:away', async ({ sessionCode, playerId }) => {
+    try {
+      const updated = await sessionService.updatePresenceStatus(sessionCode, playerId, 'away');
+      if (updated) io.to(sessionCode).emit('session:updated', updated);
+    } catch (err) {
+      console.error('player:away handler failed:', err);
+    }
+  });
+
+  // Presence: player returned (tab visible)
+  socket.on('player:active', async ({ sessionCode, playerId }) => {
+    try {
+      const updated = await sessionService.updatePresenceStatus(sessionCode, playerId, 'active');
+      if (updated) io.to(sessionCode).emit('session:updated', updated);
+    } catch (err) {
+      console.error('player:active handler failed:', err);
+    }
   });
 }

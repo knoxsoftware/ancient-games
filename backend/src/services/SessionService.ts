@@ -202,6 +202,7 @@ export class SessionService {
       socketId,
       ready: false,
       playerNumber: 0,
+      status: 'active',
     };
 
     const session = await SessionModel.create({
@@ -253,6 +254,7 @@ export class SessionService {
       socketId,
       ready: false,
       playerNumber: session.players.length,
+      status: 'active',
     };
 
     session.players.push(player);
@@ -314,7 +316,7 @@ export class SessionService {
     if (!session) throw new Error('Session not found');
 
     const spectatorId = this.generatePlayerId();
-    const spectator: Spectator = { id: spectatorId, displayName, socketId };
+    const spectator: Spectator = { id: spectatorId, displayName, socketId, status: 'active' };
     session.spectators.push(spectator);
     session.lastActivity = new Date();
     await session.save();
@@ -332,7 +334,7 @@ export class SessionService {
     if (!session) return;
     if (session.players.some(p => p.id === spectatorId)) return;
     if (session.spectators.some(s => s.id === spectatorId)) return;
-    session.spectators.push({ id: spectatorId, displayName, socketId });
+    session.spectators.push({ id: spectatorId, displayName, socketId, status: 'active' });
     session.lastActivity = new Date();
     await session.save();
   }
@@ -353,7 +355,11 @@ export class SessionService {
     return this.toSession(session);
   }
 
-  async playerToSpectator(sessionCode: string, playerId: string): Promise<Session | null> {
+  async playerToSpectator(
+    sessionCode: string,
+    playerId: string,
+    options?: { storeOriginalSeat?: boolean }
+  ): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
 
@@ -367,6 +373,8 @@ export class SessionService {
       id: player.id,
       displayName: player.displayName,
       socketId: player.socketId,
+      status: (player as any).status ?? 'active',
+      originalSeatNumber: options?.storeOriginalSeat ? player.playerNumber : undefined,
     };
     session.spectators.push(spectator);
 
@@ -379,7 +387,11 @@ export class SessionService {
     return this.toSession(session);
   }
 
-  async spectatorToPlayer(sessionCode: string, spectatorId: string): Promise<Session | null> {
+  async spectatorToPlayer(
+    sessionCode: string,
+    spectatorId: string,
+    targetPlayerNumber?: number
+  ): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
 
@@ -388,10 +400,14 @@ export class SessionService {
 
     const takenNumbers = new Set(session.players.map((p) => p.playerNumber));
     let playerNumber: number | null = null;
-    for (const n of [0, 1]) {
-      if (!takenNumbers.has(n)) {
-        playerNumber = n;
-        break;
+    if (targetPlayerNumber !== undefined && !takenNumbers.has(targetPlayerNumber)) {
+      playerNumber = targetPlayerNumber;
+    } else {
+      for (const n of [0, 1]) {
+        if (!takenNumbers.has(n)) {
+          playerNumber = n;
+          break;
+        }
       }
     }
     if (playerNumber === null) throw new Error('No seats available');
@@ -405,8 +421,32 @@ export class SessionService {
       socketId: spectator.socketId,
       ready: false,
       playerNumber,
+      status: (spectator as any).status ?? 'active',
     };
     session.players.push(player);
+
+    session.lastActivity = new Date();
+    await session.save();
+    return this.toSession(session);
+  }
+
+  async updatePresenceStatus(
+    sessionCode: string,
+    playerId: string,
+    status: 'active' | 'away'
+  ): Promise<Session | null> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) return null;
+
+    const player = session.players.find((p) => p.id === playerId);
+    if (player) {
+      (player as any).status = status;
+    } else {
+      const spectator = session.spectators.find((s) => s.id === playerId);
+      if (spectator) {
+        (spectator as any).status = status;
+      }
+    }
 
     session.lastActivity = new Date();
     await session.save();
@@ -527,6 +567,7 @@ export class SessionService {
       socketId: 'temp',
       ready: true,
       playerNumber: p1GoesFirst ? 0 : 1,
+      status: 'active',
     };
     const p2: Player = {
       id: player2.id,
@@ -534,6 +575,7 @@ export class SessionService {
       socketId: 'temp',
       ready: true,
       playerNumber: p1GoesFirst ? 1 : 0,
+      status: 'active',
     };
 
     const session = await SessionModel.create({

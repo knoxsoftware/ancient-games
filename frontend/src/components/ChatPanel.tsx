@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Session } from '@ancient-games/shared';
 
 export interface ChatMessage {
   id: string;
@@ -21,9 +22,19 @@ interface ChatPanelProps {
   onSend: (text: string, destinationId?: string) => void;
   currentPlayerId: string;
   chatDestinations?: ChatDestination[];
+  session?: Session;
 }
 
-export default function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations }: ChatPanelProps) {
+function getSenderStatus(session: Session | undefined, playerId: string): 'active' | 'away' | null {
+  if (!session) return null;
+  const p = session.players.find(p => p.id === playerId);
+  if (p) return p.status ?? 'active';
+  const s = session.spectators.find(s => s.id === playerId);
+  if (s) return s.status ?? 'active';
+  return null;
+}
+
+export default function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, session }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [destination, setDestination] = useState<string>('match');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -81,9 +92,17 @@ export default function ChatPanel({ messages, onSend, currentPlayerId, chatDesti
         {messages.map((msg, i) => {
           const isMe = msg.playerId === currentPlayerId;
           const badge = getScopeBadge(msg);
+          const status = getSenderStatus(session, msg.playerId);
           return (
             <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
+                {status && (
+                  <span
+                    className="flex-shrink-0 w-1.5 h-1.5 rounded-full self-center"
+                    style={{ background: status === 'away' ? '#F59E0B' : '#22C55E' }}
+                    title={status === 'away' ? 'Away' : 'Active'}
+                  />
+                )}
                 <span
                   className="text-xs font-semibold"
                   style={{ color: isMe ? '#E8C870' : '#A09070' }}

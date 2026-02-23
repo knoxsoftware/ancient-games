@@ -121,8 +121,13 @@ export default function GameRoom() {
     if (socket.connected) rejoin();
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        if (socket.connected) {
+      if (document.visibilityState === 'hidden') {
+        if (socket.connected && sessionCode && playerId) {
+          socket.emit('player:away', { sessionCode, playerId });
+        }
+      } else {
+        if (socket.connected && sessionCode && playerId) {
+          socket.emit('player:active', { sessionCode, playerId });
           rejoin();
         } else {
           socket.connect();
@@ -132,8 +137,12 @@ export default function GameRoom() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     socket.on('session:updated', (updatedSession) => {
-      setJoiningSession(false);
-      setSession(updatedSession);
+      if (updatedSession.sessionCode === sessionRef.current?.tournamentHubCode) {
+        setHubSession(updatedSession);
+      } else {
+        setJoiningSession(false);
+        setSession(updatedSession);
+      }
       // Don't update gameState here — game state comes from game:state-updated,
       // game:move-made, etc. to avoid overwriting newer state when a spectator joins.
     });
@@ -428,15 +437,17 @@ export default function GameRoom() {
   // Build chat destinations for tournament matches
   const chatDestinations: ChatDestination[] | undefined = session?.tournamentHubCode
     ? (() => {
-        const participants = hubSession?.tournamentState?.participants ?? [];
         const opponent = session.players.find(p => p.id !== playerId);
+        const hubPeople = [
+          ...(hubSession?.players ?? []),
+          ...(hubSession?.spectators ?? []),
+        ]
+          .filter(p => p.id !== playerId)
+          .sort((a, b) => a.displayName.localeCompare(b.displayName));
         const dests: ChatDestination[] = [
           { id: 'tournament', label: 'Tournament (all)' },
           { id: 'match', label: `Match vs ${opponent?.displayName ?? 'Opponent'}` },
-          ...participants
-            .filter(p => p.id !== playerId)
-            .sort((a, b) => a.displayName.localeCompare(b.displayName))
-            .map(p => ({ id: p.id, label: `DM: ${p.displayName}` })),
+          ...hubPeople.map(p => ({ id: p.id, label: `DM: ${p.displayName}` })),
         ];
         return dests;
       })()
@@ -702,6 +713,11 @@ export default function GameRoom() {
                       {player ? (
                         <div>
                           <div className="flex items-center gap-1.5 min-w-0">
+                            <span
+                              className="flex-shrink-0 w-2 h-2 rounded-full"
+                              style={{ background: player.status === 'away' ? '#F59E0B' : '#22C55E' }}
+                              title={player.status === 'away' ? 'Away' : 'Active'}
+                            />
                             <span className="text-sm font-semibold truncate" style={{ color: '#E8D8B0' }}>
                               {player.displayName}
                             </span>
@@ -764,6 +780,7 @@ export default function GameRoom() {
               currentPlayerId={playerId!}
               chatDestinations={chatDestinations}
               onSend={handleChatSend}
+              session={session}
             />
           )}
 
@@ -777,6 +794,11 @@ export default function GameRoom() {
                   <div className="space-y-1">
                     {session.players.map((p) => (
                       <div key={p.id} className="flex items-center gap-2">
+                        <span
+                          className="flex-shrink-0 w-2 h-2 rounded-full"
+                          style={{ background: p.status === 'away' ? '#F59E0B' : '#22C55E' }}
+                          title={p.status === 'away' ? 'Away' : 'Active'}
+                        />
                         <span className="text-sm" style={{ color: '#D4C8A8' }}>{p.displayName}</span>
                         {p.id === playerId && (
                           <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>
@@ -795,6 +817,11 @@ export default function GameRoom() {
                   <div className="space-y-1">
                     {session.spectators.map((s) => (
                       <div key={s.id} className="flex items-center gap-2">
+                        <span
+                          className="flex-shrink-0 w-2 h-2 rounded-full"
+                          style={{ background: s.status === 'away' ? '#F59E0B' : '#22C55E' }}
+                          title={s.status === 'away' ? 'Away' : 'Active'}
+                        />
                         <span className="text-xs" style={{ color: '#A09070' }}>{s.displayName}</span>
                         {s.id === playerId && (
                           <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>

@@ -14,6 +14,8 @@ export interface ClientToServerEvents {
   'chat:send': (data: { sessionCode: string; playerId: string; text: string; scope?: 'tournament' | { toPlayerId: string } }) => void;
   'session:stand-up': (data: { sessionCode: string; playerId: string }) => void;
   'session:take-seat': (data: { sessionCode: string; playerId: string }) => void;
+  'player:away':   (data: { sessionCode: string; playerId: string }) => void;
+  'player:active': (data: { sessionCode: string; playerId: string }) => void;
 }
 
 // Server to Client events
