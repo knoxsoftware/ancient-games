@@ -363,8 +363,10 @@ function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn }: Props)
             <g
               key={`raven-${raven.pieceIndex}`}
               onClick={(e) => {
-                e.stopPropagation();
-                if (canSelect) setSelectedRaven(raven);
+                if (canSelect) {
+                  e.stopPropagation();
+                  setSelectedRaven(raven);
+                }
               }}
               style={{ cursor: canSelect ? 'pointer' : 'default' }}
             >

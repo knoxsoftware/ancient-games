@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { TetraDice } from './games/ur/UrBoard';
@@ -235,6 +235,17 @@ function WolvesAndRavensControls({
   const diceRoll = gameState.board.diceRoll;
   const ravenPN = gameState.board.pieces.filter(p => p.playerNumber === 0).length === 1 ? 1 : 0;
 
+  // Prevent accidental immediate clicks on the "Done Moving" button right after rolling
+  const [skipReady, setSkipReady] = useState(false);
+  useEffect(() => {
+    if (diceRoll !== null && myPN === ravenPN && diceRoll > 0) {
+      setSkipReady(false);
+      const timer = setTimeout(() => setSkipReady(true), 1000);
+      return () => clearTimeout(timer);
+    }
+    setSkipReady(false);
+  }, [diceRoll, myPN, ravenPN]);
+
   if (!isMyTurn || gameState.finished) {
     return (
       <WaitingMessage
@@ -256,7 +267,8 @@ function WolvesAndRavensControls({
       ) : myPN === ravenPN && diceRoll > 0 ? (
         <button
           onClick={() => socketService.getSocket()?.emit('game:skip-turn', { sessionCode, playerId })}
-          className="btn btn-outline text-sm px-5 py-2"
+          disabled={!skipReady}
+          className="btn btn-outline text-sm px-5 py-2 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           style={{ borderColor: 'rgba(100,200,100,0.4)', color: '#90D090' }}
         >
           Done&nbsp;Moving&nbsp;({diceRoll}&nbsp;left)
