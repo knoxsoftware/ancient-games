@@ -157,9 +157,31 @@ export function registerGameHandlers(
     }
   });
 
+  // Set lobby format (host only) — also auto-promotes spectators to players for tournament formats
+  socket.on('session:set-format', async ({ sessionCode, playerId, format }) => {
+    try {
+      const session = await sessionService.setLobbyFormat(sessionCode, playerId, format);
+      if (session) {
+        io.to(sessionCode).emit('session:updated', session);
+      }
+    } catch (error) {
+      socket.emit('session:error', { message: (error as Error).message });
+    }
+  });
+
   // Spectator takes an open seat
   socket.on('session:take-seat', async ({ sessionCode, playerId }) => {
     try {
+      const currentSession = await sessionService.getSession(sessionCode);
+      if (!currentSession) {
+        socket.emit('session:error', { message: 'Session not found' });
+        return;
+      }
+      const maxPlayers = (currentSession.lobbyFormat ?? 'single') === 'single' ? 2 : 8;
+      if (currentSession.players.length >= maxPlayers) {
+        socket.emit('session:error', { message: 'No seats available' });
+        return;
+      }
       const session = await sessionService.spectatorToPlayer(sessionCode, playerId);
       if (session) {
         io.to(sessionCode).emit('session:updated', session);

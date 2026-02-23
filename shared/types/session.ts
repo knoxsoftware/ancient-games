@@ -1,4 +1,4 @@
-import { GameType, GameState, Player, Spectator, TournamentState } from './game';
+import { GameType, GameState, Player, Spectator, TournamentState, TournamentFormat } from './game';
 
 export type SessionStatus = 'lobby' | 'playing' | 'finished';
 
@@ -28,6 +28,7 @@ export interface Session {
   tournamentState?: TournamentState;
   tournamentHubCode?: string;
   tournamentMatchId?: string;
+  lobbyFormat?: TournamentFormat | 'single';
 }
 
 export interface CreateSessionRequest {

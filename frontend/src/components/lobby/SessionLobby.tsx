@@ -35,6 +35,11 @@ export default function SessionLobby() {
   const [notice, setNotice] = useState<string | null>(null);
   const [format, setFormat] = useState<TournamentFormat | 'single'>('single');
 
+  // Sync local format state from session (keeps all clients in sync)
+  useEffect(() => {
+    if (session?.lobbyFormat) setFormat(session.lobbyFormat);
+  }, [session?.lobbyFormat]);
+
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevSessionRef = useRef<Session | null>(null);
 
@@ -235,6 +240,14 @@ export default function SessionLobby() {
       setJoinError((err as Error).message);
     } finally {
       setSpectateLoading(false);
+    }
+  };
+
+  const handleFormatChange = (newFormat: TournamentFormat | 'single') => {
+    setFormat(newFormat);
+    const socket = socketService.getSocket();
+    if (socket && sessionCode && playerId) {
+      socket.emit('session:set-format', { sessionCode, playerId, format: newFormat });
     }
   };
 
@@ -516,7 +529,7 @@ export default function SessionLobby() {
                 {FORMAT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => setFormat(opt.value)}
+                    onClick={() => handleFormatChange(opt.value)}
                     className="rounded-lg p-2.5 text-left transition-all border"
                     style={{
                       background: format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
@@ -538,9 +551,9 @@ export default function SessionLobby() {
           )}
 
           {/* Format display for non-hosts */}
-          {!isHost && session.players.length >= 2 && (
+          {!isHost && (
             <div className="mb-6 text-sm" style={{ color: '#6A5A40' }}>
-              The host will choose the format when starting.
+              Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'} — waiting for host to start
             </div>
           )}
 
@@ -560,7 +573,7 @@ export default function SessionLobby() {
                 Stand Up
               </button>
             )}
-            {isSpectator && session.players.length < 2 && (
+            {isSpectator && session.players.length < (format === 'single' ? 2 : 8) && (
               <button onClick={handleTakeSeat} className="btn btn-secondary flex-1">
                 Take a Seat
               </button>

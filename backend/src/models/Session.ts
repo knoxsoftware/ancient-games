@@ -54,6 +54,7 @@ const SessionSchema = new Schema<SessionDocument>({
   tournamentState: { type: Schema.Types.Mixed, default: null },
   tournamentHubCode: { type: String, default: null },
   tournamentMatchId: { type: String, default: null },
+  lobbyFormat: { type: String, enum: ['single', 'bo1', 'bo3', 'bo5', 'bo7', 'round-robin'], default: 'single' },
 });
 
 // Auto-cleanup sessions older than 24 hours with no activity

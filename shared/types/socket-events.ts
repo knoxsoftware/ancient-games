@@ -16,6 +16,7 @@ export interface ClientToServerEvents {
   'session:take-seat': (data: { sessionCode: string; playerId: string }) => void;
   'player:away':   (data: { sessionCode: string; playerId: string }) => void;
   'player:active': (data: { sessionCode: string; playerId: string }) => void;
+  'session:set-format': (data: { sessionCode: string; playerId: string; format: TournamentFormat | 'single' }) => void;
 }
 
 // Server to Client events

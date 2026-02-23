@@ -403,7 +403,7 @@ export class SessionService {
     if (targetPlayerNumber !== undefined && !takenNumbers.has(targetPlayerNumber)) {
       playerNumber = targetPlayerNumber;
     } else {
-      for (const n of [0, 1]) {
+      for (let n = 0; n < 8; n++) {
         if (!takenNumbers.has(n)) {
           playerNumber = n;
           break;
@@ -540,6 +540,46 @@ export class SessionService {
       session.gameState.finished = true;
     }
 
+    await session.save();
+    return this.toSession(session);
+  }
+
+  async setLobbyFormat(
+    sessionCode: string,
+    playerId: string,
+    format: TournamentFormat | 'single'
+  ): Promise<Session | null> {
+    const session = await SessionModel.findOne({ sessionCode });
+    if (!session) return null;
+    if (session.hostId !== playerId) throw new Error('Only the host can change the format');
+
+    (session as any).lobbyFormat = format;
+
+    if (format !== 'single') {
+      const takenNumbers = new Set(session.players.map((p) => p.playerNumber));
+      const toPromote = [...session.spectators];
+      for (const spectator of toPromote) {
+        if (session.players.length >= 8) break;
+        let playerNumber: number | null = null;
+        for (let n = 0; n < 8; n++) {
+          if (!takenNumbers.has(n)) { playerNumber = n; break; }
+        }
+        if (playerNumber === null) break;
+        takenNumbers.add(playerNumber);
+        session.spectators = session.spectators.filter((s) => s.id !== spectator.id);
+        const player: Player = {
+          id: spectator.id,
+          displayName: spectator.displayName,
+          socketId: spectator.socketId,
+          ready: false,
+          playerNumber,
+          status: (spectator as any).status ?? 'active',
+        };
+        session.players.push(player);
+      }
+    }
+
+    session.lastActivity = new Date();
     await session.save();
     return this.toSession(session);
   }
@@ -920,6 +960,7 @@ export class SessionService {
       tournamentState: doc.tournamentState ?? undefined,
       tournamentHubCode: doc.tournamentHubCode ?? undefined,
       tournamentMatchId: doc.tournamentMatchId ?? undefined,
+      lobbyFormat: doc.lobbyFormat ?? 'single',
     };
   }
 }
