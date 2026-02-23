@@ -203,6 +203,18 @@ export class UrGame extends GameEngine {
     return this.getValidMoves(board, playerNumber, diceRoll).length > 0;
   }
 
+  isCaptureMove(board: BoardState, move: Move): boolean {
+    if (move.to === 99 || !this.isSharedPosition(move.to)) return false;
+    if (this.ROSETTE_POSITIONS.includes(move.to)) return false;
+    const movingPiece = board.pieces.find(
+      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+    );
+    if (!movingPiece) return false;
+    return board.pieces.some(
+      p => p.playerNumber !== movingPiece.playerNumber && p.position === move.to
+    );
+  }
+
   private isSharedPosition(position: number): boolean {
     return position >= this.SHARED_START && position <= this.SHARED_END;
   }

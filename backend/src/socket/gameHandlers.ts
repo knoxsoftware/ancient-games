@@ -406,13 +406,7 @@ export function registerGameHandlers(
         return;
       }
 
-      const isCapturablePosition = session.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
-      const wasCapture =
-        move.to !== 99 &&
-        isCapturablePosition &&
-        session.gameState.board.pieces.some(
-          (p) => p.playerNumber !== player.playerNumber && p.position === move.to
-        );
+      const wasCapture = gameEngine.isCaptureMove(session.gameState.board, move);
 
       const newBoard = gameEngine.applyMove(session.gameState.board, move);
       session.gameState.board = newBoard;
@@ -437,6 +431,7 @@ export function registerGameHandlers(
       io.to(sessionCode).emit('game:move-made', {
         move,
         gameState: session.gameState,
+        wasCapture,
       });
 
       if (winner !== null) {

@@ -211,4 +211,8 @@ export class StellarSiegeGame extends GameEngine {
   canMove(board: BoardState, playerNumber: number, diceRoll: number): boolean {
     return this.getValidMoves(board, playerNumber, diceRoll).length > 0;
   }
+
+  isCaptureMove(_board: BoardState, _move: Move): boolean {
+    return false;
+  }
 }

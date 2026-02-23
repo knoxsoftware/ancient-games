@@ -225,4 +225,12 @@ export class WolvesAndRavensGame extends GameEngine {
   canMove(board: BoardState, playerNumber: number, diceRoll: number): boolean {
     return this.getValidMoves(board, playerNumber, diceRoll).length > 0;
   }
+
+  isCaptureMove(board: BoardState, move: Move): boolean {
+    const wolfPN = this.getWolfPN(board.pieces);
+    if (board.currentTurn !== wolfPN) return false;
+    return board.pieces.some(
+      p => p.playerNumber !== wolfPN && p.position === move.to
+    );
+  }
 }

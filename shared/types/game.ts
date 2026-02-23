@@ -174,4 +174,5 @@ export interface GameEngine {
   checkWinCondition(board: BoardState): number | null;
   getValidMoves(board: BoardState, playerNumber: number, diceRoll: number): Move[];
   canMove(board: BoardState, playerNumber: number, diceRoll: number): boolean;
+  isCaptureMove(board: BoardState, move: Move): boolean;
 }

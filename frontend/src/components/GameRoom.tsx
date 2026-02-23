@@ -174,23 +174,11 @@ export default function GameRoom() {
       }
     });
 
-    socket.on('game:move-made', ({ move, gameState: updatedGameState }) => {
-      const prevState = gameStateRef.current;
+    socket.on('game:move-made', ({ move, gameState: updatedGameState, wasCapture }) => {
       const currentSession = sessionRef.current;
 
       const playerNum =
         currentSession?.players.find(p => p.id === move.playerId)?.playerNumber ?? 0;
-
-      const isCapturablePosition =
-        currentSession?.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
-
-      const wasCapture =
-        !!prevState &&
-        move.to !== 99 &&
-        isCapturablePosition &&
-        prevState.board.pieces.some(
-          p => p.playerNumber !== playerNum && p.position === move.to
-        );
 
       setGameState(updatedGameState);
 
