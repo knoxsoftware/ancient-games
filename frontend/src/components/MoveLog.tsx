@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { Move, Session } from '@ancient-games/shared';
 
 export interface HistoryEntry {
@@ -33,7 +33,7 @@ export function describeMove(
   return `${name}: ${fromStr}\u2192${toStr}${roll}${cap}`;
 }
 
-export function MoveLog({ entries, gameType, session, onReplay, replayingId }: MoveLogProps) {
+export const MoveLog = memo(function MoveLog({ entries, gameType, session, onReplay, replayingId }: MoveLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,4 +101,4 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
       </div>
     </div>
   );
-}
+});

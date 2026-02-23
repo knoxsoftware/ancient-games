@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -45,7 +45,7 @@ function getRoundResult(p0Pos: number, p1Pos: number): string | null {
   return 'p1';
 }
 
-export default function RockPaperScissorsBoard({
+function RockPaperScissorsBoard({
   session,
   gameState,
   playerId,
@@ -263,3 +263,5 @@ export default function RockPaperScissorsBoard({
     </div>
   );
 }
+
+export default memo(RockPaperScissorsBoard);

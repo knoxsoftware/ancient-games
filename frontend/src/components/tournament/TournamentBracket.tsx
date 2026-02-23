@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { TournamentState, TournamentParticipant, TournamentMatch } from '@ancient-games/shared';
 
 interface Props {
@@ -335,7 +336,7 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
   );
 }
 
-export default function TournamentBracket({ tournament, participants, currentPlayerId, onWatchMatch }: Props) {
+function TournamentBracket({ tournament, participants, currentPlayerId, onWatchMatch }: Props) {
   const isRoundRobin = tournament.format === 'round-robin';
 
   return (
@@ -381,3 +382,5 @@ export default function TournamentBracket({ tournament, participants, currentPla
     </div>
   );
 }
+
+export default memo(TournamentBracket);

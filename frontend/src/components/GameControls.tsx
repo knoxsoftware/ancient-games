@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { TetraDice } from './games/ur/UrBoard';
@@ -12,7 +13,7 @@ interface GameControlsProps {
   lastMove?: HistoryEntry;
 }
 
-export default function GameControls({ session, gameState, playerId, isMyTurn, lastMove }: GameControlsProps) {
+function GameControls({ session, gameState, playerId, isMyTurn, lastMove }: GameControlsProps) {
   const { gameType, sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
   const currentTurnName =
@@ -244,3 +245,5 @@ export default function GameControls({ session, gameState, playerId, isMyTurn, l
 
   return null;
 }
+
+export default memo(GameControls);

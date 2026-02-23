@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { memo, useEffect, useId, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -137,7 +137,7 @@ export function TetraDice({ result }: { result: number }) {
   );
 }
 
-export default function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrBoardProps) {
+function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
   // topPlayer = opponent's row (far side); bottomPlayer = my row (near side)
@@ -486,3 +486,5 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
     </div>
   );
 }
+
+export default memo(UrBoard);

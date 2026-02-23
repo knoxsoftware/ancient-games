@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Session } from '@ancient-games/shared';
 
 export interface ChatMessage {
@@ -34,7 +34,7 @@ function getSenderStatus(session: Session | undefined, playerId: string): 'activ
   return null;
 }
 
-export default function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, session }: ChatPanelProps) {
+function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, session }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [destination, setDestination] = useState<string>('match');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -219,3 +219,5 @@ export default function ChatPanel({ messages, onSend, currentPlayerId, chatDesti
     </div>
   );
 }
+
+export default memo(ChatPanel);

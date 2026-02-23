@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -76,7 +76,7 @@ interface Props {
   isMyTurn: boolean;
 }
 
-export default function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn }: Props) {
+function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn }: Props) {
   const [selectedRaven, setSelectedRaven] = useState<PiecePosition | null>(null);
   const [flashCell, setFlashCell] = useState<number | null>(null);
 
@@ -483,3 +483,5 @@ function PlayerTray({
     </div>
   );
 }
+
+export default memo(WolvesAndRavensBoard);

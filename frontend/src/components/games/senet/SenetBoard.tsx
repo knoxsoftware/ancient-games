@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -158,7 +158,7 @@ function SpecialIcon({ type, color }: { type: SpecialSquare['iconType']; color: 
   return <SunIcon color={color} />;
 }
 
-export default function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: SenetBoardProps) {
+function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: SenetBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
@@ -403,3 +403,5 @@ export default function SenetBoard({ session, gameState, playerId, isMyTurn, ani
     </div>
   );
 }
+
+export default memo(SenetBoard);

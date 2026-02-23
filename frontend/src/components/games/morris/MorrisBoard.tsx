@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -80,7 +80,7 @@ interface MorrisBoardProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function MorrisBoard({ session, gameState, playerId, isMyTurn }: MorrisBoardProps) {
+function MorrisBoard({ session, gameState, playerId, isMyTurn }: MorrisBoardProps) {
   const [selected, setSelected] = useState<{ pieceIndex: number; from: number } | null>(null);
 
   const myPlayer = session.players.find(p => p.id === playerId);
@@ -369,3 +369,5 @@ function PieceTray({
     </div>
   );
 }
+
+export default memo(MorrisBoard);

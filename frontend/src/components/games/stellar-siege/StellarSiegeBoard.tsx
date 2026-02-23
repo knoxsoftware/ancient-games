@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Session, GameState, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -72,7 +72,7 @@ interface Props {
   isMyTurn: boolean;
 }
 
-export default function StellarSiegeBoard({ session, gameState, playerId, isMyTurn }: Props) {
+function StellarSiegeBoard({ session, gameState, playerId, isMyTurn }: Props) {
   const [selectedAlien, setSelectedAlien] = useState<PiecePosition | null>(null);
   const [flashCell, setFlashCell] = useState<number | null>(null);
 
@@ -495,3 +495,5 @@ export default function StellarSiegeBoard({ session, gameState, playerId, isMyTu
     </div>
   );
 }
+
+export default memo(StellarSiegeBoard);
