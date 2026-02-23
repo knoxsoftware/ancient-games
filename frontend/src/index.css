@@ -52,6 +52,66 @@
   animation: tab-fade-in 0.15s ease-out both;
 }
 
+/* Gold sparkle celebration */
+@keyframes sparkle-float {
+  0% {
+    transform: translateY(100vh) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(80vh) scale(1);
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-10vh) scale(0.5);
+    opacity: 0;
+  }
+}
+.sparkle-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+.sparkle-container::before,
+.sparkle-container::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  animation: sparkle-float 3s ease-in-out infinite;
+  box-shadow:
+    10vw 0 0 0 gold,
+    25vw 10vh 0 0 #e8c870,
+    40vw -5vh 0 0 #c4a030,
+    55vw 8vh 0 0 gold,
+    70vw -3vh 0 0 #e8c870,
+    85vw 6vh 0 0 #c4a030,
+    15vw 12vh 0 0 gold,
+    60vw -8vh 0 0 #e8c870,
+    90vw 4vh 0 0 gold,
+    5vw -6vh 0 0 #c4a030;
+}
+.sparkle-container::after {
+  animation-delay: 1.5s;
+  box-shadow:
+    8vw 5vh 0 0 #e8c870,
+    20vw -2vh 0 0 gold,
+    35vw 7vh 0 0 #c4a030,
+    48vw -4vh 0 0 #e8c870,
+    62vw 3vh 0 0 gold,
+    78vw -7vh 0 0 #c4a030,
+    92vw 9vh 0 0 gold,
+    30vw -1vh 0 0 #e8c870,
+    50vw 11vh 0 0 #c4a030,
+    72vw -9vh 0 0 gold;
+}
+
 @layer base {
   body {
     @apply bg-gray-900 text-gray-100 min-h-screen;

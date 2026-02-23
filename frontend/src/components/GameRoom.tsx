@@ -23,6 +23,7 @@ import GameRules from './GameRules';
 import GameControls from './GameControls';
 import ChatPanel, { ChatMessage, ChatDestination } from './ChatPanel';
 import TournamentBracket from './tournament/TournamentBracket';
+import GameEndModal from './GameEndModal';
 
 async function showNotification(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -63,6 +64,7 @@ export default function GameRoom() {
   const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeTabRef = useRef<'game' | 'chat' | 'room' | 'history' | 'bracket'>('game');
   const [copiedSpectatorLink, setCopiedSpectatorLink] = useState(false);
+  const [showGameEndModal, setShowGameEndModal] = useState(false);
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
   const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -235,9 +237,9 @@ export default function GameRoom() {
       setGameState((prev) => (prev ? { ...prev, currentTurn } : null));
     });
 
-    socket.on('game:ended', ({ winner, gameState: finalGameState }) => {
+    socket.on('game:ended', ({ gameState: finalGameState }) => {
       setGameState(finalGameState);
-      setMessage(`Player ${winner + 1} wins!`);
+      setShowGameEndModal(true);
     });
 
     socket.on('game:started', (updatedSession) => {
@@ -258,6 +260,7 @@ export default function GameRoom() {
       setPendingAnimation(null);
       setReplayAnimation(null);
       setReplayingEntryId(null);
+      setShowGameEndModal(false);
       setMessage('');
     });
 
@@ -616,41 +619,6 @@ export default function GameRoom() {
         {error && (
           <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 mb-4 text-center text-red-200">
             {error}
-          </div>
-        )}
-
-        {/* Winner Banner */}
-        {gameState.finished && gameState.winner !== null && (
-          <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg p-6 mb-4 text-center">
-            <div className="text-3xl font-bold mb-2">
-              {isSpectator
-                ? `${session.players[gameState.winner]?.displayName} wins!`
-                : gameState.winner === currentPlayer?.playerNumber
-                  ? 'You Win!'
-                  : 'You Lose'}
-            </div>
-            <div className="text-lg mb-4">
-              {session.players[gameState.winner]?.displayName} is the winner!
-            </div>
-            {!isSpectator && (
-              <div className="flex gap-3 justify-center flex-wrap">
-                {isTournamentMatch ? (
-                  <button
-                    onClick={handleReturnToBracket}
-                    className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
-                  >
-                    Return to Bracket
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleRematch}
-                    className="btn bg-white/20 hover:bg-white/30 text-white border border-white/40 px-6 py-2"
-                  >
-                    Play Again
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         )}
 
@@ -1062,6 +1030,19 @@ export default function GameRoom() {
             <GameRules gameType={session.gameType} />
           </div>
         </div>
+      )}
+
+      {showGameEndModal && gameState.finished && gameState.winner !== null && (
+        <GameEndModal
+          session={session}
+          gameState={gameState}
+          currentPlayer={currentPlayer}
+          isSpectator={isSpectator}
+          hubSession={hubSession}
+          onPlayAgain={() => { setShowGameEndModal(false); handleRematch(); }}
+          onReturnToBracket={handleReturnToBracket}
+          onLeave={() => navigate('/')}
+        />
       )}
     </div>
   );
