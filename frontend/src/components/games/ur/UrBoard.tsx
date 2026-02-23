@@ -16,7 +16,7 @@ const SHARED_END = 11;
 
 // Thin disk piece viewed from slightly above — 5 pips (center + 4 cardinal)
 // Player 0: white disk, blue pips  |  Player 1: black disk, brown pips
-export function UrPiece({ playerNumber, size = 28 }: { playerNumber: number; size?: number }) {
+export function UrPiece({ playerNumber, size = '100%' }: { playerNumber: number; size?: number | string }) {
   const isWhite = playerNumber === 0;
   const face   = isWhite ? '#F2EEE4' : '#1C1C1C';
   const edge   = isWhite ? '#C0BAA8' : '#080808';
@@ -251,7 +251,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
   });
 
   // Piece button style: golden glow when selected, red glow when invalid
-  const pieceButtonStyle = (piece: PiecePosition, sz: number): React.CSSProperties => {
+  const pieceButtonStyle = (piece: PiecePosition, sz?: number): React.CSSProperties => {
     const isSelected =
       selectedPiece?.playerNumber === piece.playerNumber &&
       selectedPiece?.pieceIndex === piece.pieceIndex;
@@ -263,8 +263,7 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
       piece.playerNumber === animatingPiece.playerNumber &&
       piece.pieceIndex === animatingPiece.pieceIndex;
     return {
-      width: sz,
-      height: sz,
+      ...(sz !== undefined && { width: sz, height: sz }),
       opacity: isAnimating ? 0 : undefined,
       borderRadius: '50%',
       ...(isSelected && {
@@ -300,19 +299,18 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
         <div className="relative z-10 flex items-center justify-center w-full h-full">
           {pieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
-            const sz = 22;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
                 onClick={() => handlePieceClick(piece)}
                 disabled={!canClick}
-                className={`transition-transform focus:outline-none ${
+                className={`transition-transform focus:outline-none w-[80%] h-[80%] flex items-center justify-center ${
                   canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={pieceButtonStyle(piece, sz)}
+                style={pieceButtonStyle(piece)}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
-                {<UrPiece playerNumber={piece.playerNumber} size={sz} />}
+                <UrPiece playerNumber={piece.playerNumber} />
               </button>
             );
           })}
@@ -347,19 +345,19 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
         <div className="relative z-10 flex gap-0.5 items-center justify-center">
           {allPieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
-            const sz = allPieces.length > 1 ? 16 : 22;
+            const sizeClass = allPieces.length > 1 ? 'w-[44%] h-[44%]' : 'w-[80%] h-[80%]';
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
                 onClick={() => handlePieceClick(piece)}
                 disabled={!canClick}
-                className={`transition-transform focus:outline-none ${
+                className={`transition-transform focus:outline-none flex items-center justify-center ${sizeClass} ${
                   canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'
                 }`}
-                style={pieceButtonStyle(piece, sz)}
+                style={pieceButtonStyle(piece)}
                 title={`${session.players.find((p) => p.playerNumber === piece.playerNumber)?.displayName} – piece ${piece.pieceIndex + 1}`}
               >
-                {<UrPiece playerNumber={piece.playerNumber} size={sz} />}
+                <UrPiece playerNumber={piece.playerNumber} />
               </button>
             );
           })}
@@ -391,16 +389,16 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
         {/* Opponent's waiting pieces — above the board */}
         <div
           data-cell={`ur-offboard-${topPlayer}`}
-          className="flex items-center gap-1.5 flex-wrap mb-2 pb-2 border-b min-h-[28px]"
+          className="flex items-center gap-1.5 flex-wrap mb-2 pb-2 border-b min-h-[32px]"
           style={{ borderColor: '#2A1E0E' }}
         >
           {offBoardPieces(topPlayer).map((piece) => (
             <div
               key={`${piece.playerNumber}-${piece.pieceIndex}`}
-              style={{ width: 22, height: 22, opacity: 0.55 }}
+              style={{ width: 28, height: 28, opacity: 0.55 }}
               title={`${session.players.find(p => p.playerNumber === topPlayer)?.displayName} – piece ${piece.pieceIndex + 1}`}
             >
-              <UrPiece playerNumber={piece.playerNumber} size={22} />
+              <UrPiece playerNumber={piece.playerNumber} size={28} />
             </div>
           ))}
           {offBoardPieces(topPlayer).length === 0 && (
@@ -434,12 +432,12 @@ export default function UrBoard({ session, gameState, playerId, isMyTurn, animat
         {/* My waiting pieces — below the board */}
         <div
           data-cell={`ur-offboard-${bottomPlayer}`}
-          className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t min-h-[28px]"
+          className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t min-h-[32px]"
           style={{ borderColor: '#2A1E0E' }}
         >
           {offBoardPieces(bottomPlayer).map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
-            const sz = 22;
+            const sz = 28;
             return (
               <button
                 key={`${piece.playerNumber}-${piece.pieceIndex}`}
