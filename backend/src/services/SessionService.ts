@@ -212,7 +212,7 @@ export class SessionService {
       players: [player],
       gameState: {
         board: initialBoard,
-        currentTurn: 0,
+        currentTurn: initialBoard.currentTurn,
         winner: null,
         started: false,
         finished: false,
@@ -509,7 +509,7 @@ export class SessionService {
     session.status = 'playing';
     session.gameState = {
       board: initialBoard,
-      currentTurn: 0,
+      currentTurn: initialBoard.currentTurn,
       winner: null,
       started: true,
       finished: false,
@@ -585,7 +585,7 @@ export class SessionService {
       players: [p1, p2],
       gameState: {
         board: initialBoard,
-        currentTurn: 0,
+        currentTurn: initialBoard.currentTurn,
         winner: null,
         started: true,
         finished: false,
