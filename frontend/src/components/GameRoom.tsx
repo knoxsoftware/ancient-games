@@ -55,20 +55,12 @@ export default function GameRoom() {
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
   const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-    if (activeTab === 'chat') {
-      setUnreadChat(0);
-      if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
-      setChatToast(null);
-    }
-  }, [activeTab]);
-
+  // Synchronous ref updates — always reflects latest value without needing an effect
+  activeTabRef.current = activeTab;
   const gameStateRef = useRef<GameState | null>(null);
-  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
-
+  gameStateRef.current = gameState;
   const sessionRef = useRef<Session | null>(null);
-  useEffect(() => { sessionRef.current = session; }, [session]);
+  sessionRef.current = session;
 
   const animIdRef = useRef(0);
   const [pendingAnimation, setPendingAnimation] = useState<AnimationState | null>(null);
@@ -652,7 +644,14 @@ export default function GameRoom() {
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab === 'chat') {
+                  setUnreadChat(0);
+                  if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
+                  setChatToast(null);
+                }
+              }}
               className="px-4 py-2 text-sm font-medium transition-colors capitalize relative"
               style={{
                 color: activeTab === tab ? '#E8C870' : '#6A5A40',
