@@ -57,7 +57,7 @@ All game events are in `backend/src/socket/gameHandlers.ts`. The important seque
 4. `game:move` → server validates, applies move, clears `diceRoll`, emits `game:move-made` + `game:state-updated`
 5. If no valid moves exist after a roll, `game:skip-turn` advances the turn
 
-**Adding a new game:**
+**Adding a new game** *(use the `/add-game` skill to scaffold all required files)*:
 1. Create `backend/src/games/<name>/<Name>Game.ts` extending `GameEngine`
 2. Register it in `GameRegistry.ts`
 3. Add the game type to the `GameType` union in `shared/types/game.ts`
@@ -73,14 +73,21 @@ Every game engine must implement (`backend/src/games/GameEngine.ts`):
 - `applyMove(board, move)` — returns new `BoardState`; must set `diceRoll: null` and advance `currentTurn`
 - `checkWinCondition(board)` — returns winning `playerNumber` or `null`
 - `getValidMoves(board, playerNumber, diceRoll)` — used by `canMove()` to check if turn must be skipped
+- `canMove(board, playerNumber, diceRoll)` — returns boolean; typically delegates to `getValidMoves().length > 0`
 
-Position encoding conventions (both games): `-1` = off-board/not entered, `0–N` = board positions, `99` = finished/exited.
+**Current games:** ur, senet, morris, wolves-and-ravens, rock-paper-scissors, stellar-siege
+
+Position encoding conventions (board games with pieces): `-1` = off-board/not entered, `0–N` = board positions, `99` = finished/exited. Not all games use this scheme (e.g. rock-paper-scissors).
 
 ### Frontend state
 
 `GameRoom.tsx` owns all socket listeners and holds `session` + `gameState` state. It passes them down as props to the board components — boards do not subscribe to sockets directly. Boards emit socket events themselves (roll, move) but receive state updates only through props.
 
 `socketService` (`frontend/src/services/socket.ts`) is a singleton that holds the Socket.io client connection; call `socketService.getSocket()` from any component.
+
+### Tournaments
+
+The shared types include a tournament system (`TournamentState`, `TournamentMatch`, `TournamentFormat`). Supported formats: bo1, bo3, bo5, bo7, round-robin.
 
 ### Shared types
 

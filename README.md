@@ -1,14 +1,15 @@
 # Ancient Board Games Platform
 
-A mobile-friendly web application for playing ancient board games online with multiplayer support. Play the Royal Game of Ur and Senet with friends without registration - just create a session and share the code!
+A mobile-friendly web application for playing ancient and classic board games online with multiplayer support. Play with friends without registration - just create a session and share the code!
 
 ## Features
 
-- 🎲 **Two Classic Games**: Royal Game of Ur and Senet
+- 🎲 **Six Games**: Royal Game of Ur, Senet, Nine Men's Morris, Wolves & Ravens, Rock-Paper-Scissors, and Stellar Siege
 - 👥 **Multiplayer**: Real-time gameplay using Socket.io
 - 📱 **Mobile-Friendly**: Responsive design with touch controls
 - 🚀 **No Registration**: Guest play with display names
 - 🔄 **Real-time Updates**: Instant game state synchronization
+- 🏆 **Tournaments**: Bo1/Bo3/Bo5/Bo7 and round-robin formats
 - 🐳 **Containerized**: Docker and Kubernetes ready
 - 🔒 **Production Ready**: Health checks, TLS, and resource limits
 
@@ -383,10 +384,8 @@ Contributions welcome! Please open an issue or PR.
 ## Future Enhancements
 
 - User accounts and game history
-- Spectator mode
 - Game replays
-- Additional games (Mancala, Nine Men's Morris, etc.)
+- Additional games (Mancala, etc.)
 - AI opponents
-- Tournament mode
 - In-game chat
 - Sound effects and animations
