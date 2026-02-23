@@ -211,7 +211,7 @@ export default function Home() {
                         }`}
                       >
                         <div className="text-2xl mb-2">🚀</div>
-                        <div className="font-semibold text-sm">Stellar Siege <DISABLED>*</div>
+                        <div className="font-semibold text-sm">Stellar Siege (DISABLED)*</div>
                         <div className="text-xs text-gray-400 mt-1">Asymmetric defense (coming soon!)</div>
                       </button>
                     </div>
