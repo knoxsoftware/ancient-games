@@ -210,9 +210,9 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
-    - http01:
-        ingress:
-          class: traefik
+      - http01:
+          ingress:
+            class: traefik
 ```
 
 Apply it:
@@ -276,6 +276,7 @@ To add a new game:
 Socket.io events:
 
 **Client → Server**:
+
 - `session:join` - Join game session
 - `session:leave` - Leave session
 - `session:ready` - Toggle ready status
@@ -285,6 +286,7 @@ Socket.io events:
 - `game:skip-turn` - Skip turn
 
 **Server → Client**:
+
 - `session:updated` - Session state changed
 - `game:started` - Game started
 - `game:dice-rolled` - Dice rolled

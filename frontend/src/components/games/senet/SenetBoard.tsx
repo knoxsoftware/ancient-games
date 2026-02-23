@@ -14,9 +14,20 @@ interface SenetBoardProps {
 export function ConePiece({ size = 28 }: { size?: number }) {
   const h = Math.round(size * 1.25);
   return (
-    <svg viewBox="0 0 32 40" width={size} height={h} style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.45))' }}>
+    <svg
+      viewBox="0 0 32 40"
+      width={size}
+      height={h}
+      style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.45))' }}
+    >
       <ellipse cx="16" cy="36" rx="13" ry="4" fill="rgba(0,0,0,0.3)" />
-      <path d="M 3,35 Q 16,4 29,35 Z" fill="#F2E6C8" stroke="#C4A870" strokeWidth="1" strokeLinejoin="round" />
+      <path
+        d="M 3,35 Q 16,4 29,35 Z"
+        fill="#F2E6C8"
+        stroke="#C4A870"
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
       <path d="M 3,35 Q 8,7 13,5 Q 9,18 5,35 Z" fill="rgba(255,255,255,0.28)" />
       <ellipse cx="16" cy="35" rx="13" ry="4" fill="#D4B483" stroke="#A48050" strokeWidth="1" />
     </svg>
@@ -27,7 +38,12 @@ export function ConePiece({ size = 28 }: { size?: number }) {
 export function SpoolPiece({ size = 28 }: { size?: number }) {
   const h = Math.round(size * 1.25);
   return (
-    <svg viewBox="0 0 32 40" width={size} height={h} style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.55))' }}>
+    <svg
+      viewBox="0 0 32 40"
+      width={size}
+      height={h}
+      style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.55))' }}
+    >
       <ellipse cx="16" cy="37" rx="13" ry="3.5" fill="rgba(0,0,0,0.4)" />
       {/* Bottom flange */}
       <ellipse cx="16" cy="34" rx="13" ry="4.5" fill="#0E0600" />
@@ -60,8 +76,20 @@ function AnkhIcon({ color }: { color: string }) {
 function WaveIcon({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 26 18" width={20} height={14}>
-      <path d="M 2,5 Q 7.5,0 13,5 Q 18.5,10 24,5" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <path d="M 2,12 Q 7.5,7 13,12 Q 18.5,17 24,12" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M 2,5 Q 7.5,0 13,5 Q 18.5,10 24,5"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 2,12 Q 7.5,7 13,12 Q 18.5,17 24,12"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -163,7 +191,10 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
   const [selectedPiece, setSelectedPiece] = useState<PiecePosition | null>(null);
-  const [invalidPiece, setInvalidPiece] = useState<{ playerNumber: number; pieceIndex: number } | null>(null);
+  const [invalidPiece, setInvalidPiece] = useState<{
+    playerNumber: number;
+    pieceIndex: number;
+  } | null>(null);
   const invalidTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Clear selection when turn changes or dice roll resets
@@ -190,7 +221,7 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
     if (to >= 30) return true; // exiting, valid
     // Blocked if own 2+ pieces already at destination
     const ownAtDest = gameState.board.pieces.filter(
-      (p) => p.playerNumber === playerNumber && p.position === to
+      (p) => p.playerNumber === playerNumber && p.position === to,
     ).length;
     return ownAtDest < 2;
   };
@@ -272,8 +303,16 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
     const isEven = position % 2 === 0;
     const isLanding = selectedLanding === position;
     const bg = isLanding
-      ? special ? special.bg : isEven ? '#F2E4B0' : '#DFC080'
-      : special ? special.bg : isEven ? '#E8D5A3' : '#C9A86C';
+      ? special
+        ? special.bg
+        : isEven
+          ? '#F2E4B0'
+          : '#DFC080'
+      : special
+        ? special.bg
+        : isEven
+          ? '#E8D5A3'
+          : '#C9A86C';
     const border = isLanding ? '#FFD060' : special ? special.border : '#9A7840';
 
     return (
@@ -313,7 +352,8 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px)',
+              background:
+                'repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px)',
             }}
           />
         )}
@@ -377,7 +417,10 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
         <div className="grid grid-cols-10 gap-1">{row2.map(renderSquare)}</div>
 
         {/* Legend */}
-        <div className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1" style={{ borderColor: '#4A3010' }}>
+        <div
+          className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1"
+          style={{ borderColor: '#4A3010' }}
+        >
           {(
             [
               { key: 14, label: 'Rebirth' },
@@ -390,7 +433,12 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
               <div key={key} className="flex items-center gap-1.5">
                 <div
                   className="flex items-center justify-center rounded"
-                  style={{ width: 18, height: 18, background: sq.bg, border: `1px solid ${sq.border}` }}
+                  style={{
+                    width: 18,
+                    height: 18,
+                    background: sq.bg,
+                    border: `1px solid ${sq.border}`,
+                  }}
                 >
                   <SpecialIcon type={sq.iconType} color={sq.border} />
                 </div>

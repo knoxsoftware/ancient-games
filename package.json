@@ -14,10 +14,23 @@
     "build:frontend": "npm run build --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
     "build": "npm run build:frontend && npm run build:backend",
-    "start": "npm run start --workspace=backend"
+    "start": "npm run start --workspace=backend",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm test --workspace=backend"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^20.10.0",
-    "typescript": "^5.3.3"
+    "eslint": "^10.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.1",
+    "prettier": "^3.8.1",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.0.18"
   }
 }

@@ -1,4 +1,10 @@
-export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens' | 'rock-paper-scissors' | 'stellar-siege';
+export type GameType =
+  | 'ur'
+  | 'senet'
+  | 'morris'
+  | 'wolves-and-ravens'
+  | 'rock-paper-scissors'
+  | 'stellar-siege';
 
 export type TournamentFormat = 'bo1' | 'bo3' | 'bo5' | 'bo7' | 'round-robin';
 

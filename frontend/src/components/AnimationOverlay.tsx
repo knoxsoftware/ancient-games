@@ -17,9 +17,7 @@ export interface AnimationState {
 // direction the piece is travelling, used as the exit destination.
 function getExitRect(gameType: 'ur' | 'senet', playerNumber: number): DOMRect | null {
   const selector =
-    gameType === 'ur'
-      ? `[data-cell="ur-p${playerNumber}-13"]`
-      : `[data-cell="senet-pos-29"]`;
+    gameType === 'ur' ? `[data-cell="ur-p${playerNumber}-13"]` : `[data-cell="senet-pos-29"]`;
   const el = document.querySelector(selector);
   if (!el) return null;
   const rect = el.getBoundingClientRect();
@@ -32,7 +30,7 @@ function getExitRect(gameType: 'ur' | 'senet', playerNumber: number): DOMRect | 
 function getCellRect(
   gameType: 'ur' | 'senet',
   position: number,
-  playerNumber: number
+  playerNumber: number,
 ): DOMRect | null {
   let selector: string;
   if (gameType === 'ur') {
@@ -51,11 +49,7 @@ function getCellRect(
 
 // Returns the ordered list of board positions the piece travels through,
 // not including `from`, including `to` (and the virtual exit pos 99 if exiting).
-function getPathPositions(
-  gameType: 'ur' | 'senet',
-  from: number,
-  to: number,
-): number[] {
+function getPathPositions(gameType: 'ur' | 'senet', from: number, to: number): number[] {
   // Entering from off-board: animate directly to destination in one step
   if (from === -1) return [to];
   const maxBoard = gameType === 'ur' ? 13 : 29;
@@ -98,10 +92,19 @@ export function AnimationOverlay({
     if (!fromRect) {
       // No source rect (shouldn't happen in practice): fade-in at destination
       const toRect = getCellRect(gameType, move.to, playerNumber);
-      if (!toRect) { onComplete(); return; }
+      if (!toRect) {
+        onComplete();
+        return;
+      }
       const { x, y } = centerOf(toRect);
-      setStyle({ ...base, left: x, top: y, opacity: 0, transition: `opacity ${DURATION}ms ease-out` });
-      requestAnimationFrame(() => setStyle(s => ({ ...s, opacity: 1 })));
+      setStyle({
+        ...base,
+        left: x,
+        top: y,
+        opacity: 0,
+        transition: `opacity ${DURATION}ms ease-out`,
+      });
+      requestAnimationFrame(() => setStyle((s) => ({ ...s, opacity: 1 })));
       const timer = setTimeout(onComplete, DURATION + 50);
       return () => clearTimeout(timer);
     }
@@ -117,8 +120,14 @@ export function AnimationOverlay({
     if (validSteps.length === 0) {
       // No reachable destination rects: fade-out at source
       const src = centerOf(fromRect);
-      setStyle({ ...base, left: src.x, top: src.y, opacity: 1, transition: `opacity ${DURATION}ms ease-out` });
-      requestAnimationFrame(() => setStyle(s => ({ ...s, opacity: 0 })));
+      setStyle({
+        ...base,
+        left: src.x,
+        top: src.y,
+        opacity: 1,
+        transition: `opacity ${DURATION}ms ease-out`,
+      });
+      requestAnimationFrame(() => setStyle((s) => ({ ...s, opacity: 0 })));
       const timer = setTimeout(onComplete, DURATION + 50);
       return () => clearTimeout(timer);
     }
@@ -141,10 +150,14 @@ export function AnimationOverlay({
         if (move.to === 99) {
           // Fade out at the virtual exit position
           const last = validSteps[validSteps.length - 1];
-          setStyle(s => ({ ...s, left: last.x, top: last.y, transition: 'none' }));
+          setStyle((s) => ({ ...s, left: last.x, top: last.y, transition: 'none' }));
           requestAnimationFrame(() => {
             if (!cancelled) {
-              setStyle(s => ({ ...s, opacity: 0, transition: `opacity ${stepDuration}ms ease-out` }));
+              setStyle((s) => ({
+                ...s,
+                opacity: 0,
+                transition: `opacity ${stepDuration}ms ease-out`,
+              }));
             }
           });
           timers.push(setTimeout(onComplete, stepDuration + 50));
@@ -157,7 +170,7 @@ export function AnimationOverlay({
       const { x: nextX, y: nextY } = validSteps[stepIdx];
       stepIdx++;
 
-      setStyle(s => ({
+      setStyle((s) => ({
         ...s,
         left: nextX,
         top: nextY,
@@ -168,7 +181,9 @@ export function AnimationOverlay({
     };
 
     // Start after initial render so the browser paints the source position first
-    requestAnimationFrame(() => { if (!cancelled) runStep(); });
+    requestAnimationFrame(() => {
+      if (!cancelled) runStep();
+    });
 
     return () => {
       cancelled = true;
@@ -187,7 +202,9 @@ export function AnimationOverlay({
     );
 
   return createPortal(
-    <div style={style} aria-hidden="true">{piece}</div>,
-    document.body
+    <div style={style} aria-hidden="true">
+      {piece}
+    </div>,
+    document.body,
   );
 }

@@ -5,6 +5,7 @@ argument-hint: <game-id> "<Display Name>" "<emoji>"
 ---
 
 You are helping add a new game to the Ancient Games platform. This is a full-stack TypeScript monorepo (npm workspaces) with:
+
 - `shared/` — types only
 - `backend/` — Node.js + Express + Socket.io + game logic
 - `frontend/` — React 18 + Vite + Tailwind CSS
@@ -22,6 +23,7 @@ If any argument is missing, ask the user before proceeding.
 ## Step 0: Understand the game
 
 Before writing any code, if the game rules are not obvious or well-known, ask the user to describe:
+
 1. Board layout and number of positions
 2. Number of pieces per player
 3. Dice mechanic (or whether it's dice-free — use `rollDice()` returning `1` always)
@@ -91,7 +93,7 @@ export class GAMECLASSGame extends GameEngine {
     const { pieceIndex, to } = move;
     const playerNumber = player.playerNumber;
     const piece = board.pieces.find(
-      p => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex
+      (p) => p.playerNumber === playerNumber && p.pieceIndex === pieceIndex,
     );
     if (!piece) return false;
     if (board.diceRoll === null) return false;
@@ -104,9 +106,9 @@ export class GAMECLASSGame extends GameEngine {
   }
 
   applyMove(board: BoardState, move: Move): BoardState {
-    const newPieces = board.pieces.map(p => ({ ...p }));
+    const newPieces = board.pieces.map((p) => ({ ...p }));
     const pieceIdx = newPieces.findIndex(
-      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+      (p) => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex,
     );
     if (pieceIdx === -1) return board;
 
@@ -131,9 +133,9 @@ export class GAMECLASSGame extends GameEngine {
 
   checkWinCondition(board: BoardState): number | null {
     for (let playerNumber = 0; playerNumber < 2; playerNumber++) {
-      const playerPieces = board.pieces.filter(p => p.playerNumber === playerNumber);
+      const playerPieces = board.pieces.filter((p) => p.playerNumber === playerNumber);
       // TODO: define win condition — e.g. all pieces at position 99
-      if (playerPieces.every(p => p.position === 99)) return playerNumber;
+      if (playerPieces.every((p) => p.position === 99)) return playerNumber;
     }
     return null;
   }
@@ -141,7 +143,7 @@ export class GAMECLASSGame extends GameEngine {
   getValidMoves(board: BoardState, playerNumber: number, diceRoll: number): Move[] {
     const moves: Move[] = [];
     const playerPieces = board.pieces.filter(
-      p => p.playerNumber === playerNumber && p.position !== 99
+      (p) => p.playerNumber === playerNumber && p.position !== 99,
     );
 
     for (const piece of playerPieces) {
@@ -159,6 +161,7 @@ export class GAMECLASSGame extends GameEngine {
 ```
 
 ### Key rules to enforce in applyMove:
+
 - Always set `diceRoll: null` — the server checks this to know a move was applied
 - Always advance `currentTurn` to `(currentTurn + 1) % 2`, unless the game has an extra-turn mechanic
 - Return a new `BoardState` object (spread `...board`, then override fields) — never mutate in place
@@ -186,6 +189,98 @@ import { GAMECLASSGame } from './GAME_ID/GAMECLASSGame';
 // Add to the Map:
 ['GAME_ID', new GAMECLASSGame() as GameEngine],
 ```
+
+## Step 3b: Backend — write game engine tests
+
+Create `backend/src/games/GAME_ID/GAMECLASSGame.test.ts` (colocated with the engine):
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { GAMECLASSGame } from './GAMECLASSGame';
+import { Move, Player } from '@ancient-games/shared';
+
+const game = new GAMECLASSGame();
+
+function makePlayer(playerNumber: number): Player {
+  return { id: 'p', displayName: 'P', socketId: 's', ready: true, playerNumber, status: 'active' };
+}
+
+describe('GAMECLASSGame', () => {
+  describe('initializeBoard', () => {
+    it('creates the correct number of pieces', () => {
+      const board = game.initializeBoard();
+      expect(board.pieces).toHaveLength(EXPECTED_TOTAL);
+      expect(board.pieces.filter((p) => p.playerNumber === 0)).toHaveLength(EXPECTED_PER_PLAYER);
+      expect(board.pieces.filter((p) => p.playerNumber === 1)).toHaveLength(EXPECTED_PER_PLAYER);
+    });
+
+    it('starts with null diceRoll', () => {
+      expect(game.initializeBoard().diceRoll).toBeNull();
+    });
+
+    it('currentTurn is 0 or 1', () => {
+      expect([0, 1]).toContain(game.initializeBoard().currentTurn);
+    });
+  });
+
+  describe('rollDice', () => {
+    it('returns values within expected range', () => {
+      const results = new Set<number>();
+      for (let i = 0; i < 200; i++) results.add(game.rollDice());
+      expect(Math.min(...results)).toBeGreaterThanOrEqual(MIN_ROLL);
+      expect(Math.max(...results)).toBeLessThanOrEqual(MAX_ROLL);
+    });
+  });
+
+  describe('validateMove', () => {
+    it('rejects move when diceRoll is null', () => {
+      const board = game.initializeBoard();
+      const move: Move = { playerId: '', pieceIndex: 0, from: -1, to: 0 };
+      expect(game.validateMove(board, move, makePlayer(board.currentTurn))).toBe(false);
+    });
+
+    // TODO: add game-specific validation tests:
+    // - valid move accepted
+    // - move to occupied square rejected
+    // - out-of-range move rejected
+    // - capture rules tested
+  });
+
+  describe('applyMove', () => {
+    // TODO: add game-specific tests:
+    // - piece moves to target position
+    // - diceRoll is cleared to null
+    // - currentTurn advances (or stays for extra turn)
+    // - captures work correctly
+  });
+
+  describe('checkWinCondition', () => {
+    it('returns null at game start', () => {
+      expect(game.checkWinCondition(game.initializeBoard())).toBeNull();
+    });
+
+    // TODO: add game-specific win condition tests:
+    // - returns winner player number when condition met
+  });
+
+  describe('getValidMoves', () => {
+    it('returns moves from initial position', () => {
+      const board = game.initializeBoard();
+      board.diceRoll = TYPICAL_ROLL;
+      const moves = game.getValidMoves(board, board.currentTurn, TYPICAL_ROLL);
+      expect(moves.length).toBeGreaterThan(0);
+    });
+  });
+});
+```
+
+### Test guidelines:
+
+- Replace `EXPECTED_TOTAL`, `EXPECTED_PER_PLAYER`, `MIN_ROLL`, `MAX_ROLL`, `TYPICAL_ROLL` with actual values for this game
+- Fill in all `TODO` sections with concrete tests for this game's specific mechanics
+- Every `describe` block should have at least 2-3 tests
+- Test edge cases: captures, blocked moves, win detection, extra turns
+- Run `npm test` to verify all tests pass before moving to frontend work
 
 ## Step 4: Frontend — create the board component
 
@@ -266,6 +361,7 @@ export default function GAMECLASSBoard({
 ```
 
 ### Board rendering notes:
+
 - Use SVG or CSS grid — look at `UrBoard.tsx` for SVG patterns, `MorrisBoard.tsx` for grid patterns
 - Pieces are in `board.pieces`, filtered by `playerNumber` and `position`
 - Highlight valid moves client-side for UX (server validates for security)
@@ -276,11 +372,13 @@ export default function GAMECLASSBoard({
 Edit `frontend/src/components/GameRoom.tsx`:
 
 ### 5a. Add import (with other board imports at top):
+
 ```typescript
 import GAMECLASSBoard from './games/GAME_ID/GAMECLASSBoard';
 ```
 
 ### 5b. Add board render (around line 929, after last `{session.gameType === ...}`):
+
 ```typescript
 {session.gameType === 'GAME_ID' && (
   <GAMECLASSBoard
@@ -293,30 +391,44 @@ import GAMECLASSBoard from './games/GAME_ID/GAMECLASSBoard';
 ```
 
 ### 5c. Add title display (around line 572–575, in the `{session.gameType === ...}` ternary chain):
+
 ```typescript
 // Change the final fallback from 'Senet' to the new chain:
-{session.gameType === 'ur' ? 'Royal Game of Ur'
-  : session.gameType === 'morris' ? "Nine Men's Morris"
-  : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
-  : session.gameType === 'GAME_ID' ? 'DISPLAY NAME'
-  : 'Senet'}
+{
+  session.gameType === 'ur'
+    ? 'Royal Game of Ur'
+    : session.gameType === 'morris'
+      ? "Nine Men's Morris"
+      : session.gameType === 'wolves-and-ravens'
+        ? 'Wolves & Ravens'
+        : session.gameType === 'GAME_ID'
+          ? 'DISPLAY NAME'
+          : 'Senet';
+}
 ```
 
 Similarly update the same ternary around line 223 (notification text).
 
 ### 5d. Add score info (around line 690, inside the `scoreInfo` IIFE):
+
 ```typescript
 if (session.gameType === 'GAME_ID') {
-  const finished = boardPieces.filter(p => p.playerNumber === seatIndex && p.position === 99).length;
-  const onBoard = boardPieces.filter(p => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99).length;
+  const finished = boardPieces.filter(
+    (p) => p.playerNumber === seatIndex && p.position === 99,
+  ).length;
+  const onBoard = boardPieces.filter(
+    (p) => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99,
+  ).length;
   return `${onBoard} on board · ${finished} finished`;
 }
 ```
 
 ### 5e. (Optional) Animation support — around line 195:
+
 ```typescript
 // Only add if the board component supports animatingPiece
-const supportsAnimation = session?.gameType === 'ur' || session?.gameType === 'senet' || session?.gameType === 'GAME_ID';
+const supportsAnimation =
+  session?.gameType === 'ur' || session?.gameType === 'senet' || session?.gameType === 'GAME_ID';
 ```
 
 ## Step 6: Frontend — add to game picker (Home.tsx)
@@ -348,7 +460,7 @@ const GAME_NAMES: Record<string, string> = {
   senet: 'Senet',
   morris: "Nine Men's Morris",
   'wolves-and-ravens': 'Wolves & Ravens',
-  'GAME_ID': 'DISPLAY NAME',   // ← add this line
+  GAME_ID: 'DISPLAY NAME', // ← add this line
 };
 ```
 
@@ -385,11 +497,13 @@ After implementing, verify:
 - [ ] `backend/src/models/Session.ts` — Mongoose `gameType` enum updated (**required or session creation fails**)
 - [ ] `backend/src/games/GAME_ID/GAMECLASSGame.ts` — engine created
 - [ ] `backend/src/games/GameRegistry.ts` — engine registered
+- [ ] `backend/src/games/GAME_ID/GAMECLASSGame.test.ts` — engine tests written and passing (`npm test`)
 - [ ] `frontend/src/components/games/GAME_ID/GAMECLASSBoard.tsx` — board created
 - [ ] `GameRoom.tsx` — import, render, title, score info updated
 - [ ] `Home.tsx` — game picker button added
 - [ ] `SessionLobby.tsx` — GAME_NAMES entry added
 - [ ] `GameRules.tsx` — rules component added
+- [ ] `npm test` passes (all game engine tests green)
 - [ ] `npm run build` passes with no TypeScript errors
 
 ## Common pitfalls

@@ -10,7 +10,7 @@ interface Props {
 
 function participantName(participants: TournamentParticipant[], id: string | null): string {
   if (!id) return 'TBD';
-  return participants.find(p => p.id === id)?.displayName ?? 'Unknown';
+  return participants.find((p) => p.id === id)?.displayName ?? 'Unknown';
 }
 
 function getRoundName(format: string, roundIndex: number, totalRounds: number): string {
@@ -25,10 +25,7 @@ function getRoundName(format: string, roundIndex: number, totalRounds: number): 
 function EliminationBracket({ tournament, participants, currentPlayerId, onWatchMatch }: Props) {
   return (
     <div className="overflow-x-auto">
-      <div
-        className="flex gap-6 pb-4"
-        style={{ minWidth: `${tournament.rounds.length * 200}px` }}
-      >
+      <div className="flex gap-6 pb-4" style={{ minWidth: `${tournament.rounds.length * 200}px` }}>
         {tournament.rounds.map((round, rIdx) => (
           <div key={rIdx} className="flex flex-col gap-3 flex-shrink-0" style={{ width: 180 }}>
             <div className="text-xs font-semibold text-center mb-1" style={{ color: '#8A7A60' }}>
@@ -101,11 +98,12 @@ function MatchCard({
     <div
       className="rounded-lg p-2.5 text-xs transition-all"
       style={{
-        background: isMyMatch && isActive
-          ? 'rgba(196,160,48,0.10)'
-          : isActive
-            ? 'rgba(20,40,20,0.4)'
-            : 'rgba(8,5,0,0.5)',
+        background:
+          isMyMatch && isActive
+            ? 'rgba(196,160,48,0.10)'
+            : isActive
+              ? 'rgba(20,40,20,0.4)'
+              : 'rgba(8,5,0,0.5)',
         border: isActive
           ? `1px solid ${isMyMatch ? 'rgba(196,160,48,0.5)' : 'rgba(60,120,60,0.5)'}`
           : '1px solid rgba(42,30,14,0.8)',
@@ -115,11 +113,12 @@ function MatchCard({
       <div
         className="flex items-center justify-between mb-1"
         style={{
-          color: isFinished && match.winnerId === match.player1Id
-            ? '#E8C870'
-            : isFinished && match.winnerId !== match.player1Id
-              ? '#4A3A28'
-              : '#D4C8A8',
+          color:
+            isFinished && match.winnerId === match.player1Id
+              ? '#E8C870'
+              : isFinished && match.winnerId !== match.player1Id
+                ? '#4A3A28'
+                : '#D4C8A8',
           fontWeight: isFinished && match.winnerId === match.player1Id ? 600 : 400,
         }}
       >
@@ -136,11 +135,12 @@ function MatchCard({
       <div
         className="flex items-center justify-between"
         style={{
-          color: isFinished && match.winnerId === match.player2Id
-            ? '#E8C870'
-            : isFinished && match.winnerId !== match.player2Id
-              ? '#4A3A28'
-              : '#D4C8A8',
+          color:
+            isFinished && match.winnerId === match.player2Id
+              ? '#E8C870'
+              : isFinished && match.winnerId !== match.player2Id
+                ? '#4A3A28'
+                : '#D4C8A8',
           fontWeight: isFinished && match.winnerId === match.player2Id ? 600 : 400,
         }}
       >
@@ -181,45 +181,83 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
       >
         <div
           className="px-4 py-2 text-xs font-semibold"
-          style={{ background: 'rgba(42,30,14,0.6)', color: '#8A7A60', borderBottom: '1px solid rgba(42,30,14,0.8)' }}
+          style={{
+            background: 'rgba(42,30,14,0.6)',
+            color: '#8A7A60',
+            borderBottom: '1px solid rgba(42,30,14,0.8)',
+          }}
         >
           Standings
         </div>
         <table className="w-full text-sm">
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(42,30,14,0.5)' }}>
-              <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: '#6A5A40' }}>#</th>
-              <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: '#6A5A40' }}>Player</th>
-              <th className="text-center px-3 py-2 text-xs font-medium" style={{ color: '#6A5A40' }}>W</th>
-              <th className="text-center px-3 py-2 text-xs font-medium" style={{ color: '#6A5A40' }}>L</th>
-              <th className="text-center px-3 py-2 text-xs font-medium" style={{ color: '#6A5A40' }}>P</th>
+              <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: '#6A5A40' }}>
+                #
+              </th>
+              <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: '#6A5A40' }}>
+                Player
+              </th>
+              <th
+                className="text-center px-3 py-2 text-xs font-medium"
+                style={{ color: '#6A5A40' }}
+              >
+                W
+              </th>
+              <th
+                className="text-center px-3 py-2 text-xs font-medium"
+                style={{ color: '#6A5A40' }}
+              >
+                L
+              </th>
+              <th
+                className="text-center px-3 py-2 text-xs font-medium"
+                style={{ color: '#6A5A40' }}
+              >
+                P
+              </th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((standing, i) => {
-              const participant = participants.find(p => p.id === standing.playerId);
+              const participant = participants.find((p) => p.id === standing.playerId);
               const isMe = standing.playerId === currentPlayerId;
               return (
                 <tr
                   key={standing.playerId}
                   style={{
-                    borderBottom: i < sorted.length - 1 ? '1px solid rgba(42,30,14,0.3)' : undefined,
+                    borderBottom:
+                      i < sorted.length - 1 ? '1px solid rgba(42,30,14,0.3)' : undefined,
                     background: isMe ? 'rgba(196,160,48,0.05)' : undefined,
                   }}
                 >
-                  <td className="px-4 py-2 text-xs" style={{ color: '#5A4A38' }}>{i + 1}</td>
+                  <td className="px-4 py-2 text-xs" style={{ color: '#5A4A38' }}>
+                    {i + 1}
+                  </td>
                   <td className="px-4 py-2">
                     <span style={{ color: isMe ? '#E8C870' : '#D4C8A8' }}>
                       {participant?.displayName ?? 'Unknown'}
                     </span>
-                    {isMe && <span className="ml-2 text-xs" style={{ color: '#6A5A40' }}>you</span>}
+                    {isMe && (
+                      <span className="ml-2 text-xs" style={{ color: '#6A5A40' }}>
+                        you
+                      </span>
+                    )}
                     {tournament.winnerId === standing.playerId && (
-                      <span className="ml-2 text-xs" style={{ color: '#E8C870' }}>★ Winner</span>
+                      <span className="ml-2 text-xs" style={{ color: '#E8C870' }}>
+                        ★ Winner
+                      </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-center" style={{ color: '#90B890' }}>{standing.wins}</td>
-                  <td className="px-3 py-2 text-center" style={{ color: '#B88888' }}>{standing.losses}</td>
-                  <td className="px-3 py-2 text-center text-xs" style={{ color: '#6A5A40' }}>{standing.matchesPlayed}</td>
+                  <td className="px-3 py-2 text-center" style={{ color: '#90B890' }}>
+                    {standing.wins}
+                  </td>
+                  <td className="px-3 py-2 text-center" style={{ color: '#B88888' }}>
+                    {standing.losses}
+                  </td>
+                  <td className="px-3 py-2 text-center text-xs" style={{ color: '#6A5A40' }}>
+                    {standing.matchesPlayed}
+                  </td>
                 </tr>
               );
             })}
@@ -231,7 +269,7 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
       <div className="space-y-3">
         {tournament.rounds.map((round, rIdx) => {
           const isCurrentRound = rIdx === tournament.currentRound;
-          const allDone = round.every(m => m.status === 'finished' || m.status === 'bye');
+          const allDone = round.every((m) => m.status === 'finished' || m.status === 'bye');
           return (
             <div
               key={rIdx}
@@ -260,14 +298,17 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
                   </span>
                 )}
                 {allDone && (
-                  <span className="text-xs" style={{ color: '#4A5A4A' }}>Complete</span>
+                  <span className="text-xs" style={{ color: '#4A5A4A' }}>
+                    Complete
+                  </span>
                 )}
               </div>
               <div className="p-3 space-y-2">
                 {round.map((match) => {
                   const p1Name = participantName(participants, match.player1Id);
                   const p2Name = participantName(participants, match.player2Id);
-                  const isMyMatch = match.player1Id === currentPlayerId || match.player2Id === currentPlayerId;
+                  const isMyMatch =
+                    match.player1Id === currentPlayerId || match.player2Id === currentPlayerId;
                   return (
                     <div
                       key={match.matchId}
@@ -300,28 +341,37 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                         {match.status === 'finished' && (
-                          <span className="text-xs" style={{ color: '#4A5A4A' }}>Done</span>
+                          <span className="text-xs" style={{ color: '#4A5A4A' }}>
+                            Done
+                          </span>
                         )}
                         {match.status === 'in_progress' && (
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(60,120,60,0.25)', color: '#80C080' }}>
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded"
+                            style={{ background: 'rgba(60,120,60,0.25)', color: '#80C080' }}
+                          >
                             Live
                           </span>
                         )}
-                        {match.status === 'in_progress' && match.currentSessionCode && onWatchMatch && (
-                          <button
-                            onClick={() => onWatchMatch(match.currentSessionCode!)}
-                            className="text-xs px-2 py-0.5 rounded transition-colors"
-                            style={{
-                              background: 'rgba(60,120,60,0.3)',
-                              border: '1px solid rgba(60,120,60,0.5)',
-                              color: '#90D090',
-                            }}
-                          >
-                            Watch
-                          </button>
-                        )}
+                        {match.status === 'in_progress' &&
+                          match.currentSessionCode &&
+                          onWatchMatch && (
+                            <button
+                              onClick={() => onWatchMatch(match.currentSessionCode!)}
+                              className="text-xs px-2 py-0.5 rounded transition-colors"
+                              style={{
+                                background: 'rgba(60,120,60,0.3)',
+                                border: '1px solid rgba(60,120,60,0.5)',
+                                color: '#90D090',
+                              }}
+                            >
+                              Watch
+                            </button>
+                          )}
                         {match.status === 'pending' && (
-                          <span className="text-xs" style={{ color: '#3A2A1A' }}>Upcoming</span>
+                          <span className="text-xs" style={{ color: '#3A2A1A' }}>
+                            Upcoming
+                          </span>
                         )}
                       </div>
                     </div>
@@ -345,21 +395,29 @@ function TournamentBracket({ tournament, participants, currentPlayerId, onWatchM
       <div className="flex items-center gap-3">
         <div
           className="text-xs px-2.5 py-1 rounded-full font-semibold"
-          style={{ background: 'rgba(196,160,48,0.15)', color: '#E8C870', border: '1px solid rgba(196,160,48,0.3)' }}
+          style={{
+            background: 'rgba(196,160,48,0.15)',
+            color: '#E8C870',
+            border: '1px solid rgba(196,160,48,0.3)',
+          }}
         >
           {isRoundRobin
             ? 'Round Robin'
-            : tournament.format === 'bo1' ? 'Best of 1'
-            : tournament.format === 'bo3' ? 'Best of 3'
-            : tournament.format === 'bo5' ? 'Best of 5'
-            : 'Best of 7'}
+            : tournament.format === 'bo1'
+              ? 'Best of 1'
+              : tournament.format === 'bo3'
+                ? 'Best of 3'
+                : tournament.format === 'bo5'
+                  ? 'Best of 5'
+                  : 'Best of 7'}
         </div>
         <div className="text-sm" style={{ color: '#6A5A40' }}>
           {participants.length} players
         </div>
         {tournament.winnerId && (
           <div className="text-sm font-semibold" style={{ color: '#E8C870' }}>
-            Winner: {participants.find(p => p.id === tournament.winnerId)?.displayName ?? 'Unknown'}
+            Winner:{' '}
+            {participants.find((p) => p.id === tournament.winnerId)?.displayName ?? 'Unknown'}
           </div>
         )}
       </div>

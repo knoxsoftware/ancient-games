@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { SessionService } from '../services/SessionService';
 import { PushService } from '../services/PushService';
 import { GameRegistry } from '../games/GameRegistry';
-import { ClientToServerEvents, ServerToClientEvents, GameState, Session, HistoricalMove } from '@ancient-games/shared';
+import { ClientToServerEvents, ServerToClientEvents, HistoricalMove } from '@ancient-games/shared';
 
 const socketToSession = new Map<string, { sessionCode: string; playerId: string }>();
 const disconnectTimers = new Map<string, NodeJS.Timeout>(); // keyed by playerId
@@ -29,7 +29,7 @@ export function registerGameHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents>,
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
   sessionService: SessionService,
-  pushService: PushService
+  pushService: PushService,
 ) {
   // Join a session room
   socket.on('session:join', async ({ sessionCode, playerId }) => {
@@ -40,9 +40,12 @@ export function registerGameHandlers(
         return;
       }
 
-      const joiningPlayer = session.players.find(p => p.id === playerId);
-      let joiningSpectator = !joiningPlayer ? session.spectators.find(s => s.id === playerId) : undefined;
-      const isFirstConnect = (joiningPlayer?.socketId === 'temp') || (joiningSpectator?.socketId === 'temp');
+      const joiningPlayer = session.players.find((p) => p.id === playerId);
+      let joiningSpectator = !joiningPlayer
+        ? session.spectators.find((s) => s.id === playerId)
+        : undefined;
+      const isFirstConnect =
+        joiningPlayer?.socketId === 'temp' || joiningSpectator?.socketId === 'temp';
 
       // Register socket→session mapping
       socketToSession.set(socket.id, { sessionCode, playerId });
@@ -55,11 +58,17 @@ export function registerGameHandlers(
         // Player was converted to spectator during grace period — try to reclaim seat
         const cur = await sessionService.getSession(sessionCode);
         if (cur) {
-          const asSpec = cur.spectators.find(s => s.id === playerId);
+          const asSpec = cur.spectators.find((s) => s.id === playerId);
           if (asSpec && (asSpec as any).originalSeatNumber != null) {
-            const seatFree = !cur.players.some(p => p.playerNumber === (asSpec as any).originalSeatNumber);
+            const seatFree = !cur.players.some(
+              (p) => p.playerNumber === (asSpec as any).originalSeatNumber,
+            );
             if (seatFree) {
-              await sessionService.spectatorToPlayer(sessionCode, playerId, (asSpec as any).originalSeatNumber);
+              await sessionService.spectatorToPlayer(
+                sessionCode,
+                playerId,
+                (asSpec as any).originalSeatNumber,
+              );
             }
           }
         }
@@ -70,11 +79,21 @@ export function registerGameHandlers(
         const hubSession = await sessionService.getSession(session.tournamentHubCode);
         if (hubSession) {
           const hubIdentity =
-            hubSession.players.find(p => p.id === playerId) ??
-            hubSession.spectators.find(s => s.id === playerId);
+            hubSession.players.find((p) => p.id === playerId) ??
+            hubSession.spectators.find((s) => s.id === playerId);
           if (hubIdentity) {
-            await sessionService.addSpectatorWithId(sessionCode, playerId, hubIdentity.displayName, socket.id);
-            joiningSpectator = { id: playerId, displayName: hubIdentity.displayName, socketId: socket.id, status: 'active' };
+            await sessionService.addSpectatorWithId(
+              sessionCode,
+              playerId,
+              hubIdentity.displayName,
+              socket.id,
+            );
+            joiningSpectator = {
+              id: playerId,
+              displayName: hubIdentity.displayName,
+              socketId: socket.id,
+              status: 'active',
+            };
           }
         }
       }
@@ -96,7 +115,7 @@ export function registerGameHandlers(
       }
 
       // Re-fetch after potential auto-add so session:updated reflects the new spectator
-      const freshSession = await sessionService.getSession(sessionCode) ?? session;
+      const freshSession = (await sessionService.getSession(sessionCode)) ?? session;
 
       io.to(sessionCode).emit('session:updated', freshSession);
 
@@ -126,7 +145,7 @@ export function registerGameHandlers(
   socket.on('session:leave', async ({ sessionCode, playerId }) => {
     try {
       const currentSession = await sessionService.getSession(sessionCode);
-      const isPlayer = currentSession?.players.some(p => p.id === playerId) ?? false;
+      const isPlayer = currentSession?.players.some((p) => p.id === playerId) ?? false;
 
       let session: typeof currentSession;
       if (isPlayer) {
@@ -245,9 +264,11 @@ export function registerGameHandlers(
       if (session) {
         io.to(sessionCode).emit('session:updated', session);
 
-        const player = session.players.find(p => p.id === playerId);
+        const player = session.players.find((p) => p.id === playerId);
         if (player) {
-          const statusText = ready ? `${player.displayName} is ready!` : `${player.displayName} is not ready`;
+          const statusText = ready
+            ? `${player.displayName} is ready!`
+            : `${player.displayName} is not ready`;
           for (const other of session.players) {
             if (other.id !== playerId) {
               await pushService.sendNotification(other.id, {
@@ -271,19 +292,19 @@ export function registerGameHandlers(
         const { hubSession, matchSessions } = await sessionService.startTournament(
           sessionCode,
           playerId,
-          tournamentFormat
+          tournamentFormat,
         );
 
         io.to(sessionCode).emit('tournament:updated', hubSession);
 
         const ts = hubSession.tournamentState!;
         for (const ms of matchSessions) {
-          const p1 = ts.participants.find(p => p.id === ms.player1Id);
-          const p2 = ts.participants.find(p => p.id === ms.player2Id);
+          const p1 = ts.participants.find((p) => p.id === ms.player1Id);
+          const p2 = ts.participants.find((p) => p.id === ms.player2Id);
           const roundLabel = getRoundLabel(tournamentFormat, 0, ts.rounds.length);
 
-          const p1Player = hubSession.players.find(p => p.id === ms.player1Id);
-          const p2Player = hubSession.players.find(p => p.id === ms.player2Id);
+          const p1Player = hubSession.players.find((p) => p.id === ms.player1Id);
+          const p2Player = hubSession.players.find((p) => p.id === ms.player2Id);
 
           if (p1Player && p2) {
             io.to(p1Player.socketId).emit('tournament:match-ready', {
@@ -320,7 +341,7 @@ export function registerGameHandlers(
         return;
       }
 
-      const player = session.players.find(p => p.id === playerId);
+      const player = session.players.find((p) => p.id === playerId);
       if (!player) {
         socket.emit('game:error', { message: 'Player not found' });
         return;
@@ -371,7 +392,7 @@ export function registerGameHandlers(
           currentTurn: session.gameState.currentTurn,
         });
 
-        const nextPlayer = session.players.find(p => p.playerNumber === nextTurn);
+        const nextPlayer = session.players.find((p) => p.playerNumber === nextTurn);
         if (nextPlayer) {
           await pushService.sendNotification(nextPlayer.id, {
             title: 'Your turn!',
@@ -396,7 +417,7 @@ export function registerGameHandlers(
         return;
       }
 
-      const player = session.players.find(p => p.id === playerId);
+      const player = session.players.find((p) => p.id === playerId);
       if (!player) {
         socket.emit('game:error', { message: 'Player not found' });
         return;
@@ -419,7 +440,7 @@ export function registerGameHandlers(
         move.to !== 99 &&
         isCapturablePosition &&
         session.gameState.board.pieces.some(
-          (p) => p.playerNumber !== player.playerNumber && p.position === move.to
+          (p) => p.playerNumber !== player.playerNumber && p.position === move.to,
         );
 
       const newBoard = gameEngine.applyMove(session.gameState.board, move);
@@ -464,30 +485,34 @@ export function registerGameHandlers(
 
             if (tournResult.seriesContinued && tournResult.seriesNextSessionCode) {
               const nextCode = tournResult.seriesNextSessionCode;
-              const match = ts.rounds.flat().find(m => m.currentSessionCode === nextCode);
+              const match = ts.rounds.flat().find((m) => m.currentSessionCode === nextCode);
               const roundLabel = getRoundLabel(ts.format, match?.roundIndex ?? 0, ts.rounds.length);
               const p1Id = match?.player1Id ?? session.players[0].id;
               const p2Id = match?.player2Id ?? session.players[1].id;
-              const p1 = ts.participants.find(p => p.id === p1Id);
-              const p2 = ts.participants.find(p => p.id === p2Id);
+              const p1 = ts.participants.find((p) => p.id === p1Id);
+              const p2 = ts.participants.find((p) => p.id === p2Id);
 
-              const p1Sock = hubSession.players.find(p => p.id === p1Id);
-              const p2Sock = hubSession.players.find(p => p.id === p2Id);
-              if (p1Sock && p2) io.to(p1Sock.socketId).emit('tournament:match-ready', {
-                matchSessionCode: nextCode,
-                opponentName: p2.displayName,
-                roundLabel,
-              });
-              if (p2Sock && p1) io.to(p2Sock.socketId).emit('tournament:match-ready', {
-                matchSessionCode: nextCode,
-                opponentName: p1.displayName,
-                roundLabel,
-              });
+              const p1Sock = hubSession.players.find((p) => p.id === p1Id);
+              const p2Sock = hubSession.players.find((p) => p.id === p2Id);
+              if (p1Sock && p2)
+                io.to(p1Sock.socketId).emit('tournament:match-ready', {
+                  matchSessionCode: nextCode,
+                  opponentName: p2.displayName,
+                  roundLabel,
+                });
+              if (p2Sock && p1)
+                io.to(p2Sock.socketId).emit('tournament:match-ready', {
+                  matchSessionCode: nextCode,
+                  opponentName: p1.displayName,
+                  roundLabel,
+                });
             }
 
             if (tournResult.matchFinished) {
               if (tournResult.eliminatedPlayerId) {
-                const elimSock = hubSession.players.find(p => p.id === tournResult.eliminatedPlayerId);
+                const elimSock = hubSession.players.find(
+                  (p) => p.id === tournResult.eliminatedPlayerId,
+                );
                 if (elimSock) {
                   io.to(elimSock.socketId).emit('tournament:eliminated', {
                     tournamentCode: session.tournamentHubCode,
@@ -496,28 +521,36 @@ export function registerGameHandlers(
               }
 
               for (const nm of tournResult.nextRoundMatches) {
-                const p1 = ts.participants.find(p => p.id === nm.player1Id);
-                const p2 = ts.participants.find(p => p.id === nm.player2Id);
-                const nextMatch = ts.rounds.flat().find(m => m.currentSessionCode === nm.sessionCode);
-                const roundLabel = getRoundLabel(ts.format, nextMatch?.roundIndex ?? 0, ts.rounds.length);
+                const p1 = ts.participants.find((p) => p.id === nm.player1Id);
+                const p2 = ts.participants.find((p) => p.id === nm.player2Id);
+                const nextMatch = ts.rounds
+                  .flat()
+                  .find((m) => m.currentSessionCode === nm.sessionCode);
+                const roundLabel = getRoundLabel(
+                  ts.format,
+                  nextMatch?.roundIndex ?? 0,
+                  ts.rounds.length,
+                );
 
-                const p1Sock = hubSession.players.find(p => p.id === nm.player1Id);
-                const p2Sock = hubSession.players.find(p => p.id === nm.player2Id);
-                if (p1Sock && p2) io.to(p1Sock.socketId).emit('tournament:match-ready', {
-                  matchSessionCode: nm.sessionCode,
-                  opponentName: p2.displayName,
-                  roundLabel,
-                });
-                if (p2Sock && p1) io.to(p2Sock.socketId).emit('tournament:match-ready', {
-                  matchSessionCode: nm.sessionCode,
-                  opponentName: p1.displayName,
-                  roundLabel,
-                });
+                const p1Sock = hubSession.players.find((p) => p.id === nm.player1Id);
+                const p2Sock = hubSession.players.find((p) => p.id === nm.player2Id);
+                if (p1Sock && p2)
+                  io.to(p1Sock.socketId).emit('tournament:match-ready', {
+                    matchSessionCode: nm.sessionCode,
+                    opponentName: p2.displayName,
+                    roundLabel,
+                  });
+                if (p2Sock && p1)
+                  io.to(p2Sock.socketId).emit('tournament:match-ready', {
+                    matchSessionCode: nm.sessionCode,
+                    opponentName: p1.displayName,
+                    roundLabel,
+                  });
               }
             }
 
             if (tournResult.tournamentFinished && ts.winnerId) {
-              const winnerParticipant = ts.participants.find(p => p.id === ts.winnerId);
+              const winnerParticipant = ts.participants.find((p) => p.id === ts.winnerId);
               io.to(session.tournamentHubCode).emit('tournament:finished', {
                 tournamentCode: session.tournamentHubCode,
                 winnerId: ts.winnerId,
@@ -534,7 +567,7 @@ export function registerGameHandlers(
         });
 
         const nextPlayer = session.players.find(
-          p => p.playerNumber === session.gameState.currentTurn
+          (p) => p.playerNumber === session.gameState.currentTurn,
         );
         if (nextPlayer && nextPlayer.id !== playerId) {
           await pushService.sendNotification(nextPlayer.id, {
@@ -558,7 +591,7 @@ export function registerGameHandlers(
         return;
       }
 
-      const player = session.players.find(p => p.id === playerId);
+      const player = session.players.find((p) => p.id === playerId);
       if (!player) {
         socket.emit('game:error', { message: 'Player not found' });
         return;
@@ -594,7 +627,7 @@ export function registerGameHandlers(
         return;
       }
 
-      const player = session.players.find(p => p.id === playerId);
+      const player = session.players.find((p) => p.id === playerId);
       if (!player) {
         socket.emit('game:error', { message: 'Player not found' });
         return;
@@ -619,8 +652,8 @@ export function registerGameHandlers(
       const session = await sessionService.getSession(sessionCode);
       if (!session) return;
 
-      const player = session.players.find(p => p.id === playerId);
-      const spectator = !player ? session.spectators.find(s => s.id === playerId) : undefined;
+      const player = session.players.find((p) => p.id === playerId);
+      const spectator = !player ? session.spectators.find((s) => s.id === playerId) : undefined;
       const sender = player ?? spectator;
       if (!sender) return;
 
@@ -641,8 +674,9 @@ export function registerGameHandlers(
         io.to(session.tournamentHubCode).emit('chat:message', message);
       } else if (scope && typeof scope === 'object' && 'toPlayerId' in scope) {
         // DM — ephemeral, not stored
-        const target = session.players.find(p => p.id === scope.toPlayerId)
-          ?? session.spectators.find(s => s.id === scope.toPlayerId);
+        const target =
+          session.players.find((p) => p.id === scope.toPlayerId) ??
+          session.spectators.find((s) => s.id === scope.toPlayerId);
         if (target && target.socketId !== 'temp') {
           const dmMessage = {
             id: nanoid(),
@@ -686,8 +720,8 @@ export function registerGameHandlers(
 
     const session = await sessionService.getSession(sessionCode);
     if (!session) return;
-    const isSeatedPlayer = session.players.some(p => p.id === playerId);
-    const isSpectator = !isSeatedPlayer && session.spectators.some(s => s.id === playerId);
+    const isSeatedPlayer = session.players.some((p) => p.id === playerId);
+    const isSpectator = !isSeatedPlayer && session.spectators.some((s) => s.id === playerId);
     if (!isSeatedPlayer && !isSpectator) return;
 
     const timer = setTimeout(async () => {
@@ -697,14 +731,14 @@ export function registerGameHandlers(
         if (!latest) return;
 
         if (isSeatedPlayer) {
-          const stillSeated = latest.players.find(p => p.id === playerId);
+          const stillSeated = latest.players.find((p) => p.id === playerId);
           if (!stillSeated) return; // already manually stood up
-          const updated = await sessionService.playerToSpectator(
-            sessionCode, playerId, { storeOriginalSeat: true }
-          );
+          const updated = await sessionService.playerToSpectator(sessionCode, playerId, {
+            storeOriginalSeat: true,
+          });
           if (updated) io.to(sessionCode).emit('session:updated', updated);
         } else {
-          const stillSpectating = latest.spectators.some(s => s.id === playerId);
+          const stillSpectating = latest.spectators.some((s) => s.id === playerId);
           if (!stillSpectating) return;
           const updated = await sessionService.removeSpectator(sessionCode, playerId);
           if (updated) io.to(sessionCode).emit('session:updated', updated);

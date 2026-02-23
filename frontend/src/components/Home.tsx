@@ -75,9 +75,7 @@ export default function Home() {
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent">
             Ancient Games
           </h1>
-          <p className="text-gray-400 text-lg">
-            Play ancient board games online with friends
-          </p>
+          <p className="text-gray-400 text-lg">Play ancient board games online with friends</p>
         </div>
 
         {!mode ? (
@@ -203,7 +201,7 @@ export default function Home() {
                       </button>
 
                       <button
-		        disabled
+                        disabled
                         onClick={() => setGameType('stellar-siege')}
                         className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                           gameType === 'stellar-siege'
@@ -213,7 +211,9 @@ export default function Home() {
                       >
                         <div className="text-2xl mb-2">🚀</div>
                         <div className="font-semibold text-sm">Stellar Siege (DISABLED)*</div>
-                        <div className="text-xs text-gray-400 mt-1">Asymmetric defense (coming soon!)</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Asymmetric defense (coming soon!)
+                        </div>
                       </button>
                     </div>
                     <div className="text-xs text-gray-600 mt-2">* AI-generated game</div>

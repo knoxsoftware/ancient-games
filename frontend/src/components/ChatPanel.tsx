@@ -13,7 +13,7 @@ export interface ChatMessage {
 }
 
 export interface ChatDestination {
-  id: string;   // 'tournament' | 'match' | playerId
+  id: string; // 'tournament' | 'match' | playerId
   label: string;
 }
 
@@ -27,14 +27,20 @@ interface ChatPanelProps {
 
 function getSenderStatus(session: Session | undefined, playerId: string): 'active' | 'away' | null {
   if (!session) return null;
-  const p = session.players.find(p => p.id === playerId);
+  const p = session.players.find((p) => p.id === playerId);
   if (p) return p.status ?? 'active';
-  const s = session.spectators.find(s => s.id === playerId);
+  const s = session.spectators.find((s) => s.id === playerId);
   if (s) return s.status ?? 'active';
   return null;
 }
 
-function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, session }: ChatPanelProps) {
+function ChatPanel({
+  messages,
+  onSend,
+  currentPlayerId,
+  chatDestinations,
+  session,
+}: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [destination, setDestination] = useState<string>('match');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -80,10 +86,7 @@ function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, sessio
       }}
     >
       {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-2 space-y-2"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {messages.length === 0 && (
           <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
             No messages yet
@@ -119,13 +122,16 @@ function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, sessio
                     className="text-xs px-1 rounded"
                     style={{
                       fontSize: '10px',
-                      background: msg.chatScope === 'tournament'
-                        ? 'rgba(196,160,48,0.15)'
-                        : 'rgba(80,60,120,0.25)',
+                      background:
+                        msg.chatScope === 'tournament'
+                          ? 'rgba(196,160,48,0.15)'
+                          : 'rgba(80,60,120,0.25)',
                       color: msg.chatScope === 'tournament' ? '#C8A840' : '#A080D0',
-                      border: `1px solid ${msg.chatScope === 'tournament'
-                        ? 'rgba(196,160,48,0.3)'
-                        : 'rgba(120,80,180,0.3)'}`,
+                      border: `1px solid ${
+                        msg.chatScope === 'tournament'
+                          ? 'rgba(196,160,48,0.3)'
+                          : 'rgba(120,80,180,0.3)'
+                      }`,
                     }}
                   >
                     {badge}
@@ -138,16 +144,19 @@ function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, sessio
               <div
                 className="rounded-lg px-3 py-1.5 text-sm max-w-[85%] break-words"
                 style={{
-                  background: msg.chatScope === 'dm'
-                    ? 'rgba(80,60,120,0.2)'
-                    : isMe
-                      ? 'rgba(196,160,48,0.15)'
-                      : 'rgba(42,30,14,0.6)',
-                  border: `1px solid ${msg.chatScope === 'dm'
-                    ? 'rgba(120,80,180,0.3)'
-                    : isMe
-                      ? 'rgba(196,160,48,0.3)'
-                      : 'rgba(42,30,14,0.8)'}`,
+                  background:
+                    msg.chatScope === 'dm'
+                      ? 'rgba(80,60,120,0.2)'
+                      : isMe
+                        ? 'rgba(196,160,48,0.15)'
+                        : 'rgba(42,30,14,0.6)',
+                  border: `1px solid ${
+                    msg.chatScope === 'dm'
+                      ? 'rgba(120,80,180,0.3)'
+                      : isMe
+                        ? 'rgba(196,160,48,0.3)'
+                        : 'rgba(42,30,14,0.8)'
+                  }`,
                   color: '#D4C8A8',
                 }}
               >
@@ -160,10 +169,7 @@ function ChatPanel({ messages, onSend, currentPlayerId, chatDestinations, sessio
 
       {/* Destination selector */}
       {chatDestinations && chatDestinations.length > 1 && (
-        <div
-          className="px-3 pt-2 pb-1 border-t"
-          style={{ borderColor: '#2A1E0E' }}
-        >
+        <div className="px-3 pt-2 pb-1 border-t" style={{ borderColor: '#2A1E0E' }}>
           <select
             value={destination}
             onChange={(e) => setDestination(e.target.value)}

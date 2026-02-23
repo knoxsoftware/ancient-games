@@ -24,9 +24,19 @@ npm start
 
 # Docker
 docker compose up --build   # runs app + MongoDB together
+
+# Lint & format
+npm run lint                # ESLint (flat config)
+npm run lint:fix            # ESLint with auto-fix
+npm run format              # Prettier — write
+npm run format:check        # Prettier — check only
+
+# Tests (Vitest, backend only)
+npm test                    # run all tests once
+npm run test:watch --workspace=backend  # watch mode
 ```
 
-There are no tests or linters configured in this project.
+ESLint uses flat config (`eslint.config.mjs`) with TypeScript and React plugins. Prettier is configured in `.prettierrc`. Game engine tests are colocated (`*.test.ts`) next to the engine files in `backend/src/games/`.
 
 The frontend Vite config proxies `/api` and `/socket.io` to `localhost:3000`, so the frontend dev server on `:5173` talks to the backend on `:3000` transparently.
 
@@ -43,6 +53,7 @@ This is an **npm workspaces monorepo** with three packages:
 `server.ts` → Express HTTP + Socket.io on port 3000, MongoDB via Mongoose.
 
 **Session lifecycle (REST):**
+
 - `POST /api/sessions` — creates session, generates short code via nanoid, returns `{ session, playerId }`
 - `POST /api/sessions/join` — joins by session code
 - `GET /api/sessions/:code` — fetch state (used on page load/reconnect)
@@ -51,6 +62,7 @@ This is an **npm workspaces monorepo** with three packages:
 
 **Real-time flow (Socket.io):**
 All game events are in `backend/src/socket/gameHandlers.ts`. The important sequence:
+
 1. Client emits `session:join` after connecting — this subscribes them to the session room
 2. `game:start` (host only) initializes board via game engine
 3. `game:roll-dice` → server rolls, stores result on `board.diceRoll`, emits `game:dice-rolled`
@@ -59,7 +71,8 @@ All game events are in `backend/src/socket/gameHandlers.ts`. The important seque
 
 **In-game chat:** Real-time chat is available during sessions via `chat:message` socket events.
 
-**Adding a new game** *(use the `/add-game` skill to scaffold all required files)*:
+**Adding a new game** _(use the `/add-game` skill to scaffold all required files)_:
+
 1. Create `backend/src/games/<name>/<Name>Game.ts` extending `GameEngine`
 2. Register it in `GameRegistry.ts`
 3. Add the game type to the `GameType` union in `shared/types/game.ts`
@@ -69,6 +82,7 @@ All game events are in `backend/src/socket/gameHandlers.ts`. The important seque
 ### Game engine interface
 
 Every game engine must implement (`backend/src/games/GameEngine.ts`):
+
 - `initializeBoard()` — starting `BoardState`
 - `rollDice()` — returns a number
 - `validateMove(board, move, player)` — returns boolean; server calls this before applying

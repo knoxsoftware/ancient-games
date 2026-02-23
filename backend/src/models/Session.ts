@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Session as ISession, GameState, Player, Spectator, ChatMessage } from '@ancient-games/shared';
+import {
+  Session as ISession,
+  GameState,
+  Player,
+  Spectator,
+  ChatMessage,
+} from '@ancient-games/shared';
 
 export interface SessionDocument extends Omit<ISession, '_id'>, Document {}
 
@@ -42,7 +48,11 @@ const GameStateSchema = new Schema<GameState>({
 
 const SessionSchema = new Schema<SessionDocument>({
   sessionCode: { type: String, required: true, unique: true, index: true },
-  gameType: { type: String, enum: ['ur', 'senet', 'morris', 'wolves-and-ravens', 'rock-paper-scissors', 'stellar-siege'], required: true },
+  gameType: {
+    type: String,
+    enum: ['ur', 'senet', 'morris', 'wolves-and-ravens', 'rock-paper-scissors', 'stellar-siege'],
+    required: true,
+  },
   status: { type: String, enum: ['lobby', 'playing', 'finished'], default: 'lobby' },
   players: [PlayerSchema],
   spectators: { type: [SpectatorSchema], default: [] },
@@ -54,7 +64,11 @@ const SessionSchema = new Schema<SessionDocument>({
   tournamentState: { type: Schema.Types.Mixed, default: null },
   tournamentHubCode: { type: String, default: null },
   tournamentMatchId: { type: String, default: null },
-  lobbyFormat: { type: String, enum: ['single', 'bo1', 'bo3', 'bo5', 'bo7', 'round-robin'], default: 'single' },
+  lobbyFormat: {
+    type: String,
+    enum: ['single', 'bo1', 'bo3', 'bo5', 'bo7', 'round-robin'],
+    default: 'single',
+  },
 });
 
 // Auto-cleanup sessions older than 24 hours with no activity

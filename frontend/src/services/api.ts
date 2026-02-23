@@ -1,4 +1,12 @@
-import { CreateSessionRequest, CreateSessionResponse, JoinSessionRequest, JoinSessionResponse, SpectateSessionRequest, SpectateSessionResponse, Session } from '@ancient-games/shared';
+import {
+  CreateSessionRequest,
+  CreateSessionResponse,
+  JoinSessionRequest,
+  JoinSessionResponse,
+  SpectateSessionRequest,
+  SpectateSessionResponse,
+  Session,
+} from '@ancient-games/shared';
 
 const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:3000/api';
 

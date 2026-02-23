@@ -18,10 +18,7 @@ interface GameControlsProps {
 function WaitingMessage({ name, style }: { name: string; style?: React.CSSProperties }) {
   return (
     <div className="p-3">
-      <div
-        className="rounded-lg p-3 text-sm text-center"
-        style={style}
-      >
+      <div className="rounded-lg p-3 text-sm text-center" style={style}>
         Waiting for {name}…
       </div>
     </div>
@@ -30,7 +27,13 @@ function WaitingMessage({ name, style }: { name: string; style?: React.CSSProper
 
 // ── Per-game variant components ───────────────────────────────────────────────
 
-function MorrisControls({ isMyTurn, currentTurnName }: { isMyTurn: boolean; currentTurnName: string }) {
+function MorrisControls({
+  isMyTurn,
+  currentTurnName,
+}: {
+  isMyTurn: boolean;
+  currentTurnName: string;
+}) {
   return (
     <div className="p-3">
       <div
@@ -48,7 +51,12 @@ function MorrisControls({ isMyTurn, currentTurnName }: { isMyTurn: boolean; curr
 }
 
 function UrControls({
-  session, gameState, playerId, isMyTurn, lastMove, currentTurnName,
+  session,
+  gameState,
+  playerId,
+  isMyTurn,
+  lastMove,
+  currentTurnName,
 }: GameControlsProps & { currentTurnName: string }) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
@@ -107,8 +115,8 @@ function UrControls({
                 {diceRoll === 0
                   ? 'No move — turn passes.'
                   : !isMyTurn
-                  ? `Waiting for ${currentTurnName} to move…`
-                  : 'Select a piece to move.'}
+                    ? `Waiting for ${currentTurnName} to move…`
+                    : 'Select a piece to move.'}
               </div>
             </div>
           )}
@@ -119,7 +127,12 @@ function UrControls({
 }
 
 function SenetControls({
-  session, gameState, playerId, isMyTurn, lastMove, currentTurnName,
+  session,
+  gameState,
+  playerId,
+  isMyTurn,
+  lastMove,
+  currentTurnName,
 }: GameControlsProps & { currentTurnName: string }) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
@@ -179,8 +192,8 @@ function SenetControls({
                 {extraTurn
                   ? 'Extra turn — select a piece.'
                   : !isMyTurn
-                  ? `Waiting for ${currentTurnName} to move…`
-                  : 'Select a piece to move.'}
+                    ? `Waiting for ${currentTurnName} to move…`
+                    : 'Select a piece to move.'}
               </div>
             </div>
           )}
@@ -191,18 +204,28 @@ function SenetControls({
 }
 
 function StellarSiegeControls({
-  session, gameState, playerId, isMyTurn, currentTurnName, myPN,
+  session,
+  gameState,
+  playerId,
+  isMyTurn,
+  currentTurnName,
+  myPN,
 }: GameControlsProps & { currentTurnName: string; myPN: number }) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
-  const defenderPN = gameState.board.pieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
+  const defenderPN =
+    gameState.board.pieces.filter((p) => p.playerNumber === 0).length === 1 ? 0 : 1;
   const isDefender = myPN === defenderPN;
 
   if (!isMyTurn || gameState.finished) {
     return (
       <WaitingMessage
         name={currentTurnName}
-        style={{ background: 'rgba(0,10,25,0.7)', border: '1px solid rgba(0,50,100,0.4)', color: '#2A5070' }}
+        style={{
+          background: 'rgba(0,10,25,0.7)',
+          border: '1px solid rgba(0,50,100,0.4)',
+          color: '#2A5070',
+        }}
       />
     );
   }
@@ -211,7 +234,9 @@ function StellarSiegeControls({
     <div className="flex gap-3 items-center justify-center p-4">
       {diceRoll === null && (
         <button
-          onClick={() => socketService.getSocket()?.emit('game:roll-dice', { sessionCode, playerId })}
+          onClick={() =>
+            socketService.getSocket()?.emit('game:roll-dice', { sessionCode, playerId })
+          }
           className="px-8 py-2 rounded-lg font-bold transition-all active:scale-95"
           style={{
             background: isDefender
@@ -229,11 +254,16 @@ function StellarSiegeControls({
 }
 
 function WolvesAndRavensControls({
-  session, gameState, playerId, isMyTurn, currentTurnName, myPN,
+  session,
+  gameState,
+  playerId,
+  isMyTurn,
+  currentTurnName,
+  myPN,
 }: GameControlsProps & { currentTurnName: string; myPN: number }) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
-  const ravenPN = gameState.board.pieces.filter(p => p.playerNumber === 0).length === 1 ? 1 : 0;
+  const ravenPN = gameState.board.pieces.filter((p) => p.playerNumber === 0).length === 1 ? 1 : 0;
 
   // Prevent accidental immediate clicks on the "Done Moving" button right after rolling
   const [skipReady, setSkipReady] = useState(false);
@@ -250,7 +280,11 @@ function WolvesAndRavensControls({
     return (
       <WaitingMessage
         name={currentTurnName}
-        style={{ background: 'rgba(30,20,10,0.6)', border: '1px solid rgba(80,60,30,0.4)', color: '#8A7A60' }}
+        style={{
+          background: 'rgba(30,20,10,0.6)',
+          border: '1px solid rgba(80,60,30,0.4)',
+          color: '#8A7A60',
+        }}
       />
     );
   }
@@ -259,14 +293,18 @@ function WolvesAndRavensControls({
     <div className="flex gap-3 items-center justify-center p-4">
       {diceRoll === null ? (
         <button
-          onClick={() => socketService.getSocket()?.emit('game:roll-dice', { sessionCode, playerId })}
+          onClick={() =>
+            socketService.getSocket()?.emit('game:roll-dice', { sessionCode, playerId })
+          }
           className="btn btn-primary px-8 py-2"
         >
           Roll Dice
         </button>
       ) : myPN === ravenPN && diceRoll > 0 ? (
         <button
-          onClick={() => socketService.getSocket()?.emit('game:skip-turn', { sessionCode, playerId })}
+          onClick={() =>
+            socketService.getSocket()?.emit('game:skip-turn', { sessionCode, playerId })
+          }
           disabled={!skipReady}
           className="btn btn-outline text-sm px-5 py-2 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           style={{ borderColor: 'rgba(100,200,100,0.4)', color: '#90D090' }}
@@ -283,14 +321,56 @@ function WolvesAndRavensControls({
 function GameControls({ session, gameState, playerId, isMyTurn, lastMove }: GameControlsProps) {
   const { gameType } = session;
   const currentTurnName =
-    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
+    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ??
+    'opponent';
   const myPN = session.players.find((p) => p.id === playerId)?.playerNumber ?? 0;
 
-  if (gameType === 'morris') return <MorrisControls isMyTurn={isMyTurn} currentTurnName={currentTurnName} />;
-  if (gameType === 'ur') return <UrControls session={session} gameState={gameState} playerId={playerId} isMyTurn={isMyTurn} lastMove={lastMove} currentTurnName={currentTurnName} />;
-  if (gameType === 'senet') return <SenetControls session={session} gameState={gameState} playerId={playerId} isMyTurn={isMyTurn} lastMove={lastMove} currentTurnName={currentTurnName} />;
-  if (gameType === 'stellar-siege') return <StellarSiegeControls session={session} gameState={gameState} playerId={playerId} isMyTurn={isMyTurn} currentTurnName={currentTurnName} myPN={myPN} />;
-  if (gameType === 'wolves-and-ravens') return <WolvesAndRavensControls session={session} gameState={gameState} playerId={playerId} isMyTurn={isMyTurn} currentTurnName={currentTurnName} myPN={myPN} />;
+  if (gameType === 'morris')
+    return <MorrisControls isMyTurn={isMyTurn} currentTurnName={currentTurnName} />;
+  if (gameType === 'ur')
+    return (
+      <UrControls
+        session={session}
+        gameState={gameState}
+        playerId={playerId}
+        isMyTurn={isMyTurn}
+        lastMove={lastMove}
+        currentTurnName={currentTurnName}
+      />
+    );
+  if (gameType === 'senet')
+    return (
+      <SenetControls
+        session={session}
+        gameState={gameState}
+        playerId={playerId}
+        isMyTurn={isMyTurn}
+        lastMove={lastMove}
+        currentTurnName={currentTurnName}
+      />
+    );
+  if (gameType === 'stellar-siege')
+    return (
+      <StellarSiegeControls
+        session={session}
+        gameState={gameState}
+        playerId={playerId}
+        isMyTurn={isMyTurn}
+        currentTurnName={currentTurnName}
+        myPN={myPN}
+      />
+    );
+  if (gameType === 'wolves-and-ravens')
+    return (
+      <WolvesAndRavensControls
+        session={session}
+        gameState={gameState}
+        playerId={playerId}
+        isMyTurn={isMyTurn}
+        currentTurnName={currentTurnName}
+        myPN={myPN}
+      />
+    );
 
   return null;
 }

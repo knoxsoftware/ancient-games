@@ -102,9 +102,10 @@ function generateBracket(participants: TournamentParticipant[]): TournamentMatch
   return rounds;
 }
 
-function generateRoundRobinSchedule(
-  participants: TournamentParticipant[]
-): { rounds: TournamentMatch[][]; standings: TournamentStanding[] } {
+function generateRoundRobinSchedule(participants: TournamentParticipant[]): {
+  rounds: TournamentMatch[][];
+  standings: TournamentStanding[];
+} {
   const players = [...participants];
   // Make even by adding bye placeholder
   if (players.length % 2 !== 0) {
@@ -188,7 +189,7 @@ export interface TournamentGameEndedResult {
 export class SessionService {
   async createSession(
     request: CreateSessionRequest,
-    socketId: string
+    socketId: string,
   ): Promise<{ session: Session; playerId: string }> {
     const sessionCode = nanoid();
     const playerId = this.generatePlayerId();
@@ -230,7 +231,7 @@ export class SessionService {
 
   async joinSession(
     request: JoinSessionRequest,
-    socketId: string
+    socketId: string,
   ): Promise<{ session: Session; playerId: string }> {
     const session = await SessionModel.findOne({ sessionCode: request.sessionCode });
 
@@ -275,16 +276,16 @@ export class SessionService {
   async updatePlayerSocketId(
     sessionCode: string,
     playerId: string,
-    socketId: string
+    socketId: string,
   ): Promise<void> {
     const playerResult = await SessionModel.updateOne(
       { sessionCode, 'players.id': playerId },
-      { $set: { 'players.$.socketId': socketId, lastActivity: new Date() } }
+      { $set: { 'players.$.socketId': socketId, lastActivity: new Date() } },
     );
     if (playerResult.matchedCount === 0) {
       await SessionModel.updateOne(
         { sessionCode, 'spectators.id': playerId },
-        { $set: { 'spectators.$.socketId': socketId, lastActivity: new Date() } }
+        { $set: { 'spectators.$.socketId': socketId, lastActivity: new Date() } },
       );
     }
   }
@@ -292,7 +293,7 @@ export class SessionService {
   async updatePlayerReady(
     sessionCode: string,
     playerId: string,
-    ready: boolean
+    ready: boolean,
   ): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
@@ -310,7 +311,7 @@ export class SessionService {
   async addSpectator(
     sessionCode: string,
     displayName: string,
-    socketId: string
+    socketId: string,
   ): Promise<{ session: Session; spectatorId: string }> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) throw new Error('Session not found');
@@ -328,12 +329,12 @@ export class SessionService {
     sessionCode: string,
     spectatorId: string,
     displayName: string,
-    socketId: string
+    socketId: string,
   ): Promise<void> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return;
-    if (session.players.some(p => p.id === spectatorId)) return;
-    if (session.spectators.some(s => s.id === spectatorId)) return;
+    if (session.players.some((p) => p.id === spectatorId)) return;
+    if (session.spectators.some((s) => s.id === spectatorId)) return;
     session.spectators.push({ id: spectatorId, displayName, socketId, status: 'active' });
     session.lastActivity = new Date();
     await session.save();
@@ -358,7 +359,7 @@ export class SessionService {
   async playerToSpectator(
     sessionCode: string,
     playerId: string,
-    options?: { storeOriginalSeat?: boolean }
+    options?: { storeOriginalSeat?: boolean },
   ): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
@@ -390,7 +391,7 @@ export class SessionService {
   async spectatorToPlayer(
     sessionCode: string,
     spectatorId: string,
-    targetPlayerNumber?: number
+    targetPlayerNumber?: number,
   ): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
@@ -433,7 +434,7 @@ export class SessionService {
   async updatePresenceStatus(
     sessionCode: string,
     playerId: string,
-    status: 'active' | 'away'
+    status: 'active' | 'away',
   ): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
@@ -547,7 +548,7 @@ export class SessionService {
   async setLobbyFormat(
     sessionCode: string,
     playerId: string,
-    format: TournamentFormat | 'single'
+    format: TournamentFormat | 'single',
   ): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
@@ -562,7 +563,10 @@ export class SessionService {
         if (session.players.length >= 8) break;
         let playerNumber: number | null = null;
         for (let n = 0; n < 8; n++) {
-          if (!takenNumbers.has(n)) { playerNumber = n; break; }
+          if (!takenNumbers.has(n)) {
+            playerNumber = n;
+            break;
+          }
         }
         if (playerNumber === null) break;
         takenNumbers.add(playerNumber);
@@ -590,7 +594,7 @@ export class SessionService {
       {
         $push: { chatHistory: { $each: [message], $slice: -100 } },
         $set: { lastActivity: new Date() },
-      }
+      },
     );
   }
 
@@ -601,7 +605,7 @@ export class SessionService {
     matchId: string,
     player1: { id: string; displayName: string },
     player2: { id: string; displayName: string },
-    gameType: GameType
+    gameType: GameType,
   ): Promise<Session> {
     const sessionCode = nanoid();
     const gameEngine = GameRegistry.getGame(gameType);
@@ -651,7 +655,7 @@ export class SessionService {
   async startTournament(
     sessionCode: string,
     playerId: string,
-    format: TournamentFormat
+    format: TournamentFormat,
   ): Promise<{
     hubSession: Session;
     matchSessions: Array<{
@@ -664,7 +668,8 @@ export class SessionService {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) throw new Error('Session not found');
     if (session.hostId !== playerId) throw new Error('Only the host can start the tournament');
-    if (session.players.length < 2) throw new Error('Need at least 2 players to start a tournament');
+    if (session.players.length < 2)
+      throw new Error('Need at least 2 players to start a tournament');
     if ((session as any).tournamentState) throw new Error('Tournament already started');
 
     // Shuffle players for random seeding
@@ -719,7 +724,7 @@ export class SessionService {
         match.matchId,
         { id: p1.id, displayName: p1.displayName },
         { id: p2.id, displayName: p2.displayName },
-        session.gameType
+        session.gameType,
       );
 
       match.currentSessionCode = matchSession.sessionCode;
@@ -741,7 +746,7 @@ export class SessionService {
 
   async handleTournamentGameEnded(
     matchSessionCode: string,
-    winnerPlayerNumber: number
+    winnerPlayerNumber: number,
   ): Promise<TournamentGameEndedResult> {
     const matchSession = await SessionModel.findOne({ sessionCode: matchSessionCode });
     if (
@@ -821,7 +826,7 @@ export class SessionService {
       // Check if all matches in current round are complete
       const currentRoundMatches = ts.rounds[ts.currentRound];
       const allCurrentRoundDone = currentRoundMatches.every(
-        (m) => m.status === 'finished' || m.status === 'bye'
+        (m) => m.status === 'finished' || m.status === 'bye',
       );
 
       if (allCurrentRoundDone) {
@@ -841,7 +846,7 @@ export class SessionService {
               nextMatch.matchId,
               { id: p1.id, displayName: p1.displayName },
               { id: p2.id, displayName: p2.displayName },
-              matchSession.gameType
+              matchSession.gameType,
             );
             nextMatch.currentSessionCode = matchSess.sessionCode;
             nextMatch.status = 'in_progress';
@@ -854,9 +859,7 @@ export class SessionService {
         } else {
           // All rounds complete — find winner by most wins
           if (ts.standings) {
-            const sorted = [...ts.standings].sort(
-              (a, b) => b.wins - a.wins || a.losses - b.losses
-            );
+            const sorted = [...ts.standings].sort((a, b) => b.wins - a.wins || a.losses - b.losses);
             ts.winnerId = sorted[0].playerId;
           }
           result.tournamentFinished = true;
@@ -876,7 +879,7 @@ export class SessionService {
           match.matchId,
           { id: p1.id, displayName: p1.displayName },
           { id: p2.id, displayName: p2.displayName },
-          matchSession.gameType
+          matchSession.gameType,
         );
         match.currentSessionCode = nextGameSession.sessionCode;
         result.seriesContinued = true;
@@ -911,7 +914,7 @@ export class SessionService {
                 nextMatch.matchId,
                 { id: np1.id, displayName: np1.displayName },
                 { id: np2.id, displayName: np2.displayName },
-                matchSession.gameType
+                matchSession.gameType,
               );
               nextMatch.currentSessionCode = nextMatchSess.sessionCode;
               nextMatch.status = 'in_progress';

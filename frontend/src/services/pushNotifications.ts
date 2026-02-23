@@ -25,7 +25,7 @@ async function getVapidPublicKey(): Promise<string | null> {
 
 async function saveSubscriptionToBackend(
   playerId: string,
-  subscription: PushSubscription
+  subscription: PushSubscription,
 ): Promise<void> {
   const sub = subscription.toJSON();
   await fetch(`${API_URL}/push/subscribe`, {

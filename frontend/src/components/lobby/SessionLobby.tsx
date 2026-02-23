@@ -402,7 +402,8 @@ export default function SessionLobby() {
     session.spectators.some((s) => s.id === playerId);
   const isHost = session.hostId === playerId;
   const currentPlayer = session.players.find((p) => p.id === playerId);
-  const canStart = isHost && (format === 'single' ? session.players.length === 2 : session.players.length >= 2);
+  const canStart =
+    isHost && (format === 'single' ? session.players.length === 2 : session.players.length >= 2);
 
   // ── Tournament bracket view (tournament already started) ───────────────────
   if (session.tournamentState) {
@@ -412,7 +413,9 @@ export default function SessionLobby() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">Tournament</h1>
-              <p className="text-gray-400 text-sm">{GAME_NAMES[session.gameType] ?? session.gameType}</p>
+              <p className="text-gray-400 text-sm">
+                {GAME_NAMES[session.gameType] ?? session.gameType}
+              </p>
             </div>
             <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
               Leave
@@ -567,8 +570,10 @@ export default function SessionLobby() {
                     onClick={() => handleFormatChange(opt.value)}
                     className="rounded-lg p-2.5 text-left transition-all border"
                     style={{
-                      background: format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
-                      borderColor: format === opt.value ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)',
+                      background:
+                        format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
+                      borderColor:
+                        format === opt.value ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)',
                       color: format === opt.value ? '#E8C870' : '#8A7A60',
                     }}
                   >
@@ -588,7 +593,8 @@ export default function SessionLobby() {
           {/* Format display for non-hosts */}
           {!isHost && (
             <div className="mb-6 text-sm" style={{ color: '#6A5A40' }}>
-              Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'} — waiting for host to start
+              Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'} —
+              waiting for host to start
             </div>
           )}
 
