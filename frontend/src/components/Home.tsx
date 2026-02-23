@@ -46,14 +46,19 @@ export default function Home() {
     setLoading(true);
     setError('');
 
+    const code = sessionCode.trim().toUpperCase();
     try {
       const result = await api.joinSession({
-        sessionCode: sessionCode.trim().toUpperCase(),
+        sessionCode: code,
         displayName: displayName.trim(),
       });
       localStorage.setItem('playerId', result.playerId);
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
+      if ((err as Error).message === 'Session has already started') {
+        navigate(`/game/${code}`);
+        return;
+      }
       setError((err as Error).message);
     } finally {
       setLoading(false);
