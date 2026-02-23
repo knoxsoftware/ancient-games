@@ -17,4 +17,5 @@ export abstract class GameEngine implements IGameEngine {
   abstract checkWinCondition(board: BoardState): number | null;
   abstract getValidMoves(board: BoardState, playerNumber: number, diceRoll: number): Move[];
   abstract canMove(board: BoardState, playerNumber: number, diceRoll: number): boolean;
+  abstract isCaptureMove(board: BoardState, move: Move): boolean;
 }

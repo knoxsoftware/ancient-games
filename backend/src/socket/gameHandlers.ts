@@ -3,18 +3,10 @@ import { nanoid } from 'nanoid';
 import { SessionService } from '../services/SessionService';
 import { PushService } from '../services/PushService';
 import { GameRegistry } from '../games/GameRegistry';
-import { ClientToServerEvents, ServerToClientEvents, HistoricalMove } from '@ancient-games/shared';
+import { ClientToServerEvents, ServerToClientEvents, GameState, Session, HistoricalMove, getGameTitle } from '@ancient-games/shared';
 
 const socketToSession = new Map<string, { sessionCode: string; playerId: string }>();
 const disconnectTimers = new Map<string, NodeJS.Timeout>(); // keyed by playerId
-
-function gameTitle(gameType: string): string {
-  if (gameType === 'ur') return 'Royal Game of Ur';
-  if (gameType === 'morris') return "Nine Men's Morris";
-  if (gameType === 'wolves-and-ravens') return 'Wolves & Ravens';
-  if (gameType === 'rock-paper-scissors') return 'Rock Paper Scissors';
-  return 'Senet';
-}
 
 function getRoundLabel(format: string, roundIndex: number, totalRounds: number): string {
   if (format === 'round-robin') return `Round ${roundIndex + 1}`;
@@ -130,7 +122,7 @@ export function registerGameHandlers(
           if (other.id !== playerId) {
             await pushService.sendNotification(other.id, {
               title: 'Player joined!',
-              body: `${joiningPlayer.displayName} joined your ${gameTitle(session.gameType)} lobby`,
+              body: `${joiningPlayer.displayName} joined your ${getGameTitle(session.gameType)} lobby`,
               url: `/session/${sessionCode}`,
             });
           }
@@ -273,7 +265,7 @@ export function registerGameHandlers(
             if (other.id !== playerId) {
               await pushService.sendNotification(other.id, {
                 title: statusText,
-                body: `${gameTitle(session.gameType)} lobby`,
+                body: `${getGameTitle(session.gameType)} lobby`,
                 url: `/session/${sessionCode}`,
               });
             }
@@ -396,7 +388,7 @@ export function registerGameHandlers(
         if (nextPlayer) {
           await pushService.sendNotification(nextPlayer.id, {
             title: 'Your turn!',
-            body: `${player.displayName} had no moves in ${gameTitle(session.gameType)}`,
+            body: `${player.displayName} had no moves in ${getGameTitle(session.gameType)}`,
             url: `/game/${sessionCode}`,
           });
         }
@@ -435,13 +427,7 @@ export function registerGameHandlers(
         return;
       }
 
-      const isCapturablePosition = session.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
-      const wasCapture =
-        move.to !== 99 &&
-        isCapturablePosition &&
-        session.gameState.board.pieces.some(
-          (p) => p.playerNumber !== player.playerNumber && p.position === move.to,
-        );
+      const wasCapture = gameEngine.isCaptureMove(session.gameState.board, move);
 
       const newBoard = gameEngine.applyMove(session.gameState.board, move);
       session.gameState.board = newBoard;
@@ -466,6 +452,7 @@ export function registerGameHandlers(
       io.to(sessionCode).emit('game:move-made', {
         move,
         gameState: session.gameState,
+        wasCapture,
       });
 
       if (winner !== null) {
@@ -572,7 +559,7 @@ export function registerGameHandlers(
         if (nextPlayer && nextPlayer.id !== playerId) {
           await pushService.sendNotification(nextPlayer.id, {
             title: 'Your turn!',
-            body: `${player.displayName} made a move in ${gameTitle(session.gameType)}`,
+            body: `${player.displayName} made a move in ${getGameTitle(session.gameType)}`,
             url: `/game/${sessionCode}`,
           });
         }

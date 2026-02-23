@@ -1,20 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, TournamentFormat } from '@ancient-games/shared';
+import { Session, TournamentFormat, getGameTitle } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../../services/storage';
 import { initPushNotifications } from '../../services/pushNotifications';
 import TournamentBracket from '../tournament/TournamentBracket';
-
-const GAME_NAMES: Record<string, string> = {
-  ur: 'Royal Game of Ur',
-  senet: 'Senet',
-  morris: "Nine Men's Morris",
-  'wolves-and-ravens': 'Wolves & Ravens',
-  'rock-paper-scissors': 'Rock Paper Scissors',
-  'stellar-siege': 'Stellar Siege',
-};
 
 const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string; desc: string }[] = [
   { value: 'single', label: 'Single Match', desc: '1 game, 2 players only' },
@@ -331,7 +322,7 @@ export default function SessionLobby() {
               <p className="text-gray-400">
                 Join a game of{' '}
                 <span className="text-white font-semibold">
-                  {GAME_NAMES[session.gameType] ?? session.gameType}
+                  {getGameTitle(session.gameType)}
                 </span>
               </p>
             )}
@@ -413,9 +404,7 @@ export default function SessionLobby() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">Tournament</h1>
-              <p className="text-gray-400 text-sm">
-                {GAME_NAMES[session.gameType] ?? session.gameType}
-              </p>
+              <p className="text-gray-400 text-sm">{getGameTitle(session.gameType)}</p>
             </div>
             <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
               Leave
@@ -459,7 +448,7 @@ export default function SessionLobby() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <h1 className="text-3xl font-bold mb-2">Game Lobby</h1>
-              <p className="text-gray-400">{GAME_NAMES[session.gameType] ?? session.gameType}</p>
+              <p className="text-gray-400">{getGameTitle(session.gameType)}</p>
             </div>
             <button onClick={handleLeave} className="text-gray-400 hover:text-white">
               Leave

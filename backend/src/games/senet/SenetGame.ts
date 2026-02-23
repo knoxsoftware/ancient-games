@@ -245,6 +245,17 @@ export class SenetGame extends GameEngine {
     return this.getValidMoves(board, playerNumber, diceRoll).length > 0;
   }
 
+  isCaptureMove(board: BoardState, move: Move): boolean {
+    if (move.to === 99 || move.to < 0) return false;
+    const movingPiece = board.pieces.find(
+      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+    );
+    if (!movingPiece) return false;
+    return board.pieces.some(
+      p => p.playerNumber !== movingPiece.playerNumber && p.position === move.to
+    );
+  }
+
   private isProtected(board: BoardState, position: number, playerNumber: number): boolean {
     // A piece is protected if there's another piece of the same player adjacent
     const adjacentPositions = [position - 1, position + 1];

@@ -1,19 +1,23 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, GameState, HistoricalMove } from '@ancient-games/shared';
+import { Session, GameState, GameType, HistoricalMove, getGameTitle, GAME_MANIFESTS } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
-const UrBoard = lazy(() => import('./games/ur/UrBoard'));
-const SenetBoard = lazy(() => import('./games/senet/SenetBoard'));
-const MorrisBoard = lazy(() => import('./games/morris/MorrisBoard'));
-const WolvesAndRavensBoard = lazy(() => import('./games/wolves-and-ravens/WolvesAndRavensBoard'));
-const RockPaperScissorsBoard = lazy(
-  () => import('./games/rock-paper-scissors/RockPaperScissorsBoard'),
-);
-const StellarSiegeBoard = lazy(() => import('./games/stellar-siege/StellarSiegeBoard'));
+import { getScoreInfo } from '../utils/gameScoreInfo';
+
+const boardComponents: Record<GameType, React.LazyExoticComponent<React.ComponentType<any>>> = {
+  ur: lazy(() => import('./games/ur/UrBoard')),
+  senet: lazy(() => import('./games/senet/SenetBoard')),
+  morris: lazy(() => import('./games/morris/MorrisBoard')),
+  'wolves-and-ravens': lazy(() => import('./games/wolves-and-ravens/WolvesAndRavensBoard')),
+  'rock-paper-scissors': lazy(() => import('./games/rock-paper-scissors/RockPaperScissorsBoard')),
+  'stellar-siege': lazy(() => import('./games/stellar-siege/StellarSiegeBoard')),
+};
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
+import { renderPiece as urRenderPiece, getExitSelector as urGetExitSelector } from './games/ur/urAnimationHelpers';
+import { renderPiece as senetRenderPiece, getExitSelector as senetGetExitSelector } from './games/senet/senetAnimationHelpers';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
 import GameControls from './GameControls';
@@ -182,34 +186,26 @@ export default function GameRoom() {
       }
     });
 
-    socket.on('game:move-made', ({ move, gameState: updatedGameState }) => {
-      const prevState = gameStateRef.current;
+    socket.on('game:move-made', ({ move, gameState: updatedGameState, wasCapture }) => {
       const currentSession = sessionRef.current;
 
       const playerNum =
         currentSession?.players.find((p) => p.id === move.playerId)?.playerNumber ?? 0;
 
-      const isCapturablePosition =
-        currentSession?.gameType !== 'ur' || (move.to >= 4 && move.to <= 11);
-
-      const wasCapture =
-        !!prevState &&
-        move.to !== 99 &&
-        isCapturablePosition &&
-        prevState.board.pieces.some((p) => p.playerNumber !== playerNum && p.position === move.to);
-
       setGameState(updatedGameState);
 
-      const supportsAnimation =
-        currentSession?.gameType === 'ur' || currentSession?.gameType === 'senet';
-      if (supportsAnimation) {
+      const gt = currentSession?.gameType ?? 'ur';
+      if (GAME_MANIFESTS[gt].supportsAnimation) {
         animIdRef.current += 1;
-        const animId = animIdRef.current;
+        const animHelpers = gt === 'ur'
+          ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
+          : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
         setPendingAnimation({
           move,
           playerNumber: playerNum,
-          gameType: currentSession?.gameType as 'ur' | 'senet',
-          id: animId,
+          gameType: gt,
+          id: animIdRef.current,
+          ...animHelpers,
         });
       }
 
@@ -229,22 +225,8 @@ export default function GameRoom() {
         if (myPlayer && updatedGameState.currentTurn === myPlayer.playerNumber) {
           const opponent = currentSession?.players.find((p) => p.id !== playerId);
           const gameType = currentSession?.gameType;
-          const gameTitle =
-            gameType === 'ur'
-              ? 'Royal Game of Ur'
-              : gameType === 'morris'
-                ? "Nine Men's Morris"
-                : gameType === 'wolves-and-ravens'
-                  ? 'Wolves & Ravens'
-                  : gameType === 'rock-paper-scissors'
-                    ? 'Rock Paper Scissors'
-                    : gameType === 'stellar-siege'
-                      ? 'Stellar Siege'
-                      : 'Senet';
-          showNotification(
-            'Your turn!',
-            `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`,
-          );
+          const gameTitle = getGameTitle(gameType!);
+          showNotification('Your turn!', `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`);
         }
       }
     });
@@ -456,13 +438,17 @@ export default function GameRoom() {
 
   const handleReplay = (entry: HistoryEntry) => {
     const gt = session?.gameType;
-    if (gt !== 'ur' && gt !== 'senet') return;
+    if (!gt || !GAME_MANIFESTS[gt].supportsAnimation) return;
     replayIdRef.current += 1;
+    const animHelpers = gt === 'ur'
+      ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
+      : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
     setReplayAnimation({
       move: entry.move,
       playerNumber: entry.playerNumber,
       gameType: gt,
       id: replayIdRef.current,
+      ...animHelpers,
     });
     setReplayingEntryId(entry.id);
   };
@@ -611,17 +597,7 @@ export default function GameRoom() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">
-            {session.gameType === 'ur'
-              ? 'Royal Game of Ur'
-              : session.gameType === 'morris'
-                ? "Nine Men's Morris"
-                : session.gameType === 'wolves-and-ravens'
-                  ? 'Wolves & Ravens'
-                  : session.gameType === 'rock-paper-scissors'
-                    ? 'Rock Paper Scissors'
-                    : session.gameType === 'stellar-siege'
-                      ? 'Stellar Siege'
-                      : 'Senet'}
+            {getGameTitle(session.gameType)}
           </h1>
           <button
             onClick={() => setShowRules(true)}
@@ -723,72 +699,7 @@ export default function GameRoom() {
                   const isMe = player?.id === playerId;
                   const boardPieces = gameState.board.pieces;
 
-                  const scoreInfo = (() => {
-                    if (!player) return null;
-                    if (session.gameType === 'ur') {
-                      const escaped = boardPieces.filter(
-                        (p) => p.playerNumber === seatIndex && p.position === 99,
-                      ).length;
-                      const waiting = boardPieces.filter(
-                        (p) => p.playerNumber === seatIndex && p.position === -1,
-                      ).length;
-                      return `${escaped}/7 escaped · ${waiting} waiting`;
-                    }
-                    if (session.gameType === 'senet') {
-                      const escaped = boardPieces.filter(
-                        (p) => p.playerNumber === seatIndex && p.position === 99,
-                      ).length;
-                      const onBoard = boardPieces.filter(
-                        (p) => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99,
-                      ).length;
-                      return `${escaped}/5 escaped · ${onBoard} on board`;
-                    }
-                    if (session.gameType === 'morris') {
-                      const unplaced = boardPieces.filter(
-                        (p) => p.playerNumber === seatIndex && p.position === -1,
-                      ).length;
-                      const captured = boardPieces.filter(
-                        (p) => p.playerNumber === seatIndex && p.position === 99,
-                      ).length;
-                      const onBoard = 9 - unplaced - captured;
-                      return unplaced > 0
-                        ? `${onBoard} on board · ${unplaced} to place`
-                        : `${onBoard} on board · ${captured} lost`;
-                    }
-                    if (session.gameType === 'stellar-siege') {
-                      const defenderPN =
-                        boardPieces.filter((p) => p.playerNumber === 0).length === 1 ? 0 : 1;
-                      const invaderPN = 1 - defenderPN;
-                      if (seatIndex === defenderPN) {
-                        const shotDown = boardPieces.filter(
-                          (p) => p.playerNumber === invaderPN && p.position === 99,
-                        ).length;
-                        return `Defender · ${shotDown}/6 shot down`;
-                      } else {
-                        const alive = boardPieces.filter(
-                          (p) => p.playerNumber === invaderPN && p.position !== 99,
-                        ).length;
-                        return `Invaders · ${alive}/6 remaining`;
-                      }
-                    }
-                    if (session.gameType === 'wolves-and-ravens') {
-                      const wolfPN =
-                        boardPieces.filter((p) => p.playerNumber === 0).length === 1 ? 0 : 1;
-                      const ravenPN = 1 - wolfPN;
-                      if (seatIndex === wolfPN) {
-                        const caught = boardPieces.filter(
-                          (p) => p.playerNumber === ravenPN && p.position === 99,
-                        ).length;
-                        return `Wolf · ${caught} ravens caught`;
-                      } else {
-                        const alive = boardPieces.filter(
-                          (p) => p.playerNumber === ravenPN && p.position !== 99,
-                        ).length;
-                        return `Ravens · ${alive} alive`;
-                      }
-                    }
-                    return null;
-                  })();
+                  const scoreInfo = player ? getScoreInfo(session.gameType, boardPieces, seatIndex) : null;
 
                   return (
                     <div
@@ -990,7 +901,7 @@ export default function GameRoom() {
             <div className="tab-content-enter pt-3">
               <MoveLog
                 entries={moveHistory}
-                gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens'}
+                gameType={session.gameType}
                 session={session}
                 onReplay={handleReplay}
                 replayingId={replayingEntryId}
@@ -1017,68 +928,21 @@ export default function GameRoom() {
         </div>
 
         {/* Board */}
-        <Suspense
-          fallback={
-            <div
-              className="flex items-center justify-center py-16 text-sm"
-              style={{ color: 'rgba(196,168,107,0.5)' }}
-            >
-              Loading…
-            </div>
-          }
-        >
-          <div>
-            {session.gameType === 'ur' && (
-              <UrBoard
+        <Suspense fallback={<div className="flex items-center justify-center py-16 text-sm" style={{ color: 'rgba(196,168,107,0.5)' }}>Loading…</div>}>
+        <div>
+          {(() => {
+            const BoardComponent = boardComponents[session.gameType];
+            return (
+              <BoardComponent
                 session={session}
                 gameState={gameState}
                 playerId={playerId!}
                 isMyTurn={isMyTurn}
                 animatingPiece={animatingPiece}
               />
-            )}
-            {session.gameType === 'senet' && (
-              <SenetBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-                animatingPiece={animatingPiece}
-              />
-            )}
-            {session.gameType === 'morris' && (
-              <MorrisBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-              />
-            )}
-            {session.gameType === 'wolves-and-ravens' && (
-              <WolvesAndRavensBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-              />
-            )}
-            {session.gameType === 'rock-paper-scissors' && (
-              <RockPaperScissorsBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-              />
-            )}
-            {session.gameType === 'stellar-siege' && (
-              <StellarSiegeBoard
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-              />
-            )}
-          </div>
+            );
+          })()}
+        </div>
         </Suspense>
       </div>
 
