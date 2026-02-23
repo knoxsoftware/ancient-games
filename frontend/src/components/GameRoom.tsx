@@ -243,6 +243,13 @@ export default function GameRoom() {
       setMessage(`Player ${winner + 1} wins!`);
     });
 
+    socket.on('game:started', (updatedSession) => {
+      setSession(updatedSession);
+      setGameState(updatedSession.gameState);
+      setMoveHistory([]);
+      historyIdRef.current = 0;
+    });
+
     socket.on('game:restarted', (newSession) => {
       setSession(newSession);
       setGameState(newSession.gameState);
@@ -317,6 +324,7 @@ export default function GameRoom() {
       socket.off('game:move-made');
       socket.off('game:turn-changed');
       socket.off('game:ended');
+      socket.off('game:started');
       socket.off('game:restarted');
       socket.off('game:error');
       socket.off('chat:message');

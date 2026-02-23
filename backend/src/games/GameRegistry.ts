@@ -4,6 +4,7 @@ import { SenetGame } from './senet/SenetGame';
 import { MorrisGame } from './morris/MorrisGame';
 import { WolvesAndRavensGame } from './wolves-and-ravens/WolvesAndRavensGame';
 import { RockPaperScissorsGame } from './rock-paper-scissors/RockPaperScissorsGame';
+import { StellarSiegeGame } from './stellar-siege/StellarSiegeGame';
 import { GameType } from '@ancient-games/shared';
 
 export class GameRegistry {
@@ -13,6 +14,7 @@ export class GameRegistry {
     ['morris', new MorrisGame() as GameEngine],
     ['wolves-and-ravens', new WolvesAndRavensGame() as GameEngine],
     ['rock-paper-scissors', new RockPaperScissorsGame() as GameEngine],
+    ['stellar-siege', new StellarSiegeGame() as GameEngine],
   ]);
 
   static getGame(gameType: GameType): GameEngine {

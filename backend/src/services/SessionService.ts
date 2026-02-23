@@ -487,8 +487,16 @@ export class SessionService {
       throw new Error(`Need exactly ${gameEngine.playerCount} players to start`);
     }
 
+    const initialBoard = gameEngine.initializeBoard();
+
     session.status = 'playing';
-    session.gameState.started = true;
+    session.gameState = {
+      board: initialBoard,
+      currentTurn: initialBoard.currentTurn,
+      winner: null,
+      started: true,
+      finished: false,
+    };
     session.lastActivity = new Date();
     await session.save();
 
