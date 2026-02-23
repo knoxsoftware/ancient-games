@@ -20,5 +20,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    commonjsOptions: {
+      include: [/shared/, /node_modules/],
+    },
+  },
+  optimizeDeps: {
+    include: ['@ancient-games/shared'],
   },
 });

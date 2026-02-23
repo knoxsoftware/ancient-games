@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Move, Session } from '@ancient-games/shared';
+import { Move, Session, GAME_MANIFESTS, GameType } from '@ancient-games/shared';
 
 export interface HistoryEntry {
   id: number;
@@ -11,7 +11,7 @@ export interface HistoryEntry {
 
 interface MoveLogProps {
   entries: HistoryEntry[];
-  gameType: 'ur' | 'senet' | 'morris' | 'wolves-and-ravens';
+  gameType: GameType;
   session: Session;
   onReplay: (entry: HistoryEntry) => void;
   replayingId: number | null;
@@ -42,14 +42,7 @@ export function MoveLog({ entries, gameType, session, onReplay, replayingId }: M
     }
   }, [entries.length]);
 
-  const playerColor = (pn: number) =>
-    gameType === 'ur'
-      ? pn === 0 ? '#2F6BAD' : '#7A4A22'
-      : gameType === 'morris'
-        ? pn === 0 ? '#3B82F6' : '#EF4444'
-        : gameType === 'wolves-and-ravens'
-          ? pn === 0 ? '#C4900A' : '#4A4A80'
-          : pn === 0 ? '#C4A870' : '#3A1A00';
+  const playerColor = (pn: number) => GAME_MANIFESTS[gameType].playerColors[pn];
 
   return (
     <div

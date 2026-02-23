@@ -1,5 +1,75 @@
 export type GameType = 'ur' | 'senet' | 'morris' | 'wolves-and-ravens' | 'rock-paper-scissors' | 'stellar-siege';
 
+export interface GameManifest {
+  type: GameType;
+  title: string;
+  emoji: string;
+  description: string;
+  playerColors: [string, string];
+  supportsAnimation?: boolean;
+  supportsHistory?: boolean;
+  disabled?: boolean;
+  aiGenerated?: boolean;
+}
+
+export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
+  ur: {
+    type: 'ur',
+    title: 'Royal Game of Ur',
+    emoji: '\u{1F3DB}\uFE0F',
+    description: '2 players',
+    playerColors: ['#2F6BAD', '#7A4A22'],
+    supportsAnimation: true,
+    supportsHistory: true,
+  },
+  senet: {
+    type: 'senet',
+    title: 'Senet',
+    emoji: '\u{1F3FA}',
+    description: '2 players',
+    playerColors: ['#C4A870', '#3A1A00'],
+    supportsAnimation: true,
+    supportsHistory: true,
+  },
+  morris: {
+    type: 'morris',
+    title: "Nine Men's Morris",
+    emoji: '\u2B21',
+    description: '2 players',
+    playerColors: ['#3B82F6', '#EF4444'],
+    supportsHistory: true,
+  },
+  'wolves-and-ravens': {
+    type: 'wolves-and-ravens',
+    title: 'Wolves & Ravens',
+    emoji: '\u{1F43A}',
+    description: 'Asymmetric hunt',
+    playerColors: ['#C4900A', '#4A4A80'],
+    supportsHistory: true,
+    aiGenerated: true,
+  },
+  'rock-paper-scissors': {
+    type: 'rock-paper-scissors',
+    title: 'Rock Paper Scissors',
+    emoji: '\u2702\uFE0F',
+    description: 'Single battle',
+    playerColors: ['#6B7280', '#6B7280'],
+  },
+  'stellar-siege': {
+    type: 'stellar-siege',
+    title: 'Stellar Siege',
+    emoji: '\u{1F680}',
+    description: 'Asymmetric defense (coming soon!)',
+    playerColors: ['#80DFFF', '#7FFF5A'],
+    disabled: true,
+    aiGenerated: true,
+  },
+};
+
+export function getGameTitle(gameType: GameType): string {
+  return GAME_MANIFESTS[gameType].title;
+}
+
 export type TournamentFormat = 'bo1' | 'bo3' | 'bo5' | 'bo7' | 'round-robin';
 
 export interface TournamentParticipant {

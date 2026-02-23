@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, GameState, HistoricalMove } from '@ancient-games/shared';
+import { Session, GameState, HistoricalMove, getGameTitle } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
@@ -222,13 +222,7 @@ export default function GameRoom() {
         if (myPlayer && updatedGameState.currentTurn === myPlayer.playerNumber) {
           const opponent = currentSession?.players.find((p) => p.id !== playerId);
           const gameType = currentSession?.gameType;
-          const gameTitle =
-            gameType === 'ur' ? 'Royal Game of Ur' :
-            gameType === 'morris' ? "Nine Men's Morris" :
-            gameType === 'wolves-and-ravens' ? 'Wolves & Ravens' :
-            gameType === 'rock-paper-scissors' ? 'Rock Paper Scissors' :
-            gameType === 'stellar-siege' ? 'Stellar Siege' :
-            'Senet';
+          const gameTitle = getGameTitle(gameType!);
           showNotification('Your turn!', `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`);
         }
       }
@@ -585,12 +579,7 @@ export default function GameRoom() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">
-            {session.gameType === 'ur' ? 'Royal Game of Ur'
-              : session.gameType === 'morris' ? "Nine Men's Morris"
-              : session.gameType === 'wolves-and-ravens' ? 'Wolves & Ravens'
-              : session.gameType === 'rock-paper-scissors' ? 'Rock Paper Scissors'
-              : session.gameType === 'stellar-siege' ? 'Stellar Siege'
-              : 'Senet'}
+            {getGameTitle(session.gameType)}
           </h1>
           <button
             onClick={() => setShowRules(true)}
@@ -901,7 +890,7 @@ export default function GameRoom() {
             <div className="tab-content-enter pt-3">
               <MoveLog
                 entries={moveHistory}
-                gameType={session.gameType as 'ur' | 'senet' | 'morris' | 'wolves-and-ravens'}
+                gameType={session.gameType}
                 session={session}
                 onReplay={handleReplay}
                 replayingId={replayingEntryId}

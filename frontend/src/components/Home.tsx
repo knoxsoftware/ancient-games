@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { GameType } from '@ancient-games/shared';
+import { GameType, GAME_MANIFESTS, GameManifest } from '@ancient-games/shared';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -136,84 +136,24 @@ export default function Home() {
                   <div>
                     <label className="block text-sm font-medium mb-2">Choose Game</label>
                     <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setGameType('ur')}
-                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                          gameType === 'ur'
-                            ? 'border-primary-500 bg-primary-500/20'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-2xl mb-2">🏛️</div>
-                        <div className="font-semibold text-sm">Royal Game of Ur</div>
-                        <div className="text-xs text-gray-400 mt-1">2 players</div>
-                      </button>
-
-                      <button
-                        onClick={() => setGameType('senet')}
-                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                          gameType === 'senet'
-                            ? 'border-primary-500 bg-primary-500/20'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-2xl mb-2">🏺</div>
-                        <div className="font-semibold text-sm">Senet</div>
-                        <div className="text-xs text-gray-400 mt-1">2 players</div>
-                      </button>
-
-                      <button
-                        onClick={() => setGameType('morris')}
-                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                          gameType === 'morris'
-                            ? 'border-primary-500 bg-primary-500/20'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-2xl mb-2">⬡</div>
-                        <div className="font-semibold text-sm">Nine Men's Morris</div>
-                        <div className="text-xs text-gray-400 mt-1">2 players</div>
-                      </button>
-
-                      <button
-                        onClick={() => setGameType('wolves-and-ravens')}
-                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                          gameType === 'wolves-and-ravens'
-                            ? 'border-primary-500 bg-primary-500/20'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-2xl mb-2">🐺</div>
-                        <div className="font-semibold text-sm">Wolves &amp; Ravens *</div>
-                        <div className="text-xs text-gray-400 mt-1">Asymmetric hunt</div>
-                      </button>
-
-                      <button
-                        onClick={() => setGameType('rock-paper-scissors')}
-                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                          gameType === 'rock-paper-scissors'
-                            ? 'border-primary-500 bg-primary-500/20'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-2xl mb-2">✂️</div>
-                        <div className="font-semibold text-sm">Rock Paper Scissors</div>
-                        <div className="text-xs text-gray-400 mt-1">Single battle</div>
-                      </button>
-
-                      <button
-		        disabled
-                        onClick={() => setGameType('stellar-siege')}
-                        className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                          gameType === 'stellar-siege'
-                            ? 'border-primary-500 bg-primary-500/20'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-2xl mb-2">🚀</div>
-                        <div className="font-semibold text-sm">Stellar Siege (DISABLED)*</div>
-                        <div className="text-xs text-gray-400 mt-1">Asymmetric defense (coming soon!)</div>
-                      </button>
+                      {Object.values(GAME_MANIFESTS).map((manifest: GameManifest) => (
+                        <button
+                          key={manifest.type}
+                          disabled={manifest.disabled}
+                          onClick={() => setGameType(manifest.type)}
+                          className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                            gameType === manifest.type
+                              ? 'border-primary-500 bg-primary-500/20'
+                              : 'border-gray-600 hover:border-gray-500'
+                          }`}
+                        >
+                          <div className="text-2xl mb-2">{manifest.emoji}</div>
+                          <div className="font-semibold text-sm">
+                            {manifest.title}{manifest.disabled ? ' (DISABLED)' : ''}{manifest.aiGenerated ? ' *' : ''}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">{manifest.description}</div>
+                        </button>
+                      ))}
                     </div>
                     <div className="text-xs text-gray-600 mt-2">* AI-generated game</div>
                   </div>
