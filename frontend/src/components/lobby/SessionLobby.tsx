@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Session, TournamentFormat } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
+import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../../services/storage';
 import { initPushNotifications } from '../../services/pushNotifications';
 import TournamentBracket from '../tournament/TournamentBracket';
 
@@ -43,9 +44,9 @@ export default function SessionLobby() {
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevSessionRef = useRef<Session | null>(null);
 
-  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
+  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem(PLAYER_ID_KEY));
 
-  const [displayName, setDisplayName] = useState(localStorage.getItem('playerName') ?? '');
+  const [displayName, setDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [spectateLoading, setSpectateLoading] = useState(false);
@@ -184,8 +185,8 @@ export default function SessionLobby() {
         sessionCode: sessionCode!,
         displayName: displayName.trim(),
       });
-      localStorage.setItem('playerId', result.playerId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.playerId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       setPlayerId(result.playerId);
       setSession(result.session);
     } catch (err) {
@@ -232,8 +233,8 @@ export default function SessionLobby() {
         sessionCode: sessionCode!,
         displayName: displayName.trim(),
       });
-      localStorage.setItem('playerId', result.spectatorId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.spectatorId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       setPlayerId(result.spectatorId);
       setSession(result.session);
     } catch (err) {
@@ -283,7 +284,7 @@ export default function SessionLobby() {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
     if (socket) socket.emit('session:leave', { sessionCode, playerId });
-    localStorage.removeItem('playerId');
+    localStorage.removeItem(PLAYER_ID_KEY);
     navigate('/');
   };
 

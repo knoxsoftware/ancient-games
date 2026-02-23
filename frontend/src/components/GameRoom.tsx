@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Session, GameState, HistoricalMove } from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
+import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
 const UrBoard = lazy(() => import('./games/ur/UrBoard'));
 const SenetBoard = lazy(() => import('./games/senet/SenetBoard'));
@@ -40,7 +41,7 @@ export default function GameRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [spectateDisplayName, setSpectateDisplayName] = useState(localStorage.getItem('playerName') ?? '');
+  const [spectateDisplayName, setSpectateDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
@@ -70,10 +71,10 @@ export default function GameRoom() {
   const replayIdRef = useRef(0);
   const [replayingEntryId, setReplayingEntryId] = useState<number | null>(null);
 
-  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
+  const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem(PLAYER_ID_KEY));
   // True while waiting for server to respond to session:join (prevents premature name prompt
   // when a hub participant navigates to a match session — the server may auto-add them).
-  const [joiningSession, setJoiningSession] = useState(() => !!localStorage.getItem('playerId'));
+  const [joiningSession, setJoiningSession] = useState(() => !!localStorage.getItem(PLAYER_ID_KEY));
 
   const showTournamentToast = (msg: string) => {
     if (tournamentToastTimerRef.current) clearTimeout(tournamentToastTimerRef.current);
@@ -371,8 +372,8 @@ export default function GameRoom() {
         sessionCode: sessionCode!,
         displayName: spectateDisplayName.trim(),
       });
-      localStorage.setItem('playerId', result.spectatorId);
-      localStorage.setItem('playerName', spectateDisplayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.spectatorId);
+      localStorage.setItem(PLAYER_NAME_KEY, spectateDisplayName.trim());
       setPlayerId(result.spectatorId);
       setSession(result.session);
       setGameState(result.session.gameState);
@@ -409,10 +410,10 @@ export default function GameRoom() {
       } else {
         // Already a spectator: fully remove and clear identity.
         socket.emit('session:leave', { sessionCode, playerId });
-        localStorage.removeItem('playerId');
+        localStorage.removeItem(PLAYER_ID_KEY);
       }
     } else if (!isSeatedPlayer) {
-      localStorage.removeItem('playerId');
+      localStorage.removeItem(PLAYER_ID_KEY);
     }
     navigate('/');
   };

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { GameType } from '@ancient-games/shared';
 
 export default function Home() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<'create' | 'join' | null>(null);
   const [gameType, setGameType] = useState<GameType>('ur');
-  const [displayName, setDisplayName] = useState(localStorage.getItem('playerName') ?? '');
+  const [displayName, setDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
   const [sessionCode, setSessionCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,8 +24,8 @@ export default function Home() {
 
     try {
       const result = await api.createSession({ gameType, displayName: displayName.trim() });
-      localStorage.setItem('playerId', result.playerId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.playerId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       setError((err as Error).message);
@@ -53,8 +54,8 @@ export default function Home() {
         sessionCode: code,
         displayName: displayName.trim(),
       });
-      localStorage.setItem('playerId', result.playerId);
-      localStorage.setItem('playerName', displayName.trim());
+      localStorage.setItem(PLAYER_ID_KEY, result.playerId);
+      localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       if ((err as Error).message === 'Session has already started') {
