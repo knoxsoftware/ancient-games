@@ -202,6 +202,7 @@ export default function Home() {
                       </button>
 
                       <button
+		        disabled
                         onClick={() => setGameType('stellar-siege')}
                         className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                           gameType === 'stellar-siege'
@@ -210,8 +211,8 @@ export default function Home() {
                         }`}
                       >
                         <div className="text-2xl mb-2">🚀</div>
-                        <div className="font-semibold text-sm">Stellar Siege *</div>
-                        <div className="text-xs text-gray-400 mt-1">Asymmetric defense</div>
+                        <div className="font-semibold text-sm">Stellar Siege <DISABLED>*</div>
+                        <div className="text-xs text-gray-400 mt-1">Asymmetric defense (coming soon!)</div>
                       </button>
                     </div>
                     <div className="text-xs text-gray-600 mt-2">* AI-generated game</div>
