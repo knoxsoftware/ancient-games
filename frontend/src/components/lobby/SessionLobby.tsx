@@ -39,7 +39,7 @@ export default function SessionLobby() {
 
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('playerId'));
 
-  const [displayName, setDisplayName] = useState('');
+  const [displayName, setDisplayName] = useState(localStorage.getItem('playerName') ?? '');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [spectateLoading, setSpectateLoading] = useState(false);
@@ -179,6 +179,7 @@ export default function SessionLobby() {
         displayName: displayName.trim(),
       });
       localStorage.setItem('playerId', result.playerId);
+      localStorage.setItem('playerName', displayName.trim());
       setPlayerId(result.playerId);
       setSession(result.session);
     } catch (err) {
@@ -226,6 +227,7 @@ export default function SessionLobby() {
         displayName: displayName.trim(),
       });
       localStorage.setItem('playerId', result.spectatorId);
+      localStorage.setItem('playerName', displayName.trim());
       setPlayerId(result.spectatorId);
       setSession(result.session);
     } catch (err) {

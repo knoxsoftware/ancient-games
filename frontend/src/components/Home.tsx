@@ -7,7 +7,7 @@ export default function Home() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<'create' | 'join' | null>(null);
   const [gameType, setGameType] = useState<GameType>('ur');
-  const [displayName, setDisplayName] = useState('');
+  const [displayName, setDisplayName] = useState(localStorage.getItem('playerName') ?? '');
   const [sessionCode, setSessionCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,6 +24,7 @@ export default function Home() {
     try {
       const result = await api.createSession({ gameType, displayName: displayName.trim() });
       localStorage.setItem('playerId', result.playerId);
+      localStorage.setItem('playerName', displayName.trim());
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       setError((err as Error).message);
@@ -53,6 +54,7 @@ export default function Home() {
         displayName: displayName.trim(),
       });
       localStorage.setItem('playerId', result.playerId);
+      localStorage.setItem('playerName', displayName.trim());
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       if ((err as Error).message === 'Session has already started') {
@@ -267,6 +269,17 @@ export default function Home() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="text-center mt-8">
+        <a
+          href="https://buymeacoffee.com/knoxsoftware"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-semibold transition-colors text-sm"
+        >
+          ☕ Buy me a coffee
+        </a>
       </div>
     </div>
   );

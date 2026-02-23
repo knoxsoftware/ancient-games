@@ -39,7 +39,7 @@ export default function GameRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [spectateDisplayName, setSpectateDisplayName] = useState('');
+  const [spectateDisplayName, setSpectateDisplayName] = useState(localStorage.getItem('playerName') ?? '');
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
@@ -368,6 +368,7 @@ export default function GameRoom() {
         displayName: spectateDisplayName.trim(),
       });
       localStorage.setItem('playerId', result.spectatorId);
+      localStorage.setItem('playerName', spectateDisplayName.trim());
       setPlayerId(result.spectatorId);
       setSession(result.session);
       setGameState(result.session.gameState);
