@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Session, TournamentFormat, GameState, getGameTitle } from '@ancient-games/shared';
+import { useTheme } from '../../contexts/ThemeContext';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../../services/storage';
@@ -47,6 +48,8 @@ export default function SessionLobby() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const { theme } = useTheme();
+  const isYahoo = theme === 'yahoo';
 
   useEffect(() => {
     if (playerId) initPushNotifications(playerId);
@@ -317,7 +320,7 @@ export default function SessionLobby() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-400">Loading session...</div>
+        <div className="text-xl" style={{ color: 'var(--text-secondary)' }}>Loading session...</div>
       </div>
     );
   }
@@ -328,7 +331,7 @@ export default function SessionLobby() {
         <div className="card max-w-md w-full text-center">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold mb-4">Session Error</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
+          <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>{error}</p>
           <button onClick={() => navigate('/')} className="btn btn-primary">
             Back to Home
           </button>
@@ -353,7 +356,7 @@ export default function SessionLobby() {
             <div className="text-4xl mb-3">🎲</div>
             <h1 className="text-2xl font-bold mb-1">You've been invited!</h1>
             {session && (
-              <p className="text-gray-400">
+              <p style={{ color: 'var(--text-secondary)' }}>
                 Join a game of{' '}
                 <span className="text-white font-semibold">{getGameTitle(session.gameType)}</span>
               </p>
@@ -361,8 +364,8 @@ export default function SessionLobby() {
           </div>
 
           {session && session.players.length > 0 && (
-            <div className="bg-gray-700/40 rounded-lg p-3 mb-5 text-sm text-gray-300">
-              <span className="text-gray-500 mr-2">Currently in lobby:</span>
+            <div className="rounded-lg p-3 mb-5 text-sm" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+              <span className="mr-2" style={{ color: 'var(--text-muted)' }}>Currently in lobby:</span>
               {session.players.map((p) => p.displayName).join(', ')}
             </div>
           )}
@@ -408,7 +411,8 @@ export default function SessionLobby() {
 
             <button
               onClick={() => navigate('/')}
-              className="text-sm text-gray-400 hover:text-white w-full text-center"
+              className="text-sm w-full text-center"
+              style={{ color: 'var(--text-secondary)' }}
             >
               Back to Home
             </button>
@@ -445,9 +449,9 @@ export default function SessionLobby() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold">Tournament</h1>
-                  <p className="text-gray-400 text-sm">{getGameTitle(session.gameType)}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{getGameTitle(session.gameType)}</p>
                 </div>
-                <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
+                <button onClick={handleLeave} className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                   Leave
                 </button>
               </div>
@@ -465,7 +469,7 @@ export default function SessionLobby() {
           </div>
 
           {/* Chat sidebar — desktop */}
-          <div className="hidden lg:flex flex-col w-80 border-l border-amber-900/20">
+          <div className="hidden lg:flex flex-col w-80 border-l" style={{ borderColor: isYahoo ? '#cccccc' : 'rgba(180,120,10,0.2)' }}>
             <ChatPanel
               messages={chatMessages}
               currentPlayerId={playerId!}
@@ -479,7 +483,7 @@ export default function SessionLobby() {
         <div className="lg:hidden fixed bottom-4 right-4 z-40">
           <button
             onClick={() => setShowChat(!showChat)}
-            className="w-12 h-12 rounded-full bg-amber-700 text-white shadow-lg flex items-center justify-center text-xl"
+            className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl ${isYahoo ? 'bg-purple-800 text-white' : 'bg-amber-700 text-white'}`}
           >
             💬
           </button>
@@ -487,10 +491,10 @@ export default function SessionLobby() {
 
         {/* Chat overlay — mobile/tablet */}
         {showChat && (
-          <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-stone-900">
-            <div className="flex items-center justify-between p-3 border-b border-amber-900/20">
-              <span className="text-amber-200 font-semibold">Tournament Chat</span>
-              <button onClick={() => setShowChat(false)} className="text-amber-200/50 text-xl">
+          <div className={`lg:hidden fixed inset-0 z-50 flex flex-col ${isYahoo ? 'bg-white' : 'bg-stone-900'}`}>
+            <div className="flex items-center justify-between p-3 border-b" style={{ borderColor: isYahoo ? '#cccccc' : 'rgba(180,120,10,0.2)' }}>
+              <span style={{ color: isYahoo ? '#400090' : undefined }} className={isYahoo ? 'font-semibold' : 'text-amber-200 font-semibold'}>Tournament Chat</span>
+              <button onClick={() => setShowChat(false)} style={{ color: isYahoo ? '#666666' : undefined }} className={isYahoo ? 'text-xl' : 'text-amber-200/50 text-xl'}>
                 ✕
               </button>
             </div>
@@ -523,9 +527,9 @@ export default function SessionLobby() {
             key={notice}
             className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
             style={{
-              background: 'rgba(20,12,0,0.92)',
-              border: '1px solid rgba(196,168,107,0.5)',
-              color: '#F0E6C8',
+              background: isYahoo ? 'rgba(64,0,144,0.92)' : 'rgba(20,12,0,0.92)',
+              border: isYahoo ? '1px solid rgba(255,255,255,0.4)' : '1px solid rgba(196,168,107,0.5)',
+              color: isYahoo ? '#ffffff' : '#F0E6C8',
               backdropFilter: 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
               boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
@@ -547,16 +551,16 @@ export default function SessionLobby() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <h1 className="text-3xl font-bold mb-2">Game Lobby</h1>
-              <p className="text-gray-400">{getGameTitle(session.gameType)}</p>
+              <p style={{ color: 'var(--text-secondary)' }}>{getGameTitle(session.gameType)}</p>
             </div>
-            <button onClick={handleLeave} className="text-gray-400 hover:text-white">
+            <button onClick={handleLeave} style={{ color: 'var(--text-secondary)' }}>
               Leave
             </button>
           </div>
 
           {/* Session code */}
-          <div className="bg-gray-700/50 rounded-lg p-4 mb-6">
-            <div className="text-sm text-gray-400 mb-1">Session Code</div>
+          <div className="rounded-lg p-4 mb-6" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)' }}>
+            <div className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Session Code</div>
             <div className="flex items-center gap-3">
               <div className="text-3xl font-mono font-bold tracking-wider">{sessionCode}</div>
               <button onClick={handleCopyCode} className="btn btn-outline text-sm py-1 px-3">
@@ -573,13 +577,14 @@ export default function SessionLobby() {
 
           {/* Players list */}
           <div className="space-y-3 mb-6">
-            <div className="text-sm font-medium text-gray-400">
+            <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               Players ({session.players.length})
             </div>
             {session.players.map((player) => (
               <div
                 key={player.id}
-                className="flex items-center justify-between bg-gray-700/30 rounded-lg p-3"
+                className="flex items-center justify-between rounded-lg p-3"
+                style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)' }}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-green-500" />
@@ -598,7 +603,8 @@ export default function SessionLobby() {
                 {isHost && player.id !== playerId && (
                   <button
                     onClick={() => handleHostStandUp(player.id)}
-                    className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
+                    className="text-xs px-2 py-1 rounded transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
                     title="Move to spectators"
                   >
                     Stand
@@ -608,24 +614,25 @@ export default function SessionLobby() {
             ))}
 
             {session.players.length < 2 && (
-              <div className="bg-gray-700/30 rounded-lg p-3 text-center text-gray-400">
+              <div className="rounded-lg p-3 text-center" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
                 Waiting for another player...
               </div>
             )}
 
             {session.spectators.length > 0 && (
               <div className="mt-4">
-                <div className="text-sm font-medium text-gray-400 mb-2">
+                <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                   Spectators ({session.spectators.length})
                 </div>
                 {session.spectators.map((spec) => (
                   <div
                     key={spec.id}
-                    className="flex items-center justify-between bg-gray-700/20 rounded-lg p-3 mb-1"
+                    className="flex items-center justify-between rounded-lg p-3 mb-1"
+                    style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)' }}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-gray-400 text-sm">👁</span>
-                      <span className="text-gray-300 text-sm">{spec.displayName}</span>
+                      <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>👁</span>
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{spec.displayName}</span>
                       {spec.id === playerId && (
                         <span className="text-xs bg-gray-600/50 text-gray-400 px-2 py-0.5 rounded">
                           You
@@ -635,7 +642,8 @@ export default function SessionLobby() {
                     {isHost && session.players.length < (format === 'single' ? 2 : 8) && (
                       <button
                         onClick={() => handleHostTakeSeat(spec.id)}
-                        className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
+                        className="text-xs px-2 py-1 rounded transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
                         title="Move to players"
                       >
                         Seat
@@ -650,7 +658,7 @@ export default function SessionLobby() {
           {/* Format selector — host only */}
           {isHost && (
             <div className="mb-6">
-              <div className="text-sm font-medium text-gray-400 mb-2">Format</div>
+              <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Format</div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {FORMAT_OPTIONS.map((opt) => (
                   <button
@@ -658,11 +666,15 @@ export default function SessionLobby() {
                     onClick={() => handleFormatChange(opt.value)}
                     className="rounded-lg p-2.5 text-left transition-all border"
                     style={{
-                      background:
-                        format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
-                      borderColor:
-                        format === opt.value ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)',
-                      color: format === opt.value ? '#E8C870' : '#8A7A60',
+                      background: format === opt.value
+                        ? (isYahoo ? '#ffffcc' : 'rgba(196,160,48,0.12)')
+                        : (isYahoo ? '#ffffff' : 'rgba(8,5,0,0.5)'),
+                      borderColor: format === opt.value
+                        ? (isYahoo ? '#400090' : 'rgba(196,160,48,0.5)')
+                        : (isYahoo ? '#cccccc' : 'rgba(42,30,14,0.8)'),
+                      color: format === opt.value
+                        ? (isYahoo ? '#400090' : '#E8C870')
+                        : (isYahoo ? '#666666' : '#8A7A60'),
                     }}
                   >
                     <div className="text-sm font-semibold">{opt.label}</div>
@@ -671,7 +683,7 @@ export default function SessionLobby() {
                 ))}
               </div>
               {format === 'single' && session.players.length > 2 && (
-                <div className="text-xs mt-2" style={{ color: '#E8A030' }}>
+                <div className="text-xs mt-2" style={{ color: isYahoo ? '#cc6600' : '#E8A030' }}>
                   Single Match requires exactly 2 players seated.
                 </div>
               )}
@@ -680,7 +692,7 @@ export default function SessionLobby() {
 
           {/* Format display for non-hosts */}
           {!isHost && (
-            <div className="mb-6 text-sm" style={{ color: '#6A5A40' }}>
+            <div className="mb-6 text-sm" style={{ color: isYahoo ? '#666666' : '#6A5A40' }}>
               Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'} —
               waiting for host to start
             </div>
@@ -710,7 +722,7 @@ export default function SessionLobby() {
           </div>
 
           {!isSpectator && isHost && !canStart && (
-            <div className="text-sm text-gray-400 text-center mt-2">
+            <div className="text-sm text-center mt-2" style={{ color: 'var(--text-secondary)' }}>
               {session.players.length < 2
                 ? 'Waiting for another player to join'
                 : format === 'single' && session.players.length > 2
@@ -726,9 +738,9 @@ export default function SessionLobby() {
           key={notice}
           className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
           style={{
-            background: 'rgba(20,12,0,0.92)',
-            border: '1px solid rgba(196,168,107,0.5)',
-            color: '#F0E6C8',
+            background: isYahoo ? 'rgba(64,0,144,0.92)' : 'rgba(20,12,0,0.92)',
+            border: isYahoo ? '1px solid rgba(255,255,255,0.4)' : '1px solid rgba(196,168,107,0.5)',
+            color: isYahoo ? '#ffffff' : '#F0E6C8',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
