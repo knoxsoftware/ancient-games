@@ -27,6 +27,8 @@ services:
       PORT: 3000
       MONGODB_URI: mongodb://mongodb:27017/ancient-games
       CORS_ORIGIN: http://localhost:3000
+      AUTH_USERNAME: admin
+      AUTH_PASSWORD: changeme
     depends_on:
       - mongodb
     networks:

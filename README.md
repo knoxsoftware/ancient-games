@@ -58,7 +58,20 @@ cd backend
 cp .env.example .env
 ```
 
-Edit `.env` with your MongoDB connection string.
+Edit `.env` with your MongoDB connection string and optional basic auth credentials:
+
+```bash
+MONGODB_URI=mongodb://localhost:27017/ancient-games
+AUTH_USERNAME=admin
+AUTH_PASSWORD=your-secure-password
+```
+
+**Environment Variables:**
+- `MONGODB_URI` - MongoDB connection string
+- `AUTH_USERNAME` - Username for basic auth on feedback endpoints (optional)
+- `AUTH_PASSWORD` - Password for basic auth on feedback endpoints (optional)
+
+Note: The feedback endpoints (`GET /api/feedback`, `DELETE /api/feedback/clear`, `DELETE /api/feedback/:id`) are protected with HTTP basic auth. If `AUTH_USERNAME` and `AUTH_PASSWORD` are not set, these endpoints will return `403 Forbidden` for all requests.
 
 3. **Start MongoDB** (if not using external service)
 
