@@ -380,6 +380,38 @@ export default function GAMECLASSRules() {
 }
 ```
 
+### Step 5b: Frontend — export a piece preview component
+
+Export a `<GAMECLASSPiecePreview>` component from the board file:
+
+```tsx
+// In GAMECLASSBoard.tsx, add near the top (after imports, before the default export):
+export function GAMECLASSPiecePreview({ playerNumber, size = 20 }: { playerNumber: 0 | 1; size?: number }) {
+  // Render a small SVG of the player's piece at the given size.
+  // Player 0 gets their piece, Player 1 gets theirs.
+  // If the game has no persistent piece identity (e.g. RPS), return null.
+  const color = playerNumber === 0 ? '#PLAYER0_COLOR' : '#PLAYER1_COLOR';
+  return (
+    <svg viewBox="0 0 20 20" width={size} height={size}>
+      <circle cx="10" cy="10" r="8" fill={color} />
+    </svg>
+  );
+}
+```
+
+Then register it in `frontend/src/components/games/GamePiecePreview.tsx` — add a `case 'GAME_ID':` to the switch statement:
+
+```tsx
+case 'GAME_ID':
+  return <GAMECLASSPiecePreview playerNumber={playerNumber} size={size} />;
+```
+
+And add the import at the top of `GamePiecePreview.tsx`:
+
+```tsx
+import { GAMECLASSPiecePreview } from './GAME_ID/GAMECLASSBoard';
+```
+
 ### Step 6: Frontend — create score info (optional)
 
 Create `frontend/src/components/games/GAME_ID/gameIdScoreInfo.ts` if the game has meaningful score display:
@@ -486,6 +518,8 @@ After implementing, verify:
 **Commit 2 (Frontend):**
 
 - [ ] `frontend/src/components/games/GAME_ID/GAMECLASSBoard.tsx` — board created (default export)
+- [ ] `frontend/src/components/games/GAME_ID/GAMECLASSBoard.tsx` — `GAMECLASSPiecePreview` exported
+- [ ] `frontend/src/components/games/GamePiecePreview.tsx` — new game registered in switch
 - [ ] `frontend/src/components/games/GAME_ID/GAMECLASSRules.tsx` — rules created (default export)
 - [ ] `frontend/src/components/games/GAME_ID/gameIdScoreInfo.ts` — score info (if applicable)
 - [ ] `frontend/src/components/games/GAME_ID/GAMECLASSControls.tsx` — controls (if applicable)
