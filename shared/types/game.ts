@@ -130,6 +130,7 @@ export interface Player {
   ready: boolean;
   playerNumber: number; // 0 or 1
   status: 'active' | 'away';
+  awayAt?: number; // unix ms timestamp set when player disconnects
 }
 
 export interface Spectator {

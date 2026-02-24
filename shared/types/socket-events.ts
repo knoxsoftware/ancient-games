@@ -40,6 +40,11 @@ export interface ClientToServerEvents {
     playerId: string;
     format: TournamentFormat | 'single';
   }) => void;
+  'session:boot-player': (data: {
+    sessionCode: string;
+    playerId: string;
+    targetPlayerId: string;
+  }) => void;
 }
 
 // Server to Client events
