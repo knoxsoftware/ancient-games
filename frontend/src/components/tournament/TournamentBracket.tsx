@@ -7,6 +7,7 @@ import {
   GameType,
   Session,
 } from '@ancient-games/shared';
+import { useTheme } from '../../contexts/ThemeContext';
 import MiniBoard from './MiniBoard';
 import { getScoreInfo } from '../../utils/gameScoreInfo';
 import { GamePiecePreview } from '../games/GamePiecePreview';
@@ -51,6 +52,8 @@ function EliminationBracket({
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [connectorPaths, setConnectorPaths] = useState<string[]>([]);
   const [svgDims, setSvgDims] = useState({ w: 0, h: 0 });
+  const { theme } = useTheme();
+  const isYahoo = theme === 'yahoo';
 
   const measure = useCallback(() => {
     const container = containerRef.current;
@@ -126,7 +129,7 @@ function EliminationBracket({
               key={i}
               d={d}
               fill="none"
-              stroke="rgba(138,122,96,0.35)"
+              stroke={isYahoo ? 'rgba(64,0,144,0.3)' : 'rgba(138,122,96,0.35)'}
               strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -144,10 +147,10 @@ function EliminationBracket({
             <div
               className="text-xs font-semibold text-center py-1.5 mb-3"
               style={{
-                color: '#B09A70',
-                borderBottom: '1px solid rgba(138,122,96,0.25)',
+                color: isYahoo ? '#400090' : '#B09A70',
+                borderBottom: `1px solid ${isYahoo ? 'rgba(64,0,144,0.25)' : 'rgba(138,122,96,0.25)'}`,
                 letterSpacing: '0.05em',
-                textTransform: 'uppercase',
+                textTransform: 'uppercase' as const,
                 fontSize: '10px',
               }}
             >

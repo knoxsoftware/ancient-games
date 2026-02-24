@@ -39,6 +39,7 @@ import TournamentBracket from './tournament/TournamentBracket';
 import MatchSpectatorModal from './tournament/MatchSpectatorModal';
 import GameEndModal from './GameEndModal';
 import { GamePiecePreview } from './games/GamePiecePreview';
+import ThemeToggle from './ThemeToggle';
 
 async function showNotification(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -627,18 +628,21 @@ export default function GameRoom() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">{getGameTitle(session.gameType)}</h1>
-          <button
-            onClick={() => setShowRules(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-colors"
-            style={{
-              background: 'rgba(196,160,48,0.12)',
-              border: '1.5px solid rgba(196,160,48,0.35)',
-              color: '#C4A030',
-            }}
-            title="Rules"
-          >
-            ?
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRules(true)}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-colors"
+              style={{
+                background: 'rgba(196,160,48,0.12)',
+                border: '1.5px solid rgba(196,160,48,0.35)',
+                color: '#C4A030',
+              }}
+              title="Rules"
+            >
+              ?
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
 
         {error && (
