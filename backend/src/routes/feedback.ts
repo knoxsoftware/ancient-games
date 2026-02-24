@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { FeedbackModel } from '../models/Feedback';
+import { basicAuth } from '../middleware/auth';
 
 export function createFeedbackRoutes(): Router {
   const router = Router();
@@ -24,7 +25,7 @@ export function createFeedbackRoutes(): Router {
   });
 
   // GET /api/feedback — return all entries newest first
-  router.get('/feedback', async (_req, res) => {
+  router.get('/feedback', basicAuth, async (_req, res) => {
     try {
       const entries = await FeedbackModel.find().sort({ createdAt: -1 });
       res.json(entries);
@@ -35,7 +36,7 @@ export function createFeedbackRoutes(): Router {
 
   // DELETE /api/feedback/clear — delete all entries
   // IMPORTANT: must be registered before /:id to avoid routing conflict
-  router.delete('/feedback/clear', async (_req, res) => {
+  router.delete('/feedback/clear', basicAuth, async (_req, res) => {
     try {
       await FeedbackModel.deleteMany({});
       res.json({ message: 'All feedback deleted' });
@@ -45,7 +46,7 @@ export function createFeedbackRoutes(): Router {
   });
 
   // DELETE /api/feedback/:id — delete a single entry
-  router.delete('/feedback/:id', async (req, res) => {
+  router.delete('/feedback/:id', basicAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const result = await FeedbackModel.findByIdAndDelete(id);
