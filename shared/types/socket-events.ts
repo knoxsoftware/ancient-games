@@ -71,4 +71,9 @@ export interface ServerToClientEvents {
     winnerId: string;
     winnerName: string;
   }) => void;
+  'tournament:match-game-state': (data: {
+    matchId: string;
+    gameState: GameState;
+    sessionCode: string;
+  }) => void;
 }
