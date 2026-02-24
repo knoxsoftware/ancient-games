@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, TournamentFormat, getGameTitle } from '@ancient-games/shared';
+import { Session, TournamentFormat, GameState, getGameTitle } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../../services/storage';
 import { initPushNotifications } from '../../services/pushNotifications';
 import TournamentBracket from '../tournament/TournamentBracket';
+import ChatPanel, { ChatMessage } from '../ChatPanel';
+import MatchSpectatorModal from '../tournament/MatchSpectatorModal';
 
 const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string; desc: string }[] = [
   { value: 'single', label: 'Single Match', desc: '1 game, 2 players only' },
@@ -41,6 +43,10 @@ export default function SessionLobby() {
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [spectateLoading, setSpectateLoading] = useState(false);
+  const [matchGameStates, setMatchGameStates] = useState<Record<string, GameState>>({});
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     if (playerId) initPushNotifications(playerId);
@@ -140,6 +146,14 @@ export default function SessionLobby() {
 
     socket.on('session:error', (err) => setError(err.message));
 
+    socket.on('tournament:match-game-state', (data) => {
+      setMatchGameStates((prev) => ({ ...prev, [data.matchId]: data.gameState }));
+    });
+
+    socket.on('chat:message', (msg) => {
+      setChatMessages((prev) => [...prev, msg]);
+    });
+
     return () => {
       socket.off('connect', rejoin);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -150,6 +164,8 @@ export default function SessionLobby() {
       socket.off('tournament:updated');
       socket.off('tournament:match-ready');
       socket.off('session:error');
+      socket.off('tournament:match-game-state');
+      socket.off('chat:message');
     };
   }, [sessionCode, playerId]);
 
@@ -270,6 +286,16 @@ export default function SessionLobby() {
     if (!socket) return;
     socket.emit('session:host-take-seat', { sessionCode, playerId, targetPlayerId });
   };
+
+  const handleChatSend = useCallback((text: string) => {
+    const socket = socketService.getSocket();
+    if (!socket || !session || !playerId) return;
+    socket.emit('chat:send', { sessionCode: session.sessionCode, playerId, text, scope: 'tournament' });
+  }, [session, playerId]);
+
+  const handleMatchClick = useCallback((matchId: string) => {
+    setSelectedMatchId(matchId);
+  }, []);
 
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
@@ -398,26 +424,92 @@ export default function SessionLobby() {
 
   // ── Tournament bracket view (tournament already started) ───────────────────
   if (session.tournamentState) {
+    const selectedMatch = selectedMatchId
+      ? session.tournamentState.rounds.flat().find((m) => m.matchId === selectedMatchId)
+      : null;
+    const selectedGameState = selectedMatchId ? matchGameStates[selectedMatchId] : null;
+
     return (
-      <div className="min-h-screen p-4">
-        <div className="max-w-4xl mx-auto space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Tournament</h1>
-              <p className="text-gray-400 text-sm">{getGameTitle(session.gameType)}</p>
+      <div className="min-h-screen flex flex-col">
+        {/* Main content area */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Bracket area */}
+          <div className="flex-1 min-w-0 overflow-auto p-4">
+            <div className="max-w-4xl mx-auto space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold">Tournament</h1>
+                  <p className="text-gray-400 text-sm">{getGameTitle(session.gameType)}</p>
+                </div>
+                <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
+                  Leave
+                </button>
+              </div>
+
+              <TournamentBracket
+                tournament={session.tournamentState}
+                participants={session.tournamentState.participants}
+                currentPlayerId={playerId!}
+                onWatchMatch={(matchCode) => navigate(`/game/${matchCode}`)}
+                matchGameStates={matchGameStates}
+                gameType={session.gameType}
+                session={session}
+                onMatchClick={handleMatchClick}
+              />
             </div>
-            <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
-              Leave
-            </button>
           </div>
 
-          <TournamentBracket
-            tournament={session.tournamentState}
-            participants={session.tournamentState.participants}
-            currentPlayerId={playerId!}
-            onWatchMatch={(matchCode) => navigate(`/game/${matchCode}`)}
-          />
+          {/* Chat sidebar — desktop */}
+          <div className="hidden lg:flex flex-col w-80 border-l border-amber-900/20">
+            <ChatPanel
+              messages={chatMessages}
+              currentPlayerId={playerId!}
+              onSend={handleChatSend}
+              session={session}
+            />
+          </div>
         </div>
+
+        {/* Chat FAB — mobile/tablet */}
+        <div className="lg:hidden fixed bottom-4 right-4 z-40">
+          <button
+            onClick={() => setShowChat(!showChat)}
+            className="w-12 h-12 rounded-full bg-amber-700 text-white shadow-lg flex items-center justify-center text-xl"
+          >
+            💬
+          </button>
+        </div>
+
+        {/* Chat overlay — mobile/tablet */}
+        {showChat && (
+          <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-stone-900">
+            <div className="flex items-center justify-between p-3 border-b border-amber-900/20">
+              <span className="text-amber-200 font-semibold">Tournament Chat</span>
+              <button onClick={() => setShowChat(false)} className="text-amber-200/50 text-xl">✕</button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ChatPanel
+                messages={chatMessages}
+                currentPlayerId={playerId!}
+                onSend={handleChatSend}
+                session={session}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Spectator modal */}
+        {selectedMatch && selectedGameState && (
+          <MatchSpectatorModal
+            match={selectedMatch}
+            participants={session.tournamentState.participants}
+            format={session.tournamentState.format}
+            gameType={session.gameType}
+            gameState={selectedGameState}
+            session={session}
+            onClose={() => setSelectedMatchId(null)}
+          />
+        )}
 
         {notice && (
           <div
