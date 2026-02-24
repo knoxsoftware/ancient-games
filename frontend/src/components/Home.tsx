@@ -75,7 +75,7 @@ export default function Home() {
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent">
             Ancient Games
           </h1>
-          <p className="text-gray-400 text-lg">Play ancient board games online with friends</p>
+          <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>Play ancient board games online with friends</p>
         </div>
 
         {!mode ? (
@@ -88,7 +88,7 @@ export default function Home() {
               <h2 className="text-2xl font-bold mb-2 group-hover:text-primary-400 transition-colors">
                 Create Game
               </h2>
-              <p className="text-gray-400">Start a new game session</p>
+              <p style={{ color: 'var(--text-secondary)' }}>Start a new game session</p>
             </button>
 
             <button
@@ -99,7 +99,7 @@ export default function Home() {
               <h2 className="text-2xl font-bold mb-2 group-hover:text-secondary-400 transition-colors">
                 Join Game
               </h2>
-              <p className="text-gray-400">Enter a session code</p>
+              <p style={{ color: 'var(--text-secondary)' }}>Enter a session code</p>
             </button>
           </div>
         ) : (
@@ -109,7 +109,8 @@ export default function Home() {
                 setMode(null);
                 setError('');
               }}
-              className="text-gray-400 hover:text-white mb-6 flex items-center gap-2"
+              className="mb-6 flex items-center gap-2"
+              style={{ color: 'var(--text-secondary)' }}
             >
               ← Back
             </button>
@@ -143,8 +144,9 @@ export default function Home() {
                           className={`p-4 rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                             gameType === manifest.type
                               ? 'border-primary-500 bg-primary-500/20'
-                              : 'border-gray-600 hover:border-gray-500'
+                              : ''
                           }`}
+                          style={gameType !== manifest.type ? { borderColor: 'var(--border-input)' } : undefined}
                         >
                           <div className="text-2xl mb-2">{manifest.emoji}</div>
                           <div className="font-semibold text-sm">
@@ -152,11 +154,11 @@ export default function Home() {
                             {manifest.disabled ? ' (DISABLED)' : ''}
                             {manifest.aiGenerated ? ' *' : ''}
                           </div>
-                          <div className="text-xs text-gray-400 mt-1">{manifest.description}</div>
+                          <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{manifest.description}</div>
                         </button>
                       ))}
                     </div>
-                    <div className="text-xs text-gray-600 mt-2">* AI-generated game</div>
+                    <div className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>* AI-generated game</div>
                   </div>
 
                   {error && (
