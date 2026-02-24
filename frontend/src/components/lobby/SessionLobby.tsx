@@ -441,7 +441,7 @@ export default function SessionLobby() {
         <div className="flex flex-1 overflow-hidden">
           {/* Bracket area */}
           <div className="flex-1 min-w-0 overflow-auto p-4">
-            <div className="max-w-4xl mx-auto space-y-4">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold">Tournament</h1>
@@ -456,7 +456,6 @@ export default function SessionLobby() {
                 tournament={session.tournamentState}
                 participants={session.tournamentState.participants}
                 currentPlayerId={playerId!}
-                onWatchMatch={(matchCode) => navigate(`/game/${matchCode}`)}
                 matchGameStates={matchGameStates}
                 gameType={session.gameType}
                 session={session}

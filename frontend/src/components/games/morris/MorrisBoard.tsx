@@ -132,11 +132,12 @@ interface MorrisBoardProps {
   gameState: GameState;
   playerId: string;
   isMyTurn: boolean;
+  boardOnly?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-function MorrisBoard({ session, gameState, playerId, isMyTurn }: MorrisBoardProps) {
+function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly }: MorrisBoardProps) {
   const [selected, setSelected] = useState<{ pieceIndex: number; from: number } | null>(null);
 
   const myPlayer = session.players.find((p) => p.id === playerId);
@@ -272,16 +273,18 @@ function MorrisBoard({ session, gameState, playerId, isMyTurn }: MorrisBoardProp
   return (
     <div className="flex flex-col items-center gap-3">
       {/* Status bar */}
-      <div
-        className="w-full text-center text-sm font-semibold py-2 px-4 rounded-lg"
-        style={{
-          background: diceRoll === 2 ? 'rgba(251,191,36,0.15)' : 'rgba(30,20,10,0.6)',
-          border: `1px solid ${diceRoll === 2 ? 'rgba(251,191,36,0.5)' : 'rgba(80,60,30,0.4)'}`,
-          color: diceRoll === 2 ? '#FBD024' : isMyTurn ? '#F0E6C8' : '#8A7A60',
-        }}
-      >
-        {statusText}
-      </div>
+      {!boardOnly && (
+        <div
+          className="w-full text-center text-sm font-semibold py-2 px-4 rounded-lg"
+          style={{
+            background: diceRoll === 2 ? 'rgba(251,191,36,0.15)' : 'rgba(30,20,10,0.6)',
+            border: `1px solid ${diceRoll === 2 ? 'rgba(251,191,36,0.5)' : 'rgba(80,60,30,0.4)'}`,
+            color: diceRoll === 2 ? '#FBD024' : isMyTurn ? '#F0E6C8' : '#8A7A60',
+          }}
+        >
+          {statusText}
+        </div>
+      )}
 
       {/* SVG Board */}
       <svg
@@ -419,7 +422,7 @@ function MorrisBoard({ session, gameState, playerId, isMyTurn }: MorrisBoardProp
       </svg>
 
       {/* Piece trays for seated players */}
-      {session.players.map((player) => {
+      {!boardOnly && session.players.map((player) => {
         const pn = player.playerNumber;
         const isMe = player.id === playerId;
         const unplaced = pieces.filter((p) => p.playerNumber === pn && p.position === -1).length;

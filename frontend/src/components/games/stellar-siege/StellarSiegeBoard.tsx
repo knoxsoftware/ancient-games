@@ -98,9 +98,10 @@ interface Props {
   gameState: GameState;
   playerId: string;
   isMyTurn: boolean;
+  boardOnly?: boolean;
 }
 
-function StellarSiegeBoard({ session, gameState, playerId, isMyTurn }: Props) {
+function StellarSiegeBoard({ session, gameState, playerId, isMyTurn, boardOnly }: Props) {
   const [selectedAlien, setSelectedAlien] = useState<PiecePosition | null>(null);
   const [flashCell, setFlashCell] = useState<number | null>(null);
 
@@ -209,16 +210,18 @@ function StellarSiegeBoard({ session, gameState, playerId, isMyTurn }: Props) {
   return (
     <div className="flex flex-col items-center gap-3">
       {/* Status bar */}
-      <div
-        className="w-full text-center text-sm font-semibold py-2 px-4 rounded-lg"
-        style={{
-          background: isMyTurn ? 'rgba(0,20,40,0.8)' : 'rgba(0,5,15,0.7)',
-          border: `1px solid ${isMyTurn ? (isDefender ? 'rgba(0,180,255,0.4)' : 'rgba(57,255,20,0.35)') : 'rgba(30,50,80,0.4)'}`,
-          color: isMyTurn ? (isDefender ? '#80DFFF' : '#7FFF5A') : '#3A5060',
-        }}
-      >
-        {statusText}
-      </div>
+      {!boardOnly && (
+        <div
+          className="w-full text-center text-sm font-semibold py-2 px-4 rounded-lg"
+          style={{
+            background: isMyTurn ? 'rgba(0,20,40,0.8)' : 'rgba(0,5,15,0.7)',
+            border: `1px solid ${isMyTurn ? (isDefender ? 'rgba(0,180,255,0.4)' : 'rgba(57,255,20,0.35)') : 'rgba(30,50,80,0.4)'}`,
+            color: isMyTurn ? (isDefender ? '#80DFFF' : '#7FFF5A') : '#3A5060',
+          }}
+        >
+          {statusText}
+        </div>
+      )}
 
       {/* SVG Board */}
       <svg
@@ -525,7 +528,7 @@ function StellarSiegeBoard({ session, gameState, playerId, isMyTurn }: Props) {
       </svg>
 
       {/* Player trays */}
-      {session.players.map((player) => {
+      {!boardOnly && session.players.map((player) => {
         const pn = player.playerNumber;
         const isMe = player.id === playerId;
         const isPlayerDefender = pn === defenderPN;

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useRef, useState, useEffect, useCallback } from 'react';
 import {
   TournamentState,
   TournamentParticipant,
@@ -8,12 +8,12 @@ import {
   Session,
 } from '@ancient-games/shared';
 import MiniBoard from './MiniBoard';
+import { getScoreInfo } from '../../utils/gameScoreInfo';
 
 interface Props {
   tournament: TournamentState;
   participants: TournamentParticipant[];
   currentPlayerId: string;
-  onWatchMatch?: (sessionCode: string) => void;
   matchGameStates?: Record<string, GameState>;
   gameType?: GameType;
   session?: Session;
@@ -34,22 +34,122 @@ function getRoundName(format: string, roundIndex: number, totalRounds: number): 
   return `Round of ${Math.pow(2, remaining)}`;
 }
 
+const ROUND_GAP = 56;
+const CARD_WIDTH = 230;
+
 function EliminationBracket({
   tournament,
   participants,
   currentPlayerId,
-  onWatchMatch,
   matchGameStates,
   gameType,
   session,
   onMatchClick,
 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [connectorPaths, setConnectorPaths] = useState<string[]>([]);
+  const [svgDims, setSvgDims] = useState({ w: 0, h: 0 });
+
+  const measure = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const cRect = container.getBoundingClientRect();
+    const paths: string[] = [];
+
+    for (let rIdx = 0; rIdx < tournament.rounds.length - 1; rIdx++) {
+      const round = tournament.rounds[rIdx];
+      const nextRound = tournament.rounds[rIdx + 1];
+
+      for (let mIdx = 0; mIdx < nextRound.length; mIdx++) {
+        const src1 = round[mIdx * 2];
+        const src2 = round[mIdx * 2 + 1];
+        const tgt = nextRound[mIdx];
+        if (!src1 || !src2 || !tgt) continue;
+
+        const el1 = cardRefs.current[src1.matchId];
+        const el2 = cardRefs.current[src2.matchId];
+        const elT = cardRefs.current[tgt.matchId];
+        if (!el1 || !el2 || !elT) continue;
+
+        const r1 = el1.getBoundingClientRect();
+        const r2 = el2.getBoundingClientRect();
+        const rT = elT.getBoundingClientRect();
+
+        const yA = r1.top + r1.height / 2 - cRect.top;
+        const yB = r2.top + r2.height / 2 - cRect.top;
+        const yT = rT.top + rT.height / 2 - cRect.top;
+        const xR = r1.right - cRect.left;
+        const xL = rT.left - cRect.left;
+        const xM = (xR + xL) / 2;
+
+        // Classic bracket shape: top arm → vertical → bottom arm, then connector to target
+        paths.push(`M ${xR} ${yA} H ${xM} V ${yB} H ${xR} M ${xM} ${yT} H ${xL}`);
+      }
+    }
+
+    setConnectorPaths(paths);
+    setSvgDims({ w: container.scrollWidth, h: container.scrollHeight });
+  }, [tournament]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const obs = new ResizeObserver(measure);
+    obs.observe(container);
+    measure();
+    return () => obs.disconnect();
+  }, [measure]);
+
+  // Re-measure when game states update (affects MiniBoard heights)
+  useEffect(() => {
+    measure();
+  }, [matchGameStates, measure]);
+
   return (
-    <div className="overflow-x-auto">
-      <div className="flex gap-6 pb-4" style={{ minWidth: `${tournament.rounds.length * 200}px` }}>
+    <div ref={containerRef} className="overflow-x-auto" style={{ position: 'relative' }}>
+      {svgDims.w > 0 && (
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: svgDims.w,
+            height: svgDims.h,
+            pointerEvents: 'none',
+            overflow: 'visible',
+          }}
+        >
+          {connectorPaths.map((d, i) => (
+            <path
+              key={i}
+              d={d}
+              fill="none"
+              stroke="rgba(138,122,96,0.35)"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        </svg>
+      )}
+      <div
+        className="flex pb-4"
+        style={{ gap: ROUND_GAP, minWidth: `${tournament.rounds.length * (CARD_WIDTH + ROUND_GAP)}px` }}
+      >
         {tournament.rounds.map((round, rIdx) => (
-          <div key={rIdx} className="flex flex-col gap-3 flex-shrink-0" style={{ width: 180 }}>
-            <div className="text-xs font-semibold text-center mb-1" style={{ color: '#8A7A60' }}>
+          <div key={rIdx} className="flex flex-col flex-shrink-0" style={{ width: CARD_WIDTH }}>
+            {/* Round label */}
+            <div
+              className="text-xs font-semibold text-center py-1.5 mb-3"
+              style={{
+                color: '#B09A70',
+                borderBottom: '1px solid rgba(138,122,96,0.25)',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                fontSize: '10px',
+              }}
+            >
               {getRoundName(tournament.format, rIdx, tournament.rounds.length)}
             </div>
 
@@ -62,18 +162,18 @@ function EliminationBracket({
               }}
             >
               {round.map((match) => (
-                <MatchCard
-                  key={match.matchId}
-                  match={match}
-                  format={tournament.format}
-                  participants={participants}
-                  currentPlayerId={currentPlayerId}
-                  onWatchMatch={onWatchMatch}
-                  gameState={matchGameStates?.[match.matchId]}
-                  gameType={gameType}
-                  session={session}
-                  onMatchClick={onMatchClick}
-                />
+                <div key={match.matchId} ref={(el) => { cardRefs.current[match.matchId] = el; }}>
+                  <MatchCard
+                    match={match}
+                    format={tournament.format}
+                    participants={participants}
+                    currentPlayerId={currentPlayerId}
+                    gameState={matchGameStates?.[match.matchId]}
+                    gameType={gameType}
+                    session={session}
+                    onMatchClick={onMatchClick}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -83,12 +183,82 @@ function EliminationBracket({
   );
 }
 
+function PlayerInfoRow({
+  playerId: pid,
+  name,
+  isActive,
+  isFinished,
+  isWinner,
+  seriesWins,
+  showSeriesWins,
+  scoreInfo,
+  session,
+}: {
+  playerId: string | null;
+  name: string;
+  isActive: boolean;
+  isFinished: boolean;
+  isWinner: boolean;
+  seriesWins: number;
+  showSeriesWins: boolean;
+  scoreInfo: string | null;
+  session?: Session;
+}) {
+  const playerStatus = pid ? session?.players.find((p) => p.id === pid)?.status : undefined;
+  return (
+    <div
+      className="rounded p-1.5 border transition-all"
+      style={{
+        background: isActive ? 'rgba(196,160,48,0.08)' : 'rgba(8,5,0,0.4)',
+        borderColor: isActive ? 'rgba(196,160,48,0.4)' : 'rgba(42,30,14,0.6)',
+      }}
+    >
+      <div className="flex items-center gap-1 min-w-0">
+        {playerStatus !== undefined && (
+          <span
+            className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
+            style={{ background: playerStatus === 'away' ? '#F59E0B' : '#22C55E' }}
+          />
+        )}
+        <span
+          className="text-xs font-semibold truncate flex-1"
+          style={{
+            color: isFinished ? (isWinner ? '#E8C870' : '#4A3A28') : '#D4C8A8',
+            fontWeight: isWinner ? 600 : 400,
+          }}
+        >
+          {name}
+        </span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {isActive && (
+            <span
+              className="text-xs px-1 py-0.5 rounded font-bold"
+              style={{ background: 'rgba(196,160,48,0.25)', color: '#E8C870', fontSize: '9px' }}
+            >
+              Turn
+            </span>
+          )}
+          {showSeriesWins && (
+            <span className="text-xs font-bold" style={{ color: '#8A7A60', fontSize: '10px' }}>
+              {seriesWins}W
+            </span>
+          )}
+        </div>
+      </div>
+      {scoreInfo && (
+        <div className="text-xs mt-0.5" style={{ color: '#6A5A40', fontSize: '9px' }}>
+          {scoreInfo}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MatchCard({
   match,
   format,
   participants,
   currentPlayerId,
-  onWatchMatch,
   gameState,
   gameType,
   session,
@@ -98,7 +268,6 @@ function MatchCard({
   format: string;
   participants: TournamentParticipant[];
   currentPlayerId: string;
-  onWatchMatch?: (code: string) => void;
   gameState?: GameState;
   gameType?: GameType;
   session?: Session;
@@ -110,6 +279,13 @@ function MatchCard({
   const isBye = match.status === 'bye';
   const isActive = match.status === 'in_progress';
   const isFinished = match.status === 'finished';
+  const showSeriesWins = format !== 'bo1' && format !== 'round-robin';
+
+  const p1SeatIndex = session?.players.find((p) => p.id === match.player1Id)?.playerNumber ?? 0;
+  const p2SeatIndex = session?.players.find((p) => p.id === match.player2Id)?.playerNumber ?? 1;
+  const pieces = gameState?.board.pieces;
+  const p1Score = pieces && gameType ? getScoreInfo(gameType, pieces, p1SeatIndex) : null;
+  const p2Score = pieces && gameType ? getScoreInfo(gameType, pieces, p2SeatIndex) : null;
 
   if (isBye) {
     return (
@@ -127,9 +303,11 @@ function MatchCard({
     );
   }
 
+  const canClick = !!gameState && !!onMatchClick;
+
   return (
     <div
-      className="rounded-lg p-2.5 text-xs transition-all"
+      className="rounded-lg p-2 text-xs transition-all"
       style={{
         background:
           isMyMatch && isActive
@@ -140,85 +318,58 @@ function MatchCard({
         border: isActive
           ? `1px solid ${isMyMatch ? 'rgba(196,160,48,0.5)' : 'rgba(60,120,60,0.5)'}`
           : '1px solid rgba(42,30,14,0.8)',
+        cursor: canClick ? 'pointer' : undefined,
       }}
+      onClick={canClick ? () => onMatchClick(match.matchId) : undefined}
     >
-      {/* Player 1 */}
-      <div
-        className="flex items-center justify-between mb-1"
-        style={{
-          color:
-            isFinished && match.winnerId === match.player1Id
-              ? '#E8C870'
-              : isFinished && match.winnerId !== match.player1Id
-                ? '#4A3A28'
-                : '#D4C8A8',
-          fontWeight: isFinished && match.winnerId === match.player1Id ? 600 : 400,
-        }}
-      >
-        <span className="truncate max-w-[100px]">{p1Name}</span>
-        {format !== 'bo1' && format !== 'round-robin' && (
-          <span style={{ color: '#8A7A60', marginLeft: 4 }}>{match.player1Wins}</span>
-        )}
+      {/* Player info panels */}
+      <div className="space-y-1 mb-2">
+        <PlayerInfoRow
+          playerId={match.player1Id}
+          name={p1Name}
+          isActive={isActive && gameState?.currentTurn === p1SeatIndex}
+          isFinished={isFinished}
+          isWinner={match.winnerId === match.player1Id}
+          seriesWins={match.player1Wins}
+          showSeriesWins={showSeriesWins}
+          scoreInfo={p1Score}
+          session={session}
+        />
+        <PlayerInfoRow
+          playerId={match.player2Id}
+          name={p2Name}
+          isActive={isActive && gameState?.currentTurn === p2SeatIndex}
+          isFinished={isFinished}
+          isWinner={match.winnerId === match.player2Id}
+          seriesWins={match.player2Wins}
+          showSeriesWins={showSeriesWins}
+          scoreInfo={p2Score}
+          session={session}
+        />
       </div>
 
-      {/* Divider */}
-      <div style={{ borderTop: '1px solid rgba(42,30,14,0.6)', margin: '3px 0' }} />
-
-      {/* Player 2 */}
-      <div
-        className="flex items-center justify-between"
-        style={{
-          color:
-            isFinished && match.winnerId === match.player2Id
-              ? '#E8C870'
-              : isFinished && match.winnerId !== match.player2Id
-                ? '#4A3A28'
-                : '#D4C8A8',
-          fontWeight: isFinished && match.winnerId === match.player2Id ? 600 : 400,
-        }}
-      >
-        <span className="truncate max-w-[100px]">{p2Name}</span>
-        {format !== 'bo1' && format !== 'round-robin' && (
-          <span style={{ color: '#8A7A60', marginLeft: 4 }}>{match.player2Wins}</span>
-        )}
-      </div>
-
-      {/* Mini board for active matches (desktop) */}
-      {isActive && gameState && gameType && session && (
-        <div className="mt-2 hidden md:block">
-          <MiniBoard
-            session={session}
-            gameState={gameState}
-            onClick={() => onMatchClick?.(match.matchId)}
-          />
-        </div>
-      )}
-      {/* Live badge for active matches (mobile) */}
-      {isActive && gameState && (
-        <div className="mt-2 block md:hidden">
-          <div
-            className="text-xs text-center py-2 px-3 rounded cursor-pointer"
-            style={{ background: 'rgba(60,120,60,0.3)', color: '#90D090' }}
-            onClick={() => onMatchClick?.(match.matchId)}
-          >
-            ● Live — Tap to watch
-          </div>
-        </div>
-      )}
-
-      {/* Watch button for active matches */}
-      {isActive && match.currentSessionCode && onWatchMatch && (
-        <button
-          onClick={() => onWatchMatch(match.currentSessionCode!)}
-          className="mt-2 w-full rounded px-2 py-1 text-xs font-medium transition-colors"
+      {/* Board area */}
+      {gameState && gameType && session ? (
+        <MiniBoard
+          session={session}
+          gameState={gameState}
+        />
+      ) : (
+        <div
+          className="w-full rounded"
           style={{
-            background: 'rgba(60,120,60,0.3)',
-            border: '1px solid rgba(60,120,60,0.5)',
-            color: '#90D090',
+            height: 80,
+            background: 'rgba(4,2,0,0.5)',
+            border: '1px solid rgba(42,30,14,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          Watch
-        </button>
+          <span style={{ color: '#3A2A1A', fontSize: '9px' }}>
+            {match.status === 'pending' ? 'Upcoming' : ''}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -228,7 +379,6 @@ function RoundRobinView({
   tournament,
   participants,
   currentPlayerId,
-  onWatchMatch,
   matchGameStates,
   onMatchClick,
 }: Props) {
@@ -419,21 +569,6 @@ function RoundRobinView({
                             Live
                           </span>
                         )}
-                        {match.status === 'in_progress' &&
-                          match.currentSessionCode &&
-                          onWatchMatch && (
-                            <button
-                              onClick={() => onWatchMatch(match.currentSessionCode!)}
-                              className="text-xs px-2 py-0.5 rounded transition-colors"
-                              style={{
-                                background: 'rgba(60,120,60,0.3)',
-                                border: '1px solid rgba(60,120,60,0.5)',
-                                color: '#90D090',
-                              }}
-                            >
-                              Watch
-                            </button>
-                          )}
                         {match.status === 'pending' && (
                           <span className="text-xs" style={{ color: '#3A2A1A' }}>
                             Upcoming
@@ -456,7 +591,6 @@ function TournamentBracket({
   tournament,
   participants,
   currentPlayerId,
-  onWatchMatch,
   matchGameStates,
   gameType,
   session,
@@ -502,7 +636,6 @@ function TournamentBracket({
           tournament={tournament}
           participants={participants}
           currentPlayerId={currentPlayerId}
-          onWatchMatch={onWatchMatch}
           matchGameStates={matchGameStates}
           gameType={gameType}
           session={session}
@@ -513,7 +646,6 @@ function TournamentBracket({
           tournament={tournament}
           participants={participants}
           currentPlayerId={currentPlayerId}
-          onWatchMatch={onWatchMatch}
           matchGameStates={matchGameStates}
           gameType={gameType}
           session={session}

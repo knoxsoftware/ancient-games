@@ -36,6 +36,7 @@ import GameRules from './GameRules';
 import GameControls from './GameControls';
 import ChatPanel, { ChatMessage, ChatDestination } from './ChatPanel';
 import TournamentBracket from './tournament/TournamentBracket';
+import MatchSpectatorModal from './tournament/MatchSpectatorModal';
 import GameEndModal from './GameEndModal';
 
 async function showNotification(title: string, body: string) {
@@ -80,6 +81,8 @@ export default function GameRoom() {
   const [showGameEndModal, setShowGameEndModal] = useState(false);
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
   const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [matchGameStates, setMatchGameStates] = useState<Record<string, GameState>>({});
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   // Synchronous ref updates — always reflects latest value without needing an effect
   activeTabRef.current = activeTab;
@@ -320,6 +323,10 @@ export default function GameRoom() {
       setHubSession(updatedHubSession);
     });
 
+    socket.on('tournament:match-game-state', (data) => {
+      setMatchGameStates((prev) => ({ ...prev, [data.matchId]: data.gameState }));
+    });
+
     socket.on('tournament:match-ready', ({ matchSessionCode, opponentName, roundLabel }) => {
       showTournamentToast(`Next match ready vs ${opponentName} — ${roundLabel}!`);
       setTimeout(() => navigate(`/game/${matchSessionCode}`), 3000);
@@ -350,6 +357,7 @@ export default function GameRoom() {
       socket.off('game:history');
       socket.off('chat:history');
       socket.off('tournament:updated');
+      socket.off('tournament:match-game-state');
       socket.off('tournament:match-ready');
       socket.off('tournament:eliminated');
       socket.off('tournament:finished');
@@ -902,7 +910,10 @@ export default function GameRoom() {
                   tournament={hubSession.tournamentState}
                   participants={hubSession.tournamentState.participants}
                   currentPlayerId={playerId!}
-                  onWatchMatch={(code) => navigate(`/game/${code}`)}
+                  matchGameStates={matchGameStates}
+                  gameType={hubSession.gameType}
+                  session={hubSession}
+                  onMatchClick={(matchId) => setSelectedMatchId(matchId)}
                 />
               ) : (
                 <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
@@ -1058,6 +1069,25 @@ export default function GameRoom() {
           </div>
         </div>
       )}
+
+      {selectedMatchId && (() => {
+        const match = hubSession?.tournamentState?.rounds
+          .flat()
+          .find((m) => m.matchId === selectedMatchId);
+        const matchGameState = matchGameStates[selectedMatchId];
+        if (!match || !matchGameState || !hubSession) return null;
+        return (
+          <MatchSpectatorModal
+            match={match}
+            participants={hubSession.tournamentState!.participants}
+            format={hubSession.tournamentState!.format}
+            gameType={hubSession.gameType}
+            gameState={matchGameState}
+            session={hubSession}
+            onClose={() => setSelectedMatchId(null)}
+          />
+        );
+      })()}
 
       {showGameEndModal && gameState.finished && gameState.winner !== null && (
         <GameEndModal

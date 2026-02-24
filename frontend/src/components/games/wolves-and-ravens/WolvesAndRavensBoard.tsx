@@ -87,9 +87,10 @@ interface Props {
   gameState: GameState;
   playerId: string;
   isMyTurn: boolean;
+  boardOnly?: boolean;
 }
 
-function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn }: Props) {
+function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn, boardOnly }: Props) {
   const [selectedRaven, setSelectedRaven] = useState<PiecePosition | null>(null);
   const [flashCell, setFlashCell] = useState<number | null>(null);
 
@@ -215,16 +216,18 @@ function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn }: Props)
   return (
     <div className="flex flex-col items-center gap-3">
       {/* Status bar */}
-      <div
-        className="w-full text-center text-sm font-semibold py-2 px-4 rounded-lg"
-        style={{
-          background: isMyTurn ? 'rgba(30,20,10,0.7)' : 'rgba(15,10,5,0.6)',
-          border: `1px solid ${isMyTurn ? 'rgba(196,140,30,0.45)' : 'rgba(50,40,30,0.4)'}`,
-          color: isMyTurn ? '#F0D090' : '#6A5A40',
-        }}
-      >
-        {statusText}
-      </div>
+      {!boardOnly && (
+        <div
+          className="w-full text-center text-sm font-semibold py-2 px-4 rounded-lg"
+          style={{
+            background: isMyTurn ? 'rgba(30,20,10,0.7)' : 'rgba(15,10,5,0.6)',
+            border: `1px solid ${isMyTurn ? 'rgba(196,140,30,0.45)' : 'rgba(50,40,30,0.4)'}`,
+            color: isMyTurn ? '#F0D090' : '#6A5A40',
+          }}
+        >
+          {statusText}
+        </div>
+      )}
 
       {/* SVG Board */}
       <svg
@@ -449,7 +452,7 @@ function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn }: Props)
       </svg>
 
       {/* Player trays for seated players */}
-      {session.players.map((player) => {
+      {!boardOnly && session.players.map((player) => {
         const pn = player.playerNumber;
         const isMe = player.id === playerId;
         return (

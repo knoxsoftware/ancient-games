@@ -7,6 +7,7 @@ import type {
   TournamentParticipant,
   TournamentFormat,
 } from '@ancient-games/shared';
+import { getScoreInfo } from '../../utils/gameScoreInfo';
 
 const boardComponents: Record<GameType, React.LazyExoticComponent<React.ComponentType<any>>> = {
   ur: lazy(() => import('../games/ur/UrBoard')),
@@ -36,15 +37,13 @@ function getSeriesLabel(format: TournamentFormat, match: TournamentMatch): strin
 
 export default function MatchSpectatorModal({
   match,
-  participants,
+  participants: _participants,
   format,
   gameType,
   gameState,
   session,
   onClose,
 }: MatchSpectatorModalProps) {
-  const p1 = participants.find((p) => p.id === match.player1Id);
-  const p2 = participants.find((p) => p.id === match.player2Id);
   const BoardComponent = boardComponents[gameType];
   const seriesLabel = getSeriesLabel(format, match);
 
@@ -54,7 +53,7 @@ export default function MatchSpectatorModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-amber-900/30 bg-stone-900 p-6"
+        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-amber-900/30 bg-stone-900 p-4"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -64,19 +63,83 @@ export default function MatchSpectatorModal({
           ✕
         </button>
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-amber-200 font-semibold text-lg">{p1?.displayName ?? 'TBD'}</div>
-          <div className="text-center">
-            {format !== 'bo1' && format !== 'round-robin' && (
-              <div className="text-amber-200 font-bold text-xl">
-                {match.player1Wins} – {match.player2Wins}
-              </div>
-            )}
-            {seriesLabel && <div className="text-amber-200/50 text-xs">{seriesLabel}</div>}
+        {/* Series label */}
+        {seriesLabel && (
+          <div className="text-center text-xs mb-3" style={{ color: '#6A5A40' }}>
+            {seriesLabel}
           </div>
-          <div className="text-amber-200 font-semibold text-lg">{p2?.displayName ?? 'TBD'}</div>
+        )}
+
+        {/* Player info panels */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {([0, 1] as const).map((seatIndex) => {
+            const player = session.players.find((p) => p.playerNumber === seatIndex);
+            const isActive = player !== undefined && gameState.currentTurn === seatIndex;
+            const scoreInfo = player
+              ? getScoreInfo(gameType, gameState.board.pieces, seatIndex)
+              : null;
+
+            return (
+              <div
+                key={seatIndex}
+                className="rounded-lg p-2.5 border transition-all"
+                style={{
+                  background: isActive ? 'rgba(196,160,48,0.08)' : 'rgba(8,5,0,0.5)',
+                  borderColor: isActive ? 'rgba(196,160,48,0.45)' : 'rgba(42,30,14,0.8)',
+                }}
+              >
+                {player ? (
+                  <div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="flex-shrink-0 w-2 h-2 rounded-full"
+                        style={{
+                          background: player.status === 'away' ? '#F59E0B' : '#22C55E',
+                        }}
+                        title={player.status === 'away' ? 'Away' : 'Active'}
+                      />
+                      <span
+                        className="text-sm font-semibold truncate"
+                        style={{ color: '#E8D8B0' }}
+                      >
+                        {player.displayName}
+                      </span>
+                      <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+                        {isActive && (
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded font-bold"
+                            style={{ background: 'rgba(196,160,48,0.25)', color: '#E8C870' }}
+                          >
+                            Turn
+                          </span>
+                        )}
+                        {format !== 'bo1' && format !== 'round-robin' && (
+                          <span
+                            className="text-xs font-bold"
+                            style={{ color: '#8A7A60' }}
+                          >
+                            {seatIndex === 0 ? match.player1Wins : match.player2Wins}W
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {scoreInfo && (
+                      <div className="text-xs mt-0.5" style={{ color: '#8A7A60' }}>
+                        {scoreInfo}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs" style={{ color: '#5A4A38' }}>
+                    {seatIndex === 0 ? 'Player 1' : 'Player 2'}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
+        {/* Board */}
         <div className="flex justify-center">
           <Suspense
             fallback={
@@ -91,28 +154,10 @@ export default function MatchSpectatorModal({
               playerId=""
               isMyTurn={false}
               animatingPiece={null}
+              boardOnly={true}
             />
           </Suspense>
         </div>
-
-        {gameState.moveHistory && gameState.moveHistory.length > 0 && (
-          <div className="mt-4 max-h-32 overflow-y-auto rounded border border-amber-900/20 bg-stone-800 p-3">
-            <div className="text-amber-200/50 text-xs font-semibold mb-2">Move Log</div>
-            <div className="space-y-1">
-              {gameState.moveHistory.slice(-10).map((entry, i) => {
-                const playerName =
-                  entry.playerNumber === 1 ? (p1?.displayName ?? 'P1') : (p2?.displayName ?? 'P2');
-                return (
-                  <div key={i} className="text-xs text-amber-200/70">
-                    <span className="font-medium">{playerName}</span>
-                    {entry.isSkip ? ' skipped' : ` moved ${entry.move.from} → ${entry.move.to}`}
-                    {entry.wasCapture && <span className="text-red-400 ml-1">capture!</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
