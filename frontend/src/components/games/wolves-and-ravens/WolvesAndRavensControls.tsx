@@ -1,11 +1,17 @@
 import { socketService } from '../../../services/socket';
 import { GameControlsProps } from '../../GameControls';
 
-export default function WolvesAndRavensControls({ session, gameState, playerId, isMyTurn }: GameControlsProps) {
+export default function WolvesAndRavensControls({
+  session,
+  gameState,
+  playerId,
+  isMyTurn,
+}: GameControlsProps) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
   const currentTurnName =
-    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
+    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ??
+    'opponent';
   const myPN = session.players.find((p) => p.id === playerId)?.playerNumber ?? 0;
 
   const handleRollDice = () => {
@@ -18,14 +24,18 @@ export default function WolvesAndRavensControls({ session, gameState, playerId, 
   };
 
   const boardPieces = gameState.board.pieces;
-  const ravenPN = boardPieces.filter(p => p.playerNumber === 0).length === 1 ? 1 : 0;
+  const ravenPN = boardPieces.filter((p) => p.playerNumber === 0).length === 1 ? 1 : 0;
 
   if (!isMyTurn || gameState.finished) {
     return (
       <div className="p-3">
         <div
           className="rounded-lg p-3 text-sm text-center"
-          style={{ background: 'rgba(30,20,10,0.6)', border: '1px solid rgba(80,60,30,0.4)', color: '#8A7A60' }}
+          style={{
+            background: 'rgba(30,20,10,0.6)',
+            border: '1px solid rgba(80,60,30,0.4)',
+            color: '#8A7A60',
+          }}
         >
           Waiting for {currentTurnName}…
         </div>

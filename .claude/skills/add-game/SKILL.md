@@ -347,6 +347,7 @@ export default function GAMECLASSBoard({
 ```
 
 Board rendering notes:
+
 - Use SVG or CSS grid — look at `UrBoard.tsx` for SVG patterns, `MorrisBoard.tsx` for grid patterns
 - Pieces are in `board.pieces`, filtered by `playerNumber` and `position`
 - Use `session.sessionCode` (not `session.code`) when emitting socket events
@@ -364,8 +365,12 @@ export default function GAMECLASSRules() {
     <>
       <div className="text-center pb-1">
         <div className="text-2xl mb-1">EMOJI</div>
-        <p className="font-bold" style={{ color: '#F0D090' }}>DISPLAY NAME</p>
-        <p className="text-xs mt-1" style={{ color: '#7A6A50' }}>Brief description</p>
+        <p className="font-bold" style={{ color: '#F0D090' }}>
+          DISPLAY NAME
+        </p>
+        <p className="text-xs mt-1" style={{ color: '#7A6A50' }}>
+          Brief description
+        </p>
       </div>
       <Section title="Objective">How to win.</Section>
       <Section title="Movement">How pieces move.</Section>
@@ -383,9 +388,9 @@ Create `frontend/src/components/games/GAME_ID/gameIdScoreInfo.ts` if the game ha
 import { PiecePosition } from '@ancient-games/shared';
 
 export function getScoreInfo(pieces: PiecePosition[], seatIndex: number): string | null {
-  const finished = pieces.filter(p => p.playerNumber === seatIndex && p.position === 99).length;
+  const finished = pieces.filter((p) => p.playerNumber === seatIndex && p.position === 99).length;
   const onBoard = pieces.filter(
-    p => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99,
+    (p) => p.playerNumber === seatIndex && p.position >= 0 && p.position < 99,
   ).length;
   return `${onBoard} on board \u00B7 ${finished} finished`;
 }
@@ -470,6 +475,7 @@ Thanks to the manifest and registry architecture, these files need **no changes*
 After implementing, verify:
 
 **Commit 1 (Engine):**
+
 - [ ] `shared/types/game.ts` — `GameType` union updated
 - [ ] `shared/types/game.ts` — `GAME_MANIFESTS` entry added (with title, emoji, description, colors)
 - [ ] `backend/src/models/Session.ts` — Mongoose `gameType` enum updated
@@ -478,6 +484,7 @@ After implementing, verify:
 - [ ] `backend/src/games/GAME_ID/GAMECLASSGame.test.ts` — tests written and passing
 
 **Commit 2 (Frontend):**
+
 - [ ] `frontend/src/components/games/GAME_ID/GAMECLASSBoard.tsx` — board created (default export)
 - [ ] `frontend/src/components/games/GAME_ID/GAMECLASSRules.tsx` — rules created (default export)
 - [ ] `frontend/src/components/games/GAME_ID/gameIdScoreInfo.ts` — score info (if applicable)

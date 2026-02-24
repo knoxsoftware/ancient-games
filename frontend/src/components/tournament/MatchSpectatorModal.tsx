@@ -105,9 +105,7 @@ export default function MatchSpectatorModal({
                 return (
                   <div key={i} className="text-xs text-amber-200/70">
                     <span className="font-medium">{playerName}</span>
-                    {entry.isSkip
-                      ? ' skipped'
-                      : ` moved ${entry.move.from} → ${entry.move.to}`}
+                    {entry.isSkip ? ' skipped' : ` moved ${entry.move.from} → ${entry.move.to}`}
                     {entry.wasCapture && <span className="text-red-400 ml-1">capture!</span>}
                   </div>
                 );

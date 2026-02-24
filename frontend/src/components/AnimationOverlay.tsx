@@ -26,10 +26,7 @@ function getExitRect(anim: AnimationState): DOMRect | null {
   return new DOMRect(rect.left + offsetX, rect.top, rect.width, rect.height);
 }
 
-function getCellRect(
-  anim: AnimationState,
-  position: number,
-): DOMRect | null {
+function getCellRect(anim: AnimationState, position: number): DOMRect | null {
   const { gameType, playerNumber } = anim;
   let selector: string;
   if (gameType === 'ur') {
@@ -48,11 +45,7 @@ function getCellRect(
 
 // Returns the ordered list of board positions the piece travels through,
 // not including `from`, including `to` (and the virtual exit pos 99 if exiting).
-function getPathPositions(
-  gameType: GameType,
-  from: number,
-  to: number,
-): number[] {
+function getPathPositions(gameType: GameType, from: number, to: number): number[] {
   // Entering from off-board: animate directly to destination in one step
   if (from === -1) return [to];
   const maxBoard = gameType === 'ur' ? 13 : 29;
@@ -95,7 +88,10 @@ export function AnimationOverlay({
     if (!fromRect) {
       // No source rect (shouldn't happen in practice): fade-in at destination
       const toRect = getCellRect(animation, move.to);
-      if (!toRect) { onComplete(); return; }
+      if (!toRect) {
+        onComplete();
+        return;
+      }
       const { x, y } = centerOf(toRect);
       setStyle({
         ...base,
@@ -191,7 +187,10 @@ export function AnimationOverlay({
     };
   }, [animation.id]);
 
-  const piece = animation.renderPiece(animation.playerNumber, animation.gameType === 'ur' ? 28 : 24);
+  const piece = animation.renderPiece(
+    animation.playerNumber,
+    animation.gameType === 'ur' ? 28 : 24,
+  );
 
   return createPortal(
     <div style={style} aria-hidden="true">

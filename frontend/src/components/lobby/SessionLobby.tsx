@@ -287,11 +287,19 @@ export default function SessionLobby() {
     socket.emit('session:host-take-seat', { sessionCode, playerId, targetPlayerId });
   };
 
-  const handleChatSend = useCallback((text: string) => {
-    const socket = socketService.getSocket();
-    if (!socket || !session || !playerId) return;
-    socket.emit('chat:send', { sessionCode: session.sessionCode, playerId, text, scope: 'tournament' });
-  }, [session, playerId]);
+  const handleChatSend = useCallback(
+    (text: string) => {
+      const socket = socketService.getSocket();
+      if (!socket || !session || !playerId) return;
+      socket.emit('chat:send', {
+        sessionCode: session.sessionCode,
+        playerId,
+        text,
+        scope: 'tournament',
+      });
+    },
+    [session, playerId],
+  );
 
   const handleMatchClick = useCallback((matchId: string) => {
     setSelectedMatchId(matchId);
@@ -347,9 +355,7 @@ export default function SessionLobby() {
             {session && (
               <p className="text-gray-400">
                 Join a game of{' '}
-                <span className="text-white font-semibold">
-                  {getGameTitle(session.gameType)}
-                </span>
+                <span className="text-white font-semibold">{getGameTitle(session.gameType)}</span>
               </p>
             )}
           </div>
@@ -485,7 +491,9 @@ export default function SessionLobby() {
           <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-stone-900">
             <div className="flex items-center justify-between p-3 border-b border-amber-900/20">
               <span className="text-amber-200 font-semibold">Tournament Chat</span>
-              <button onClick={() => setShowChat(false)} className="text-amber-200/50 text-xl">✕</button>
+              <button onClick={() => setShowChat(false)} className="text-amber-200/50 text-xl">
+                ✕
+              </button>
             </div>
             <div className="flex-1 overflow-hidden">
               <ChatPanel

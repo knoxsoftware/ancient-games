@@ -7,6 +7,7 @@ The tournament lobby page is sparse. Spectators have no way to watch active matc
 ## Solution
 
 Enhance the tournament lobby with:
+
 1. Live miniature game boards inline in bracket match cards
 2. A click-to-expand modal with full spectator view
 3. Tournament-scoped chat panel
@@ -39,6 +40,7 @@ When a game state update occurs in a tournament match session, relay it to the h
 ### Frontend: Spectator Modal
 
 Contents:
+
 - Larger read-only board
 - Player names with colors
 - Series score (e.g., "BO3 — Player A: 1, Player B: 0")
@@ -53,11 +55,11 @@ Contents:
 
 ## Responsive Design
 
-| Breakpoint | Bracket | Mini Boards | Chat | Modal |
-|---|---|---|---|---|
-| Desktop (>1024px) | Full width left | Inline in cards | Sidebar right | Centered dialog |
-| Tablet (768-1024px) | Full width | Inline in cards | Floating button + slide-up | Centered dialog |
-| Mobile (<768px) | Horizontal scroll | "Live" badge only | FAB + full-screen overlay | Full-screen |
+| Breakpoint          | Bracket           | Mini Boards       | Chat                       | Modal           |
+| ------------------- | ----------------- | ----------------- | -------------------------- | --------------- |
+| Desktop (>1024px)   | Full width left   | Inline in cards   | Sidebar right              | Centered dialog |
+| Tablet (768-1024px) | Full width        | Inline in cards   | Floating button + slide-up | Centered dialog |
+| Mobile (<768px)     | Horizontal scroll | "Live" badge only | FAB + full-screen overlay  | Full-screen     |
 
 ## Layout (Desktop)
 
@@ -90,10 +92,12 @@ Match Session (game move)
 ## Files to Create/Modify
 
 ### New Files
+
 - `frontend/src/components/tournament/MatchSpectatorModal.tsx` — full spectator modal
 - `frontend/src/components/tournament/MiniBoard.tsx` — scaled-down board wrapper
 
 ### Modified Files
+
 - `shared/types/socket-events.ts` — add `tournament:match-game-state` event
 - `backend/src/socket/gameHandlers.ts` — relay game state to hub room
 - `frontend/src/components/lobby/SessionLobby.tsx` — listen for match game states, add chat panel, responsive layout

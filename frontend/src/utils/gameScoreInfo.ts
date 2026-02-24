@@ -5,7 +5,9 @@ import { getScoreInfo as morrisScore } from '../components/games/morris/morrisSc
 import { getScoreInfo as stellarScore } from '../components/games/stellar-siege/stellarSiegeScoreInfo';
 import { getScoreInfo as wolvesScore } from '../components/games/wolves-and-ravens/wolvesAndRavensScoreInfo';
 
-const registry: Partial<Record<GameType, (pieces: PiecePosition[], seatIndex: number) => string | null>> = {
+const registry: Partial<
+  Record<GameType, (pieces: PiecePosition[], seatIndex: number) => string | null>
+> = {
   ur: urScore,
   senet: senetScore,
   morris: morrisScore,
@@ -13,6 +15,10 @@ const registry: Partial<Record<GameType, (pieces: PiecePosition[], seatIndex: nu
   'wolves-and-ravens': wolvesScore,
 };
 
-export function getScoreInfo(gameType: GameType, pieces: PiecePosition[], seatIndex: number): string | null {
+export function getScoreInfo(
+  gameType: GameType,
+  pieces: PiecePosition[],
+  seatIndex: number,
+): string | null {
   return registry[gameType]?.(pieces, seatIndex) ?? null;
 }

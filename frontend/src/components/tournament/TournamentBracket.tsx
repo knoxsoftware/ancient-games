@@ -1,5 +1,12 @@
 import { memo } from 'react';
-import { TournamentState, TournamentParticipant, TournamentMatch, GameState, GameType, Session } from '@ancient-games/shared';
+import {
+  TournamentState,
+  TournamentParticipant,
+  TournamentMatch,
+  GameState,
+  GameType,
+  Session,
+} from '@ancient-games/shared';
 import MiniBoard from './MiniBoard';
 
 interface Props {
@@ -27,7 +34,16 @@ function getRoundName(format: string, roundIndex: number, totalRounds: number): 
   return `Round of ${Math.pow(2, remaining)}`;
 }
 
-function EliminationBracket({ tournament, participants, currentPlayerId, onWatchMatch, matchGameStates, gameType, session, onMatchClick }: Props) {
+function EliminationBracket({
+  tournament,
+  participants,
+  currentPlayerId,
+  onWatchMatch,
+  matchGameStates,
+  gameType,
+  session,
+  onMatchClick,
+}: Props) {
   return (
     <div className="overflow-x-auto">
       <div className="flex gap-6 pb-4" style={{ minWidth: `${tournament.rounds.length * 200}px` }}>
@@ -208,7 +224,14 @@ function MatchCard({
   );
 }
 
-function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatch, matchGameStates, onMatchClick }: Props) {
+function RoundRobinView({
+  tournament,
+  participants,
+  currentPlayerId,
+  onWatchMatch,
+  matchGameStates,
+  onMatchClick,
+}: Props) {
   const standings = tournament.standings ?? [];
   const sorted = [...standings].sort((a, b) => b.wins - a.wins || a.losses - b.losses);
 
@@ -389,7 +412,9 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
                           <span
                             className="text-xs px-1.5 py-0.5 rounded cursor-pointer"
                             style={{ background: 'rgba(60,120,60,0.25)', color: '#80C080' }}
-                            onClick={() => matchGameStates?.[match.matchId] && onMatchClick?.(match.matchId)}
+                            onClick={() =>
+                              matchGameStates?.[match.matchId] && onMatchClick?.(match.matchId)
+                            }
                           >
                             Live
                           </span>
@@ -427,7 +452,16 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
   );
 }
 
-function TournamentBracket({ tournament, participants, currentPlayerId, onWatchMatch, matchGameStates, gameType, session, onMatchClick }: Props) {
+function TournamentBracket({
+  tournament,
+  participants,
+  currentPlayerId,
+  onWatchMatch,
+  matchGameStates,
+  gameType,
+  session,
+  onMatchClick,
+}: Props) {
   const isRoundRobin = tournament.format === 'round-robin';
 
   return (

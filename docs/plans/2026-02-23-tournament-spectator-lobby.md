@@ -13,6 +13,7 @@
 ### Task 1: Add `tournament:match-game-state` Socket Event Type
 
 **Files:**
+
 - Modify: `shared/types/socket-events.ts:62-73` (ServerToClientEvents, tournament events block)
 
 **Step 1: Add the event type**
@@ -46,9 +47,11 @@ git commit -m "feat: add tournament:match-game-state socket event type"
 ### Task 2: Relay Game State to Hub Room (Backend)
 
 **Files:**
+
 - Modify: `backend/src/socket/gameHandlers.ts`
 
 We need to relay game state to the hub room at these trigger points:
+
 - After `game:started` is emitted (line ~319)
 - After `game:dice-rolled` is emitted (line ~364)
 - After `game:move-made` is emitted (line ~456)
@@ -59,10 +62,7 @@ We need to relay game state to the hub room at these trigger points:
 Add a helper at the top of the `registerGameHandlers` function (or just inside the file scope) to avoid repetition:
 
 ```typescript
-const relayGameStateToHub = (
-  session: Session,
-  gameState: GameState
-) => {
+const relayGameStateToHub = (session: Session, gameState: GameState) => {
   if (session.tournamentHubCode && session.tournamentMatchId) {
     io.to(session.tournamentHubCode).emit('tournament:match-game-state', {
       matchId: session.tournamentMatchId,
@@ -78,24 +78,28 @@ Note: `Session` has `tournamentHubCode?: string` and `tournamentMatchId?: string
 **Step 2: Add relay calls after each trigger point**
 
 After `game:started` emission (around line 319-321, inside the single-game start path):
+
 ```typescript
 io.to(sessionCode).emit('game:started', updatedSession);
 relayGameStateToHub(updatedSession, updatedSession.gameState!);
 ```
 
 After `game:dice-rolled` emission (around line 364):
+
 ```typescript
 io.to(sessionCode).emit('game:dice-rolled', { playerNumber: player.playerNumber, roll, canMove });
 relayGameStateToHub(session, session.gameState!);
 ```
 
 After `game:move-made` emission (around line 456):
+
 ```typescript
 io.to(sessionCode).emit('game:move-made', { move, gameState: session.gameState, wasCapture });
 relayGameStateToHub(session, session.gameState!);
 ```
 
 After `game:skip-turn` state update emission (around line 602):
+
 ```typescript
 io.to(sessionCode).emit('game:state-updated', session.gameState);
 relayGameStateToHub(session, session.gameState!);
@@ -118,6 +122,7 @@ git commit -m "feat: relay game state to tournament hub room"
 ### Task 3: Create MiniBoard Component
 
 **Files:**
+
 - Create: `frontend/src/components/tournament/MiniBoard.tsx`
 
 **Step 1: Create the MiniBoard wrapper component**
@@ -195,6 +200,7 @@ export default function MiniBoard({ session, gameState, onClick }: MiniBoardProp
 ```
 
 Key decisions:
+
 - `playerId=""` ensures no player-specific highlighting
 - `pointer-events-none` on inner div prevents board interaction
 - `cursor-pointer` on outer div signals clickability
@@ -218,6 +224,7 @@ git commit -m "feat: add MiniBoard component for scaled-down board previews"
 ### Task 4: Create MatchSpectatorModal Component
 
 **Files:**
+
 - Create: `frontend/src/components/tournament/MatchSpectatorModal.tsx`
 
 **Step 1: Create the spectator modal**
@@ -292,22 +299,16 @@ export default function MatchSpectatorModal({
 
         {/* Header: Player names and series score */}
         <div className="flex items-center justify-between mb-4">
-          <div className="text-amber-200 font-semibold text-lg">
-            {p1?.displayName ?? 'TBD'}
-          </div>
+          <div className="text-amber-200 font-semibold text-lg">{p1?.displayName ?? 'TBD'}</div>
           <div className="text-center">
-            {(format !== 'bo1' && format !== 'round-robin') && (
+            {format !== 'bo1' && format !== 'round-robin' && (
               <div className="text-amber-200 font-bold text-xl">
                 {match.player1Wins} – {match.player2Wins}
               </div>
             )}
-            {seriesLabel && (
-              <div className="text-amber-200/50 text-xs">{seriesLabel}</div>
-            )}
+            {seriesLabel && <div className="text-amber-200/50 text-xs">{seriesLabel}</div>}
           </div>
-          <div className="text-amber-200 font-semibold text-lg">
-            {p2?.displayName ?? 'TBD'}
-          </div>
+          <div className="text-amber-200 font-semibold text-lg">{p2?.displayName ?? 'TBD'}</div>
         </div>
 
         {/* Board */}
@@ -340,12 +341,8 @@ export default function MatchSpectatorModal({
                 return (
                   <div key={i} className="text-xs text-amber-200/70">
                     <span className="font-medium">{playerName}</span>
-                    {entry.isSkip
-                      ? ' skipped'
-                      : ` moved ${entry.move.from} → ${entry.move.to}`}
-                    {entry.wasCapture && (
-                      <span className="text-red-400 ml-1">capture!</span>
-                    )}
+                    {entry.isSkip ? ' skipped' : ` moved ${entry.move.from} → ${entry.move.to}`}
+                    {entry.wasCapture && <span className="text-red-400 ml-1">capture!</span>}
                   </div>
                 );
               })}
@@ -375,6 +372,7 @@ git commit -m "feat: add MatchSpectatorModal for spectator view"
 ### Task 5: Update TournamentBracket to Render Mini Boards
 
 **Files:**
+
 - Modify: `frontend/src/components/tournament/TournamentBracket.tsx`
 
 **Step 1: Add matchGameStates prop to TournamentBracket**
@@ -387,10 +385,10 @@ interface Props {
   participants: TournamentParticipant[];
   currentPlayerId: string;
   onWatchMatch?: (sessionCode: string) => void;
-  matchGameStates?: Record<string, GameState>;           // NEW
-  gameType?: GameType;                                    // NEW
-  session?: Session;                                      // NEW — hub session, for gameType
-  onMatchClick?: (matchId: string) => void;               // NEW
+  matchGameStates?: Record<string, GameState>; // NEW
+  gameType?: GameType; // NEW
+  session?: Session; // NEW — hub session, for gameType
+  onMatchClick?: (matchId: string) => void; // NEW
 }
 ```
 
@@ -406,6 +404,7 @@ onMatchClick?: (matchId: string) => void;
 **Step 2: Import MiniBoard**
 
 Add import at top:
+
 ```typescript
 import MiniBoard from './MiniBoard';
 ```
@@ -415,25 +414,29 @@ import MiniBoard from './MiniBoard';
 Inside the MatchCard component, after the player names section and before the "Watch" button, add a conditional mini board render when the match is active and gameState is available:
 
 ```tsx
-{isActive && gameState && gameType && session && (
-  <div className="mt-2 hidden md:block">
-    <MiniBoard
-      session={session}
-      gameState={gameState}
-      onClick={() => onMatchClick?.(match.matchId)}
-    />
-  </div>
-)}
-{isActive && gameState && gameType && (
-  <div className="mt-2 block md:hidden">
-    <div
-      className="text-xs text-center py-2 px-3 rounded bg-green-900/30 text-green-400 cursor-pointer"
-      onClick={() => onMatchClick?.(match.matchId)}
-    >
-      ● Live — Tap to watch
+{
+  isActive && gameState && gameType && session && (
+    <div className="mt-2 hidden md:block">
+      <MiniBoard
+        session={session}
+        gameState={gameState}
+        onClick={() => onMatchClick?.(match.matchId)}
+      />
     </div>
-  </div>
-)}
+  );
+}
+{
+  isActive && gameState && gameType && (
+    <div className="mt-2 block md:hidden">
+      <div
+        className="text-xs text-center py-2 px-3 rounded bg-green-900/30 text-green-400 cursor-pointer"
+        onClick={() => onMatchClick?.(match.matchId)}
+      >
+        ● Live — Tap to watch
+      </div>
+    </div>
+  );
+}
 ```
 
 Note: `hidden md:block` shows mini board only on tablet+. `block md:hidden` shows "Live" badge on mobile only.
@@ -443,6 +446,7 @@ Note: `hidden md:block` shows mini board only on tablet+. `block md:hidden` show
 In `EliminationBracket`, pass `matchGameStates`, `gameType`, `session`, and `onMatchClick` down.
 
 Each MatchCard receives:
+
 ```tsx
 <MatchCard
   match={match}
@@ -474,6 +478,7 @@ git commit -m "feat: render mini boards in bracket match cards"
 ### Task 6: Update SessionLobby with Game State Listener, Chat, and Spectator Modal
 
 **Files:**
+
 - Modify: `frontend/src/components/lobby/SessionLobby.tsx`
 
 This is the largest task — it wires everything together.
@@ -517,6 +522,7 @@ socket.on('chat:message', (msg) => {
 ```
 
 In cleanup, add:
+
 ```typescript
 socket.off('tournament:match-game-state');
 socket.off('chat:message');
@@ -525,16 +531,19 @@ socket.off('chat:message');
 **Step 4: Add chat send handler**
 
 ```typescript
-const handleChatSend = useCallback((text: string) => {
-  const socket = socketService.getSocket();
-  if (!socket || !session) return;
-  socket.emit('chat:send', {
-    sessionCode: session.sessionCode,
-    playerId: playerId!,
-    text,
-    scope: 'tournament',
-  });
-}, [session, playerId]);
+const handleChatSend = useCallback(
+  (text: string) => {
+    const socket = socketService.getSocket();
+    if (!socket || !session) return;
+    socket.emit('chat:send', {
+      sessionCode: session.sessionCode,
+      playerId: playerId!,
+      text,
+      scope: 'tournament',
+    });
+  },
+  [session, playerId],
+);
 ```
 
 **Step 5: Add match click handler**
@@ -567,52 +576,54 @@ Pass the new props to TournamentBracket:
 Wrap the tournament view in a flex container:
 
 ```tsx
-{session.tournamentState && (
-  <div className="flex h-full">
-    {/* Bracket area */}
-    <div className="flex-1 min-w-0 overflow-auto">
-      {/* existing bracket + header content */}
-    </div>
+{
+  session.tournamentState && (
+    <div className="flex h-full">
+      {/* Bracket area */}
+      <div className="flex-1 min-w-0 overflow-auto">{/* existing bracket + header content */}</div>
 
-    {/* Chat sidebar — desktop */}
-    <div className="hidden lg:flex flex-col w-80 border-l border-amber-900/20">
-      <ChatPanel
-        messages={chatMessages}
-        currentPlayerId={playerId!}
-        onSend={handleChatSend}
-        session={session}
-      />
-    </div>
-
-    {/* Chat FAB — mobile/tablet */}
-    <div className="lg:hidden fixed bottom-4 right-4 z-40">
-      <button
-        onClick={() => setShowChat(!showChat)}
-        className="w-12 h-12 rounded-full bg-amber-700 text-white shadow-lg flex items-center justify-center text-xl"
-      >
-        💬
-      </button>
-    </div>
-
-    {/* Chat overlay — mobile/tablet */}
-    {showChat && (
-      <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-stone-900">
-        <div className="flex items-center justify-between p-3 border-b border-amber-900/20">
-          <span className="text-amber-200 font-semibold">Tournament Chat</span>
-          <button onClick={() => setShowChat(false)} className="text-amber-200/50 text-xl">✕</button>
-        </div>
-        <div className="flex-1">
-          <ChatPanel
-            messages={chatMessages}
-            currentPlayerId={playerId!}
-            onSend={handleChatSend}
-            session={session}
-          />
-        </div>
+      {/* Chat sidebar — desktop */}
+      <div className="hidden lg:flex flex-col w-80 border-l border-amber-900/20">
+        <ChatPanel
+          messages={chatMessages}
+          currentPlayerId={playerId!}
+          onSend={handleChatSend}
+          session={session}
+        />
       </div>
-    )}
-  </div>
-)}
+
+      {/* Chat FAB — mobile/tablet */}
+      <div className="lg:hidden fixed bottom-4 right-4 z-40">
+        <button
+          onClick={() => setShowChat(!showChat)}
+          className="w-12 h-12 rounded-full bg-amber-700 text-white shadow-lg flex items-center justify-center text-xl"
+        >
+          💬
+        </button>
+      </div>
+
+      {/* Chat overlay — mobile/tablet */}
+      {showChat && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-stone-900">
+          <div className="flex items-center justify-between p-3 border-b border-amber-900/20">
+            <span className="text-amber-200 font-semibold">Tournament Chat</span>
+            <button onClick={() => setShowChat(false)} className="text-amber-200/50 text-xl">
+              ✕
+            </button>
+          </div>
+          <div className="flex-1">
+            <ChatPanel
+              messages={chatMessages}
+              currentPlayerId={playerId!}
+              onSend={handleChatSend}
+              session={session}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 ```
 
 **Step 8: Add spectator modal**
@@ -620,24 +631,27 @@ Wrap the tournament view in a flex container:
 At the bottom of the component (before the closing fragment/div), render the modal conditionally:
 
 ```tsx
-{selectedMatchId && (() => {
-  const match = session.tournamentState?.rounds
-    .flat()
-    .find((m) => m.matchId === selectedMatchId);
-  const gameState = matchGameStates[selectedMatchId];
-  if (!match || !gameState) return null;
-  return (
-    <MatchSpectatorModal
-      match={match}
-      participants={session.tournamentState!.participants}
-      format={session.tournamentState!.format}
-      gameType={session.gameType}
-      gameState={gameState}
-      session={session}
-      onClose={() => setSelectedMatchId(null)}
-    />
-  );
-})()}
+{
+  selectedMatchId &&
+    (() => {
+      const match = session.tournamentState?.rounds
+        .flat()
+        .find((m) => m.matchId === selectedMatchId);
+      const gameState = matchGameStates[selectedMatchId];
+      if (!match || !gameState) return null;
+      return (
+        <MatchSpectatorModal
+          match={match}
+          participants={session.tournamentState!.participants}
+          format={session.tournamentState!.format}
+          gameType={session.gameType}
+          gameState={gameState}
+          session={session}
+          onClose={() => setSelectedMatchId(null)}
+        />
+      );
+    })();
+}
 ```
 
 **Step 9: Build to verify**
@@ -657,6 +671,7 @@ git commit -m "feat: add live game state, chat, and spectator modal to tournamen
 ### Task 7: Also Relay Initial Game State on Tournament Start
 
 **Files:**
+
 - Modify: `backend/src/socket/gameHandlers.ts`
 
 When a tournament starts (line ~281-325), match sessions are created and players are sent to them. But the initial game state for those matches also needs to be relayed to the hub so lobby spectators see boards immediately.
@@ -699,6 +714,7 @@ git commit -m "feat: relay initial game state for tournament matches to hub"
 **Step 1: Start dev servers**
 
 Run in two terminals:
+
 ```bash
 npm run dev:backend
 npm run dev:frontend

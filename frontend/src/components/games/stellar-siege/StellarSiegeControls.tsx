@@ -1,11 +1,17 @@
 import { socketService } from '../../../services/socket';
 import { GameControlsProps } from '../../GameControls';
 
-export default function StellarSiegeControls({ session, gameState, playerId, isMyTurn }: GameControlsProps) {
+export default function StellarSiegeControls({
+  session,
+  gameState,
+  playerId,
+  isMyTurn,
+}: GameControlsProps) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
   const currentTurnName =
-    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
+    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ??
+    'opponent';
   const myPN = session.players.find((p) => p.id === playerId)?.playerNumber ?? 0;
 
   const handleRollDice = () => {
@@ -14,7 +20,7 @@ export default function StellarSiegeControls({ session, gameState, playerId, isM
   };
 
   const boardPieces = gameState.board.pieces;
-  const defenderPN = boardPieces.filter(p => p.playerNumber === 0).length === 1 ? 0 : 1;
+  const defenderPN = boardPieces.filter((p) => p.playerNumber === 0).length === 1 ? 0 : 1;
   const isDefender = myPN === defenderPN;
 
   if (!isMyTurn || gameState.finished) {
@@ -22,7 +28,11 @@ export default function StellarSiegeControls({ session, gameState, playerId, isM
       <div className="p-3">
         <div
           className="rounded-lg p-3 text-sm text-center"
-          style={{ background: 'rgba(0,10,25,0.7)', border: '1px solid rgba(0,50,100,0.4)', color: '#2A5070' }}
+          style={{
+            background: 'rgba(0,10,25,0.7)',
+            border: '1px solid rgba(0,50,100,0.4)',
+            color: '#2A5070',
+          }}
         >
           Waiting for {currentTurnName}…
         </div>

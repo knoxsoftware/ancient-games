@@ -207,11 +207,11 @@ export class UrGame extends GameEngine {
     if (move.to === 99 || !this.isSharedPosition(move.to)) return false;
     if (this.ROSETTE_POSITIONS.includes(move.to)) return false;
     const movingPiece = board.pieces.find(
-      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+      (p) => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex,
     );
     if (!movingPiece) return false;
     return board.pieces.some(
-      p => p.playerNumber !== movingPiece.playerNumber && p.position === move.to
+      (p) => p.playerNumber !== movingPiece.playerNumber && p.position === move.to,
     );
   }
 
