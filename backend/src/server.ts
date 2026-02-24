@@ -9,6 +9,7 @@ import { SessionService } from './services/SessionService';
 import { PushService } from './services/PushService';
 import { createSessionRoutes } from './routes/sessions';
 import { createPushRoutes } from './routes/push';
+import { createFeedbackRoutes } from './routes/feedback';
 import { registerGameHandlers } from './socket/gameHandlers';
 import { ClientToServerEvents, ServerToClientEvents } from '@ancient-games/shared';
 
@@ -46,6 +47,7 @@ const pushService = new PushService();
 // API Routes
 app.use('/api', createSessionRoutes(sessionService));
 app.use('/api', createPushRoutes(pushService));
+app.use('/api', createFeedbackRoutes());
 
 // Serve static frontend files in production
 if (process.env.NODE_ENV === 'production') {
