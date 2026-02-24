@@ -1,4 +1,5 @@
 import { Session, GameState, TournamentMatch, TournamentFormat } from '@ancient-games/shared';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface GameEndModalProps {
   session: Session;
@@ -53,6 +54,9 @@ export default function GameEndModal({
   onReturnToBracket,
   onLeave,
 }: GameEndModalProps) {
+  const { theme } = useTheme();
+  const isYahoo = theme === 'yahoo';
+
   const winner = gameState.winner;
   if (winner === null) return null;
 
@@ -110,7 +114,7 @@ export default function GameEndModal({
       return (
         <button
           onClick={onLeave}
-          className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2"
+          className={`btn px-6 py-2 ${isYahoo ? 'btn-outline' : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
         >
           Leave
         </button>
@@ -123,13 +127,13 @@ export default function GameEndModal({
           <button
             onClick={onPlayAgain}
             className="btn px-6 py-2 font-bold"
-            style={{ background: '#C4A030', color: '#1A1008' }}
+            style={{ background: isYahoo ? '#400090' : '#C4A030', color: isYahoo ? '#ffffff' : '#1A1008' }}
           >
             Play Again
           </button>
           <button
             onClick={onLeave}
-            className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2"
+            className={`btn px-6 py-2 ${isYahoo ? 'btn-outline' : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
           >
             Leave
           </button>
@@ -144,13 +148,13 @@ export default function GameEndModal({
           <button
             onClick={onReturnToBracket}
             className="btn px-6 py-2 font-bold"
-            style={{ background: '#C4A030', color: '#1A1008' }}
+            style={{ background: isYahoo ? '#400090' : '#C4A030', color: isYahoo ? '#ffffff' : '#1A1008' }}
           >
             Return to Bracket
           </button>
           <button
             onClick={onLeave}
-            className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2"
+            className={`btn px-6 py-2 ${isYahoo ? 'btn-outline' : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
           >
             Leave Tournament
           </button>
@@ -165,13 +169,13 @@ export default function GameEndModal({
           <button
             onClick={onPlayAgain}
             className="btn px-6 py-2 font-bold"
-            style={{ background: '#C4A030', color: '#1A1008' }}
+            style={{ background: isYahoo ? '#400090' : '#C4A030', color: isYahoo ? '#ffffff' : '#1A1008' }}
           >
             Next Game
           </button>
           <button
             onClick={onReturnToBracket}
-            className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2"
+            className={`btn px-6 py-2 ${isYahoo ? 'btn-outline' : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
           >
             Return to Bracket
           </button>
@@ -191,7 +195,7 @@ export default function GameEndModal({
         </button>
         <button
           onClick={onLeave}
-          className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2"
+          className={`btn px-6 py-2 ${isYahoo ? 'btn-outline' : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
         >
           Leave Tournament
         </button>
@@ -202,7 +206,7 @@ export default function GameEndModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.75)' }}
+      style={{ background: isYahoo ? 'rgba(64,0,144,0.5)' : 'rgba(0,0,0,0.75)' }}
     >
       {/* Sparkle layer for winner */}
       {isWinner && <div className="sparkle-container" />}
@@ -210,15 +214,19 @@ export default function GameEndModal({
       {/* Modal card */}
       <div
         className="relative w-full max-w-sm rounded-xl p-6 text-center"
-        style={{ background: '#1A1008', border: '1px solid rgba(196,160,48,0.3)' }}
+        style={{
+          background: isYahoo ? '#ffffff' : '#1A1008',
+          border: isYahoo ? '2px solid #400090' : '1px solid rgba(196,160,48,0.3)',
+          borderRadius: isYahoo ? '0' : undefined,
+        }}
       >
         <div
           className="text-3xl font-bold mb-2"
-          style={{ color: isWinner ? '#E8C870' : '#E8D8B0' }}
+          style={{ color: isWinner ? (isYahoo ? '#400090' : '#E8C870') : (isYahoo ? '#000000' : '#E8D8B0') }}
         >
           {title}
         </div>
-        <div className="text-sm mb-4" style={{ color: '#8A7A60' }}>
+        <div className="text-sm mb-4" style={{ color: isYahoo ? '#666666' : '#8A7A60' }}>
           {winnerPlayer?.displayName} is the winner!
         </div>
 
@@ -226,9 +234,10 @@ export default function GameEndModal({
           <div
             className="text-sm mb-4 py-2 px-3 rounded-lg inline-block"
             style={{
-              background: 'rgba(196,160,48,0.08)',
-              border: '1px solid rgba(196,160,48,0.2)',
-              color: '#C4A030',
+              background: isYahoo ? '#ffffcc' : 'rgba(196,160,48,0.08)',
+              border: isYahoo ? '1px solid #cccc99' : '1px solid rgba(196,160,48,0.2)',
+              color: isYahoo ? '#400090' : '#C4A030',
+              borderRadius: isYahoo ? '0' : undefined,
             }}
           >
             {seriesText}
