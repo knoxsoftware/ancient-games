@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { GameType } from '@ancient-games/shared';
 import { UrPiece } from './ur/UrBoard';
 import { ConePiece, SpoolPiece } from './senet/SenetBoard';
+import { FoxAndGeesePiecePreview } from './fox-and-geese/FoxAndGeeseBoard';
 
 interface GamePiecePreviewProps {
   gameType: GameType;
@@ -172,6 +173,8 @@ export function GamePiecePreview({ gameType, playerNumber, size = 20 }: GamePiec
       return <WolvesAndRavensPiecePreview playerNumber={playerNumber} size={size} />;
     case 'stellar-siege':
       return <StellarSiegePiecePreview playerNumber={playerNumber} size={size} />;
+    case 'fox-and-geese':
+      return <FoxAndGeesePiecePreview playerNumber={playerNumber} size={size} />;
     case 'rock-paper-scissors':
       return null;
     default:
