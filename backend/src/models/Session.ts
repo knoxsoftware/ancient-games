@@ -16,6 +16,7 @@ const PlayerSchema = new Schema<Player>({
   ready: { type: Boolean, default: false },
   playerNumber: { type: Number, required: true },
   status: { type: String, enum: ['active', 'away'], default: 'active' },
+  awayAt: { type: Number, default: null },
 });
 
 const SpectatorSchema = new Schema<Spectator>({

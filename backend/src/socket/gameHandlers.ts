@@ -13,7 +13,6 @@ import {
 } from '@ancient-games/shared';
 
 const socketToSession = new Map<string, { sessionCode: string; playerId: string }>();
-const disconnectTimers = new Map<string, NodeJS.Timeout>(); // keyed by playerId
 
 function getRoundLabel(format: string, roundIndex: number, totalRounds: number): string {
   if (format === 'round-robin') return `Round ${roundIndex + 1}`;
@@ -63,26 +62,26 @@ export function registerGameHandlers(
       // Register socket→session mapping
       socketToSession.set(socket.id, { sessionCode, playerId });
 
-      // Cancel pending disconnect timer and try to reclaim seat if applicable
-      const pendingTimer = disconnectTimers.get(playerId);
-      if (pendingTimer) {
-        clearTimeout(pendingTimer);
-        disconnectTimers.delete(playerId);
-        // Player was converted to spectator during grace period — try to reclaim seat
-        const cur = await sessionService.getSession(sessionCode);
-        if (cur) {
-          const asSpec = cur.spectators.find((s) => s.id === playerId);
-          if (asSpec && (asSpec as any).originalSeatNumber != null) {
-            const seatFree = !cur.players.some(
-              (p) => p.playerNumber === (asSpec as any).originalSeatNumber,
+      // Reconnecting player: mark active and reclaim seat if they were booted while away
+      const cur = await sessionService.getSession(sessionCode);
+      if (cur) {
+        const asSpec = cur.spectators.find((s) => s.id === playerId);
+        if (asSpec && (asSpec as any).originalSeatNumber != null) {
+          const seatFree = !cur.players.some(
+            (p) => p.playerNumber === (asSpec as any).originalSeatNumber,
+          );
+          if (seatFree) {
+            await sessionService.spectatorToPlayer(
+              sessionCode,
+              playerId,
+              (asSpec as any).originalSeatNumber,
             );
-            if (seatFree) {
-              await sessionService.spectatorToPlayer(
-                sessionCode,
-                playerId,
-                (asSpec as any).originalSeatNumber,
-              );
-            }
+          }
+        } else {
+          // Still seated but was away — mark active again
+          const asPlayer = cur.players.find((p) => p.id === playerId);
+          if (asPlayer && (asPlayer as any).status === 'away') {
+            await sessionService.updatePresenceStatus(sessionCode, playerId, 'active');
           }
         }
       }
@@ -733,37 +732,38 @@ export function registerGameHandlers(
     socketToSession.delete(socket.id);
     const { sessionCode, playerId } = mapping;
 
-    const session = await sessionService.getSession(sessionCode);
-    if (!session) return;
-    const isSeatedPlayer = session.players.some((p) => p.id === playerId);
-    const isSpectator = !isSeatedPlayer && session.spectators.some((s) => s.id === playerId);
-    if (!isSeatedPlayer && !isSpectator) return;
+    try {
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) return;
+      const isSeatedPlayer = session.players.some((p) => p.id === playerId);
+      if (!isSeatedPlayer) return;
 
-    const timer = setTimeout(async () => {
-      disconnectTimers.delete(playerId);
-      try {
-        const latest = await sessionService.getSession(sessionCode);
-        if (!latest) return;
+      const updated = await sessionService.updatePresenceStatus(sessionCode, playerId, 'away');
+      if (updated) io.to(sessionCode).emit('session:updated', updated);
+    } catch (err) {
+      console.error('Disconnect handler failed:', err);
+    }
+  });
 
-        if (isSeatedPlayer) {
-          const stillSeated = latest.players.find((p) => p.id === playerId);
-          if (!stillSeated) return; // already manually stood up
-          const updated = await sessionService.playerToSpectator(sessionCode, playerId, {
-            storeOriginalSeat: true,
-          });
-          if (updated) io.to(sessionCode).emit('session:updated', updated);
-        } else {
-          const stillSpectating = latest.spectators.some((s) => s.id === playerId);
-          if (!stillSpectating) return;
-          const updated = await sessionService.removeSpectator(sessionCode, playerId);
-          if (updated) io.to(sessionCode).emit('session:updated', updated);
-        }
-      } catch (err) {
-        console.error('Disconnect grace period handler failed:', err);
-      }
-    }, 20_000);
+  // Boot a disconnected player (seated players only)
+  socket.on('session:boot-player', async ({ sessionCode, playerId, targetPlayerId }) => {
+    try {
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) return;
 
-    disconnectTimers.set(playerId, timer);
+      const requester = session.players.find((p) => p.id === playerId);
+      if (!requester) return; // only seated players can boot
+
+      const target = session.players.find((p) => p.id === targetPlayerId);
+      if (!target || (target as any).status !== 'away') return; // target must be away
+
+      const updated = await sessionService.playerToSpectator(sessionCode, targetPlayerId, {
+        storeOriginalSeat: true,
+      });
+      if (updated) io.to(sessionCode).emit('session:updated', updated);
+    } catch (err) {
+      console.error('session:boot-player handler failed:', err);
+    }
   });
 
   // Presence: player went away (tab hidden)

@@ -97,6 +97,10 @@ export default function GameRoom() {
   const animIdRef = useRef(0);
   const [pendingAnimation, setPendingAnimation] = useState<AnimationState | null>(null);
   const [replayAnimation, setReplayAnimation] = useState<AnimationState | null>(null);
+
+  // Track which away players have been gone 30+ seconds (eligible to be booted)
+  const [bootablePlayerIds, setBootablePlayerIds] = useState<Set<string>>(new Set());
+  const bootTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [moveHistory, setMoveHistory] = useState<HistoryEntry[]>([]);
   const historyIdRef = useRef(0);
   const replayIdRef = useRef(0);
@@ -442,6 +446,43 @@ export default function GameRoom() {
     } finally {
       setSpectateLoading(false);
     }
+  };
+
+  // When a player goes away, start a 30s timer before showing the boot button
+  useEffect(() => {
+    if (!session) return;
+    const timers = bootTimersRef.current;
+
+    for (const player of session.players) {
+      if (player.status === 'away' && player.awayAt && !timers.has(player.id)) {
+        const elapsed = Date.now() - player.awayAt;
+        const remaining = Math.max(0, 30_000 - elapsed);
+        const timer = setTimeout(() => {
+          timers.delete(player.id);
+          setBootablePlayerIds((prev) => new Set(prev).add(player.id));
+        }, remaining);
+        timers.set(player.id, timer);
+      } else if (player.status === 'active') {
+        const timer = timers.get(player.id);
+        if (timer) {
+          clearTimeout(timer);
+          timers.delete(player.id);
+        }
+        setBootablePlayerIds((prev) => {
+          if (!prev.has(player.id)) return prev;
+          const next = new Set(prev);
+          next.delete(player.id);
+          return next;
+        });
+      }
+    }
+  }, [session?.players]);
+
+  const handleBootPlayer = (targetPlayerId: string) => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:boot-player', { sessionCode, playerId, targetPlayerId });
   };
 
   const handleStandUp = () => {
@@ -818,6 +859,19 @@ export default function GameRoom() {
                             <div className="text-xs mt-0.5" style={{ color: '#8A7A60' }}>
                               {scoreInfo}
                             </div>
+                          )}
+                          {!isMe && !isSpectator && bootablePlayerIds.has(player.id) && (
+                            <button
+                              onClick={() => handleBootPlayer(player.id)}
+                              className="mt-1.5 w-full text-xs px-2 py-1 rounded transition-colors"
+                              style={{
+                                background: 'rgba(239,68,68,0.15)',
+                                border: '1px solid rgba(239,68,68,0.4)',
+                                color: '#FCA5A5',
+                              }}
+                            >
+                              Boot (disconnected)
+                            </button>
                           )}
                         </div>
                       ) : (

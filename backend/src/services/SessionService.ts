@@ -442,6 +442,7 @@ export class SessionService {
     const player = session.players.find((p) => p.id === playerId);
     if (player) {
       (player as any).status = status;
+      (player as any).awayAt = status === 'away' ? Date.now() : null;
     } else {
       const spectator = session.spectators.find((s) => s.id === playerId);
       if (spectator) {
