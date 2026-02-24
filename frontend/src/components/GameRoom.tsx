@@ -106,6 +106,29 @@ export default function GameRoom() {
   // when a hub participant navigates to a match session — the server may auto-add them).
   const [joiningSession, setJoiningSession] = useState(() => !!localStorage.getItem(PLAYER_ID_KEY));
 
+  // Scroll up when mobile keyboard opens while on chat tab so the board stays visible
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    let baseHeight = viewport.height;
+
+    const handleResize = () => {
+      const heightDiff = baseHeight - viewport.height;
+      if (activeTabRef.current === 'chat' && heightDiff > 100) {
+        // Keyboard opened — scroll to top so board is visible above keyboard
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      if (viewport.height > baseHeight) {
+        // Keyboard closed — update baseline
+        baseHeight = viewport.height;
+      }
+    };
+
+    viewport.addEventListener('resize', handleResize);
+    return () => viewport.removeEventListener('resize', handleResize);
+  }, []);
+
   const showTournamentToast = (msg: string) => {
     if (tournamentToastTimerRef.current) clearTimeout(tournamentToastTimerRef.current);
     setTournamentToast(msg);
