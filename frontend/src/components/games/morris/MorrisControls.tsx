@@ -2,7 +2,8 @@ import { GameControlsProps } from '../../GameControls';
 
 export default function MorrisControls({ session, gameState, isMyTurn }: GameControlsProps) {
   const currentTurnName =
-    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
+    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ??
+    'opponent';
 
   return (
     <div className="p-3">

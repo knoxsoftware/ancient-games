@@ -26,9 +26,15 @@ export default function GameRules({ gameType }: { gameType: GameType }) {
   return (
     <div
       className="rounded-xl p-5 text-sm leading-relaxed space-y-5"
-      style={{ background: 'rgba(8,5,0,0.7)', border: '1px solid rgba(42,30,14,0.8)', color: '#C0A870' }}
+      style={{
+        background: 'rgba(8,5,0,0.7)',
+        border: '1px solid rgba(42,30,14,0.8)',
+        color: '#C0A870',
+      }}
     >
-      <Suspense fallback={null}><RulesComponent /></Suspense>
+      <Suspense fallback={null}>
+        <RulesComponent />
+      </Suspense>
     </div>
   );
 }

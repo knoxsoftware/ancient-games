@@ -1,11 +1,23 @@
 import { memo } from 'react';
-import { TournamentState, TournamentParticipant, TournamentMatch } from '@ancient-games/shared';
+import {
+  TournamentState,
+  TournamentParticipant,
+  TournamentMatch,
+  GameState,
+  GameType,
+  Session,
+} from '@ancient-games/shared';
+import MiniBoard from './MiniBoard';
 
 interface Props {
   tournament: TournamentState;
   participants: TournamentParticipant[];
   currentPlayerId: string;
   onWatchMatch?: (sessionCode: string) => void;
+  matchGameStates?: Record<string, GameState>;
+  gameType?: GameType;
+  session?: Session;
+  onMatchClick?: (matchId: string) => void;
 }
 
 function participantName(participants: TournamentParticipant[], id: string | null): string {
@@ -22,7 +34,16 @@ function getRoundName(format: string, roundIndex: number, totalRounds: number): 
   return `Round of ${Math.pow(2, remaining)}`;
 }
 
-function EliminationBracket({ tournament, participants, currentPlayerId, onWatchMatch }: Props) {
+function EliminationBracket({
+  tournament,
+  participants,
+  currentPlayerId,
+  onWatchMatch,
+  matchGameStates,
+  gameType,
+  session,
+  onMatchClick,
+}: Props) {
   return (
     <div className="overflow-x-auto">
       <div className="flex gap-6 pb-4" style={{ minWidth: `${tournament.rounds.length * 200}px` }}>
@@ -48,6 +69,10 @@ function EliminationBracket({ tournament, participants, currentPlayerId, onWatch
                   participants={participants}
                   currentPlayerId={currentPlayerId}
                   onWatchMatch={onWatchMatch}
+                  gameState={matchGameStates?.[match.matchId]}
+                  gameType={gameType}
+                  session={session}
+                  onMatchClick={onMatchClick}
                 />
               ))}
             </div>
@@ -64,12 +89,20 @@ function MatchCard({
   participants,
   currentPlayerId,
   onWatchMatch,
+  gameState,
+  gameType,
+  session,
+  onMatchClick,
 }: {
   match: TournamentMatch;
   format: string;
   participants: TournamentParticipant[];
   currentPlayerId: string;
   onWatchMatch?: (code: string) => void;
+  gameState?: GameState;
+  gameType?: GameType;
+  session?: Session;
+  onMatchClick?: (matchId: string) => void;
 }) {
   const p1Name = participantName(participants, match.player1Id);
   const p2Name = participantName(participants, match.player2Id);
@@ -150,6 +183,29 @@ function MatchCard({
         )}
       </div>
 
+      {/* Mini board for active matches (desktop) */}
+      {isActive && gameState && gameType && session && (
+        <div className="mt-2 hidden md:block">
+          <MiniBoard
+            session={session}
+            gameState={gameState}
+            onClick={() => onMatchClick?.(match.matchId)}
+          />
+        </div>
+      )}
+      {/* Live badge for active matches (mobile) */}
+      {isActive && gameState && (
+        <div className="mt-2 block md:hidden">
+          <div
+            className="text-xs text-center py-2 px-3 rounded cursor-pointer"
+            style={{ background: 'rgba(60,120,60,0.3)', color: '#90D090' }}
+            onClick={() => onMatchClick?.(match.matchId)}
+          >
+            ● Live — Tap to watch
+          </div>
+        </div>
+      )}
+
       {/* Watch button for active matches */}
       {isActive && match.currentSessionCode && onWatchMatch && (
         <button
@@ -168,7 +224,14 @@ function MatchCard({
   );
 }
 
-function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatch }: Props) {
+function RoundRobinView({
+  tournament,
+  participants,
+  currentPlayerId,
+  onWatchMatch,
+  matchGameStates,
+  onMatchClick,
+}: Props) {
   const standings = tournament.standings ?? [];
   const sorted = [...standings].sort((a, b) => b.wins - a.wins || a.losses - b.losses);
 
@@ -347,8 +410,11 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
                         )}
                         {match.status === 'in_progress' && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded"
+                            className="text-xs px-1.5 py-0.5 rounded cursor-pointer"
                             style={{ background: 'rgba(60,120,60,0.25)', color: '#80C080' }}
+                            onClick={() =>
+                              matchGameStates?.[match.matchId] && onMatchClick?.(match.matchId)
+                            }
                           >
                             Live
                           </span>
@@ -386,7 +452,16 @@ function RoundRobinView({ tournament, participants, currentPlayerId, onWatchMatc
   );
 }
 
-function TournamentBracket({ tournament, participants, currentPlayerId, onWatchMatch }: Props) {
+function TournamentBracket({
+  tournament,
+  participants,
+  currentPlayerId,
+  onWatchMatch,
+  matchGameStates,
+  gameType,
+  session,
+  onMatchClick,
+}: Props) {
   const isRoundRobin = tournament.format === 'round-robin';
 
   return (
@@ -428,6 +503,10 @@ function TournamentBracket({ tournament, participants, currentPlayerId, onWatchM
           participants={participants}
           currentPlayerId={currentPlayerId}
           onWatchMatch={onWatchMatch}
+          matchGameStates={matchGameStates}
+          gameType={gameType}
+          session={session}
+          onMatchClick={onMatchClick}
         />
       ) : (
         <EliminationBracket
@@ -435,6 +514,10 @@ function TournamentBracket({ tournament, participants, currentPlayerId, onWatchM
           participants={participants}
           currentPlayerId={currentPlayerId}
           onWatchMatch={onWatchMatch}
+          matchGameStates={matchGameStates}
+          gameType={gameType}
+          session={session}
+          onMatchClick={onMatchClick}
         />
       )}
     </div>

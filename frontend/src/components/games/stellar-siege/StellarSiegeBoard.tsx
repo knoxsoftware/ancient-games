@@ -269,7 +269,7 @@ function StellarSiegeBoard({ session, gameState, playerId, isMyTurn }: Props) {
             const isFlash = flashCell === pos;
             const isSelected = selectedAlien?.position === pos;
 
-            let fill = isBase
+            const fill = isBase
               ? 'rgba(0,20,45,0.65)'
               : (row + col) % 2 === 0
                 ? 'rgba(2,12,28,0.7)'

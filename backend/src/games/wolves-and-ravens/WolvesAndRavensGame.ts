@@ -247,8 +247,6 @@ export class WolvesAndRavensGame extends GameEngine {
   isCaptureMove(board: BoardState, move: Move): boolean {
     const wolfPN = this.getWolfPN(board.pieces);
     if (board.currentTurn !== wolfPN) return false;
-    return board.pieces.some(
-      p => p.playerNumber !== wolfPN && p.position === move.to
-    );
+    return board.pieces.some((p) => p.playerNumber !== wolfPN && p.position === move.to);
   }
 }

@@ -3,7 +3,14 @@ import { nanoid } from 'nanoid';
 import { SessionService } from '../services/SessionService';
 import { PushService } from '../services/PushService';
 import { GameRegistry } from '../games/GameRegistry';
-import { ClientToServerEvents, ServerToClientEvents, GameState, Session, HistoricalMove, getGameTitle } from '@ancient-games/shared';
+import {
+  ClientToServerEvents,
+  ServerToClientEvents,
+  GameState,
+  Session,
+  HistoricalMove,
+  getGameTitle,
+} from '@ancient-games/shared';
 
 const socketToSession = new Map<string, { sessionCode: string; playerId: string }>();
 const disconnectTimers = new Map<string, NodeJS.Timeout>(); // keyed by playerId
@@ -15,6 +22,20 @@ function getRoundLabel(format: string, roundIndex: number, totalRounds: number):
   if (remaining === 2) return 'Semi-final';
   if (remaining === 3) return 'Quarter-final';
   return `Round of ${Math.pow(2, remaining)}`;
+}
+
+function relayGameStateToHub(
+  io: Server<ClientToServerEvents, ServerToClientEvents>,
+  session: Session,
+  gameState: GameState,
+) {
+  if (session.tournamentHubCode && session.tournamentMatchId) {
+    io.to(session.tournamentHubCode).emit('tournament:match-game-state', {
+      matchId: session.tournamentMatchId,
+      gameState,
+      sessionCode: session.sessionCode,
+    });
+  }
 }
 
 export function registerGameHandlers(
@@ -313,10 +334,14 @@ export function registerGameHandlers(
             });
           }
         }
+
+        // Note: initial game states are relayed via relayGameStateToHub when each match's
+        // game:start fires (Task 2 relay). No gameState exists at tournament creation time.
       } else {
         const session = await sessionService.startGame(sessionCode, playerId);
         if (session) {
           io.to(sessionCode).emit('game:started', session);
+          relayGameStateToHub(io, session, session.gameState!);
         }
       }
     } catch (error) {
@@ -362,6 +387,7 @@ export function registerGameHandlers(
         roll,
         canMove,
       });
+      relayGameStateToHub(io, session, session.gameState!);
 
       if (!canMove) {
         const nextTurn = (session.gameState.currentTurn + 1) % 2;
@@ -454,6 +480,7 @@ export function registerGameHandlers(
         gameState: session.gameState,
         wasCapture,
       });
+      relayGameStateToHub(io, session, session.gameState!);
 
       if (winner !== null) {
         io.to(sessionCode).emit('game:ended', {
@@ -600,6 +627,7 @@ export function registerGameHandlers(
       });
 
       io.to(sessionCode).emit('game:state-updated', session.gameState);
+      relayGameStateToHub(io, session, session.gameState!);
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
     }

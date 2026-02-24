@@ -70,6 +70,7 @@ All game events are in `backend/src/socket/gameHandlers.ts`. The important seque
 5. If no valid moves exist after a roll, `game:skip-turn` advances the turn
 
 **Adding a new game** _(use the `/add-game` skill to scaffold all required files)_:
+
 1. Create `backend/src/games/<name>/<Name>Game.ts` extending `GameEngine` (including `isCaptureMove`)
 2. Register it in `GameRegistry.ts`
 3. Add the game type to the `GameType` union in `shared/types/game.ts`

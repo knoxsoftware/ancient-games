@@ -1,6 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, GameState, GameType, HistoricalMove, getGameTitle, GAME_MANIFESTS } from '@ancient-games/shared';
+import {
+  Session,
+  GameState,
+  GameType,
+  HistoricalMove,
+  getGameTitle,
+  GAME_MANIFESTS,
+} from '@ancient-games/shared';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
@@ -16,8 +23,14 @@ const boardComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   'stellar-siege': lazy(() => import('./games/stellar-siege/StellarSiegeBoard')),
 };
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
-import { renderPiece as urRenderPiece, getExitSelector as urGetExitSelector } from './games/ur/urAnimationHelpers';
-import { renderPiece as senetRenderPiece, getExitSelector as senetGetExitSelector } from './games/senet/senetAnimationHelpers';
+import {
+  renderPiece as urRenderPiece,
+  getExitSelector as urGetExitSelector,
+} from './games/ur/urAnimationHelpers';
+import {
+  renderPiece as senetRenderPiece,
+  getExitSelector as senetGetExitSelector,
+} from './games/senet/senetAnimationHelpers';
 import { MoveLog, HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
 import GameControls from './GameControls';
@@ -199,9 +212,10 @@ export default function GameRoom() {
       const gt = currentSession?.gameType ?? 'ur';
       if (GAME_MANIFESTS[gt].supportsAnimation) {
         animIdRef.current += 1;
-        const animHelpers = gt === 'ur'
-          ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
-          : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
+        const animHelpers =
+          gt === 'ur'
+            ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
+            : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
         setPendingAnimation({
           move,
           playerNumber: playerNum,
@@ -228,7 +242,10 @@ export default function GameRoom() {
           const opponent = currentSession?.players.find((p) => p.id !== playerId);
           const gameType = currentSession?.gameType;
           const gameTitle = getGameTitle(gameType!);
-          showNotification('Your turn!', `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`);
+          showNotification(
+            'Your turn!',
+            `${opponent?.displayName ?? 'Opponent'} made a move in ${gameTitle}`,
+          );
         }
       }
     });
@@ -443,9 +460,10 @@ export default function GameRoom() {
     const gt = session?.gameType;
     if (!gt || !GAME_MANIFESTS[gt].supportsAnimation) return;
     replayIdRef.current += 1;
-    const animHelpers = gt === 'ur'
-      ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
-      : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
+    const animHelpers =
+      gt === 'ur'
+        ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
+        : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
     setReplayAnimation({
       move: entry.move,
       playerNumber: entry.playerNumber,
@@ -599,9 +617,7 @@ export default function GameRoom() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">
-            {getGameTitle(session.gameType)}
-          </h1>
+          <h1 className="text-2xl font-bold">{getGameTitle(session.gameType)}</h1>
           <button
             onClick={() => setShowRules(true)}
             className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-colors"
@@ -667,7 +683,9 @@ export default function GameRoom() {
                   const isMe = player?.id === playerId;
                   const boardPieces = gameState.board.pieces;
 
-                  const scoreInfo = player ? getScoreInfo(session.gameType, boardPieces, seatIndex) : null;
+                  const scoreInfo = player
+                    ? getScoreInfo(session.gameType, boardPieces, seatIndex)
+                    : null;
 
                   return (
                     <div
@@ -896,21 +914,30 @@ export default function GameRoom() {
         </div>
 
         {/* Board */}
-        <Suspense fallback={<div className="flex items-center justify-center py-16 text-sm" style={{ color: 'rgba(196,168,107,0.5)' }}>Loading…</div>}>
-        <div>
-          {(() => {
-            const BoardComponent = boardComponents[session.gameType];
-            return (
-              <BoardComponent
-                session={session}
-                gameState={gameState}
-                playerId={playerId!}
-                isMyTurn={isMyTurn}
-                animatingPiece={animatingPiece}
-              />
-            );
-          })()}
-        </div>
+        <Suspense
+          fallback={
+            <div
+              className="flex items-center justify-center py-16 text-sm"
+              style={{ color: 'rgba(196,168,107,0.5)' }}
+            >
+              Loading…
+            </div>
+          }
+        >
+          <div>
+            {(() => {
+              const BoardComponent = boardComponents[session.gameType];
+              return (
+                <BoardComponent
+                  session={session}
+                  gameState={gameState}
+                  playerId={playerId!}
+                  isMyTurn={isMyTurn}
+                  animatingPiece={animatingPiece}
+                />
+              );
+            })()}
+          </div>
         </Suspense>
       </div>
 
@@ -1039,7 +1066,10 @@ export default function GameRoom() {
           currentPlayer={currentPlayer}
           isSpectator={isSpectator}
           hubSession={hubSession}
-          onPlayAgain={() => { setShowGameEndModal(false); handleRematch(); }}
+          onPlayAgain={() => {
+            setShowGameEndModal(false);
+            handleRematch();
+          }}
           onReturnToBracket={handleReturnToBracket}
           onLeave={() => navigate('/')}
         />

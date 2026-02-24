@@ -248,11 +248,11 @@ export class SenetGame extends GameEngine {
   isCaptureMove(board: BoardState, move: Move): boolean {
     if (move.to === 99 || move.to < 0) return false;
     const movingPiece = board.pieces.find(
-      p => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex
+      (p) => p.playerNumber === board.currentTurn && p.pieceIndex === move.pieceIndex,
     );
     if (!movingPiece) return false;
     return board.pieces.some(
-      p => p.playerNumber !== movingPiece.playerNumber && p.position === move.to
+      (p) => p.playerNumber !== movingPiece.playerNumber && p.position === move.to,
     );
   }
 

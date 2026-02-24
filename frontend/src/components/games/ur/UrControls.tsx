@@ -3,11 +3,18 @@ import { describeMove } from '../../MoveLog';
 import { GameControlsProps } from '../../GameControls';
 import { TetraDice } from './UrBoard';
 
-export default function UrControls({ session, gameState, playerId, isMyTurn, lastMove }: GameControlsProps) {
+export default function UrControls({
+  session,
+  gameState,
+  playerId,
+  isMyTurn,
+  lastMove,
+}: GameControlsProps) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
   const currentTurnName =
-    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ?? 'opponent';
+    session.players.find((p) => p.playerNumber === gameState.currentTurn)?.displayName ??
+    'opponent';
 
   const handleRollDice = () => {
     if (!isMyTurn || diceRoll !== null) return;
@@ -63,8 +70,8 @@ export default function UrControls({ session, gameState, playerId, isMyTurn, las
                 {diceRoll === 0
                   ? 'No move — turn passes.'
                   : !isMyTurn
-                  ? `Waiting for ${currentTurnName} to move…`
-                  : 'Select a piece to move.'}
+                    ? `Waiting for ${currentTurnName} to move…`
+                    : 'Select a piece to move.'}
               </div>
             </div>
           )}
