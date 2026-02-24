@@ -25,6 +25,7 @@ const rulesComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   'wolves-and-ravens': lazy(() => import('./games/wolves-and-ravens/WolvesAndRavensRules')),
   'rock-paper-scissors': lazy(() => import('./games/rock-paper-scissors/RockPaperScissorsRules')),
   'stellar-siege': lazy(() => import('./games/stellar-siege/StellarSiegeRules')),
+  'fox-and-geese': lazy(() => import('./games/fox-and-geese/FoxAndGeeseRules')),
 };
 
 export default function GameRules({ gameType }: { gameType: GameType }) {

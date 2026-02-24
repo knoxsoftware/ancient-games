@@ -21,6 +21,7 @@ const boardComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   'wolves-and-ravens': lazy(() => import('./games/wolves-and-ravens/WolvesAndRavensBoard')),
   'rock-paper-scissors': lazy(() => import('./games/rock-paper-scissors/RockPaperScissorsBoard')),
   'stellar-siege': lazy(() => import('./games/stellar-siege/StellarSiegeBoard')),
+  'fox-and-geese': lazy(() => import('./games/fox-and-geese/FoxAndGeeseBoard')),
 };
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import {
