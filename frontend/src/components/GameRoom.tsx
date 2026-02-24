@@ -811,8 +811,19 @@ export default function GameRoom() {
                       key={seatIndex}
                       className="rounded-lg p-2.5 border transition-all"
                       style={{
-                        background: isActive ? 'rgba(196,160,48,0.08)' : 'rgba(8,5,0,0.5)',
-                        borderColor: isActive ? 'rgba(196,160,48,0.45)' : 'rgba(42,30,14,0.8)',
+                        background: isActive && isMe
+                          ? 'rgba(34,197,94,0.06)'
+                          : isActive
+                            ? 'rgba(196,160,48,0.08)'
+                            : 'rgba(8,5,0,0.5)',
+                        borderColor: isActive && isMe
+                          ? 'rgba(34,197,94,0.45)'
+                          : isActive
+                            ? 'rgba(196,160,48,0.45)'
+                            : 'rgba(42,30,14,0.8)',
+                        boxShadow: isActive && isMe
+                          ? '0 0 12px rgba(34,197,94,0.25), inset 0 0 12px rgba(34,197,94,0.08)'
+                          : undefined,
                       }}
                     >
                       {player ? (
@@ -837,6 +848,14 @@ export default function GameRoom() {
                               style={{ color: '#E8D8B0' }}
                             >
                               {player.displayName}
+                              {isMe && (
+                                <span
+                                  className="ml-1 text-xs font-normal"
+                                  style={{ color: '#6A5A40' }}
+                                >
+                                  (you)
+                                </span>
+                              )}
                             </span>
                             {isActive && (
                               <span
@@ -844,14 +863,6 @@ export default function GameRoom() {
                                 style={{ background: 'rgba(196,160,48,0.25)', color: '#E8C870' }}
                               >
                                 Turn
-                              </span>
-                            )}
-                            {isMe && !isActive && (
-                              <span
-                                className="ml-auto flex-shrink-0 text-xs"
-                                style={{ color: '#6A5A40' }}
-                              >
-                                you
                               </span>
                             )}
                           </div>
