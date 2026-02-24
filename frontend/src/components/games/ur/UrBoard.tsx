@@ -8,6 +8,7 @@ interface UrBoardProps {
   playerId: string;
   isMyTurn: boolean;
   animatingPiece?: { playerNumber: number; pieceIndex: number } | null;
+  boardOnly?: boolean;
 }
 
 const ROSETTE_POSITIONS = [2, 6, 13];
@@ -152,7 +153,7 @@ export function TetraDice({ result }: { result: number }) {
   );
 }
 
-function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrBoardProps) {
+function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, boardOnly }: UrBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
   // topPlayer = opponent's row (far side); bottomPlayer = my row (near side)
@@ -417,26 +418,28 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrB
         }}
       >
         {/* Opponent's waiting pieces — above the board */}
-        <div
-          data-cell={`ur-offboard-${topPlayer}`}
-          className="flex items-center gap-1.5 flex-wrap mb-2 pb-2 border-b min-h-[32px]"
-          style={{ borderColor: '#2A1E0E' }}
-        >
-          {offBoardPieces(topPlayer).map((piece) => (
-            <div
-              key={`${piece.playerNumber}-${piece.pieceIndex}`}
-              style={{ width: 28, height: 28, opacity: 0.55 }}
-              title={`${session.players.find((p) => p.playerNumber === topPlayer)?.displayName} – piece ${piece.pieceIndex + 1}`}
-            >
-              <UrPiece playerNumber={piece.playerNumber} size={28} />
-            </div>
-          ))}
-          {offBoardPieces(topPlayer).length === 0 && (
-            <span className="text-xs italic" style={{ color: '#5A4A38' }}>
-              all on board
-            </span>
-          )}
-        </div>
+        {!boardOnly && (
+          <div
+            data-cell={`ur-offboard-${topPlayer}`}
+            className="flex items-center gap-1.5 flex-wrap mb-2 pb-2 border-b min-h-[32px]"
+            style={{ borderColor: '#2A1E0E' }}
+          >
+            {offBoardPieces(topPlayer).map((piece) => (
+              <div
+                key={`${piece.playerNumber}-${piece.pieceIndex}`}
+                style={{ width: 28, height: 28, opacity: 0.55 }}
+                title={`${session.players.find((p) => p.playerNumber === topPlayer)?.displayName} – piece ${piece.pieceIndex + 1}`}
+              >
+                <UrPiece playerNumber={piece.playerNumber} size={28} />
+              </div>
+            ))}
+            {offBoardPieces(topPlayer).length === 0 && (
+              <span className="text-xs italic" style={{ color: '#5A4A38' }}>
+                all on board
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1.5">
           {/* Top row: opponent's private lane */}
@@ -462,60 +465,64 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: UrB
         </div>
 
         {/* My waiting pieces — below the board */}
-        <div
-          data-cell={`ur-offboard-${bottomPlayer}`}
-          className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t min-h-[32px]"
-          style={{ borderColor: '#2A1E0E' }}
-        >
-          {offBoardPieces(bottomPlayer).map((piece) => {
-            const canClick = isMyTurn && piece.playerNumber === playerNumber;
-            const sz = 28;
-            return (
-              <button
-                key={`${piece.playerNumber}-${piece.pieceIndex}`}
-                onClick={() => handlePieceClick(piece)}
-                disabled={!canClick}
-                className={`transition-transform focus:outline-none ${
-                  canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-50'
-                }`}
-                style={pieceButtonStyle(piece, sz)}
-                title={`Enter piece ${piece.pieceIndex + 1}`}
-              >
-                <UrPiece playerNumber={piece.playerNumber} size={sz} />
-              </button>
-            );
-          })}
-          {offBoardPieces(bottomPlayer).length === 0 && (
-            <span className="text-xs italic" style={{ color: '#5A4A38' }}>
-              all on board
-            </span>
-          )}
-        </div>
+        {!boardOnly && (
+          <div
+            data-cell={`ur-offboard-${bottomPlayer}`}
+            className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t min-h-[32px]"
+            style={{ borderColor: '#2A1E0E' }}
+          >
+            {offBoardPieces(bottomPlayer).map((piece) => {
+              const canClick = isMyTurn && piece.playerNumber === playerNumber;
+              const sz = 28;
+              return (
+                <button
+                  key={`${piece.playerNumber}-${piece.pieceIndex}`}
+                  onClick={() => handlePieceClick(piece)}
+                  disabled={!canClick}
+                  className={`transition-transform focus:outline-none ${
+                    canClick ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-50'
+                  }`}
+                  style={pieceButtonStyle(piece, sz)}
+                  title={`Enter piece ${piece.pieceIndex + 1}`}
+                >
+                  <UrPiece playerNumber={piece.playerNumber} size={sz} />
+                </button>
+              );
+            })}
+            {offBoardPieces(bottomPlayer).length === 0 && (
+              <span className="text-xs italic" style={{ color: '#5A4A38' }}>
+                all on board
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Legend */}
-        <div
-          className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1"
-          style={{ borderColor: '#2A1E0E' }}
-        >
-          <div className="flex items-center gap-1.5">
-            <div
-              className="relative w-5 h-5 rounded overflow-hidden"
-              style={{ background: '#3A2400', border: '1px solid #C4860A' }}
-            >
-              <RosettePattern />
+        {!boardOnly && (
+          <div
+            className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1"
+            style={{ borderColor: '#2A1E0E' }}
+          >
+            <div className="flex items-center gap-1.5">
+              <div
+                className="relative w-5 h-5 rounded overflow-hidden"
+                style={{ background: '#3A2400', border: '1px solid #C4860A' }}
+              >
+                <RosettePattern />
+              </div>
+              <span style={{ fontSize: '9px', color: '#908070' }}>
+                Rosette: extra turn &amp; safe
+              </span>
             </div>
-            <span style={{ fontSize: '9px', color: '#908070' }}>
-              Rosette: extra turn &amp; safe
-            </span>
+            <div className="flex items-center gap-1.5">
+              <div
+                className="w-5 h-5 rounded"
+                style={{ background: '#1A1208', border: '1px solid #3A2E1C' }}
+              />
+              <span style={{ fontSize: '9px', color: '#908070' }}>Shared path — can capture</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div
-              className="w-5 h-5 rounded"
-              style={{ background: '#1A1208', border: '1px solid #3A2E1C' }}
-            />
-            <span style={{ fontSize: '9px', color: '#908070' }}>Shared path — can capture</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

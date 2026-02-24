@@ -7,6 +7,7 @@ interface RockPaperScissorsBoardProps {
   gameState: GameState;
   playerId: string;
   isMyTurn: boolean;
+  boardOnly?: boolean;
 }
 
 // Position encoding:
@@ -47,6 +48,7 @@ function RockPaperScissorsBoard({
   gameState,
   playerId,
   isMyTurn,
+  boardOnly,
 }: RockPaperScissorsBoardProps) {
   const { board } = gameState;
   const [pendingChoice, setPendingChoice] = useState<number | null>(null);
@@ -118,27 +120,31 @@ function RockPaperScissorsBoard({
   return (
     <div className="flex flex-col items-center gap-6 p-4 select-none">
       {/* Players */}
-      <div className="flex items-center gap-8 w-full max-w-sm justify-center">
-        <div className="text-center">
-          <div className="text-sm font-semibold truncate max-w-[90px]" style={{ color: '#E8D8B0' }}>
-            {currentPlayer?.displayName ?? 'You'}
+      {!boardOnly && (
+        <div className="flex items-center gap-8 w-full max-w-sm justify-center">
+          <div className="text-center">
+            <div className="text-sm font-semibold truncate max-w-[90px]" style={{ color: '#E8D8B0' }}>
+              {currentPlayer?.displayName ?? 'You'}
+            </div>
+          </div>
+
+          <div className="text-lg font-bold" style={{ color: '#4A3A28' }}>
+            vs
+          </div>
+
+          <div className="text-center">
+            <div className="text-sm font-semibold truncate max-w-[90px]" style={{ color: '#E8D8B0' }}>
+              {opponent?.displayName ?? 'Opponent'}
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="text-lg font-bold" style={{ color: '#4A3A28' }}>
-          vs
+      {!boardOnly && (
+        <div className="text-xs" style={{ color: '#5A4A38' }}>
+          draw = replay · first win takes the match
         </div>
-
-        <div className="text-center">
-          <div className="text-sm font-semibold truncate max-w-[90px]" style={{ color: '#E8D8B0' }}>
-            {opponent?.displayName ?? 'Opponent'}
-          </div>
-        </div>
-      </div>
-
-      <div className="text-xs" style={{ color: '#5A4A38' }}>
-        draw = replay · first win takes the match
-      </div>
+      )}
 
       {/* Round reveal area */}
       <div
@@ -208,7 +214,7 @@ function RockPaperScissorsBoard({
       </div>
 
       {/* Round result label */}
-      {roundResolved && !gameState.finished && (
+      {!boardOnly && roundResolved && !gameState.finished && (
         <div
           className="text-sm font-semibold animate-pulse"
           style={{ color: myWonRound ? '#4ADE80' : opponentWonRound ? '#F87171' : '#E8C870' }}
@@ -222,7 +228,7 @@ function RockPaperScissorsBoard({
       )}
 
       {/* Weapon selection or status */}
-      {!gameState.finished && !isSpectator && (
+      {!boardOnly && !gameState.finished && !isSpectator && (
         <div className="w-full max-w-sm">
           {isMyTurn && !pendingChoice ? (
             <div className="space-y-3">
@@ -273,7 +279,7 @@ function RockPaperScissorsBoard({
         </div>
       )}
 
-      {isSpectator && !gameState.finished && (
+      {!boardOnly && isSpectator && !gameState.finished && (
         <div className="text-center text-sm" style={{ color: '#5A4A38' }}>
           Spectating
         </div>

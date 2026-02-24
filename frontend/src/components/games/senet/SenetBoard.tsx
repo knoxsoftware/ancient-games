@@ -8,6 +8,7 @@ interface SenetBoardProps {
   playerId: string;
   isMyTurn: boolean;
   animatingPiece?: { playerNumber: number; pieceIndex: number } | null;
+  boardOnly?: boolean;
 }
 
 // Ivory cone piece (Player 0) - historical Egyptian senet piece shape
@@ -186,7 +187,7 @@ function SpecialIcon({ type, color }: { type: SpecialSquare['iconType']; color: 
   return <SunIcon color={color} />;
 }
 
-function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: SenetBoardProps) {
+function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece, boardOnly }: SenetBoardProps) {
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
@@ -402,22 +403,26 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
         <div className="grid grid-cols-10 gap-1">{row0.map(renderSquare)}</div>
 
         {/* Turn-around indicator */}
-        <div className="flex justify-end pr-1 my-0.5">
-          <span style={{ color: '#C4A870', fontSize: '11px' }}>↩</span>
-        </div>
+        {!boardOnly && (
+          <div className="flex justify-end pr-1 my-0.5">
+            <span style={{ color: '#C4A870', fontSize: '11px' }}>↩</span>
+          </div>
+        )}
 
         {/* Row 1: positions 19–10, right to left */}
         <div className="grid grid-cols-10 gap-1">{row1.map(renderSquare)}</div>
 
-        <div className="flex justify-start pl-1 my-0.5">
-          <span style={{ color: '#C4A870', fontSize: '11px' }}>↩</span>
-        </div>
+        {!boardOnly && (
+          <div className="flex justify-start pl-1 my-0.5">
+            <span style={{ color: '#C4A870', fontSize: '11px' }}>↩</span>
+          </div>
+        )}
 
         {/* Row 2: positions 20–29, left to right → exit */}
         <div className="grid grid-cols-10 gap-1">{row2.map(renderSquare)}</div>
 
         {/* Legend */}
-        <div
+        {!boardOnly && <div
           className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1"
           style={{ borderColor: '#4A3010' }}
         >
@@ -446,7 +451,7 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece }: 
               </div>
             );
           })}
-        </div>
+        </div>}
       </div>
     </div>
   );

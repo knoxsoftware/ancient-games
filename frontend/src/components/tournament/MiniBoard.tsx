@@ -20,6 +20,7 @@ export default function MiniBoard({ session, gameState, onClick }: MiniBoardProp
   const innerRef = useRef<HTMLDivElement>(null);
   const outerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.25);
+  const [outerHeight, setOuterHeight] = useState(100);
 
   const BoardComponent = boardComponents[session.gameType];
 
@@ -33,18 +34,20 @@ export default function MiniBoard({ session, gameState, onClick }: MiniBoardProp
       const innerH = inner.scrollHeight;
       if (innerW === 0 || innerH === 0) return;
       const outerW = outer.clientWidth;
-      const outerH = outer.clientHeight;
-      setScale(Math.min(outerW / innerW, outerH / innerH, 0.35));
+      const s = outerW / innerW;
+      setScale(s);
+      setOuterHeight(Math.round(innerH * s));
     });
     observer.observe(innerRef.current);
+    observer.observe(outerRef.current);
     return () => observer.disconnect();
   }, []);
 
   return (
     <div
       ref={outerRef}
-      className="relative w-full overflow-hidden cursor-pointer"
-      style={{ height: '120px' }}
+      className="relative w-full overflow-hidden"
+      style={{ height: outerHeight, cursor: onClick ? 'pointer' : undefined }}
       onClick={onClick}
     >
       <div
@@ -59,6 +62,7 @@ export default function MiniBoard({ session, gameState, onClick }: MiniBoardProp
             playerId=""
             isMyTurn={false}
             animatingPiece={null}
+            boardOnly={true}
           />
         </Suspense>
       </div>
