@@ -13,7 +13,6 @@ interface Props {
   tournament: TournamentState;
   participants: TournamentParticipant[];
   currentPlayerId: string;
-  onWatchMatch?: (sessionCode: string) => void;
   matchGameStates?: Record<string, GameState>;
   gameType?: GameType;
   session?: Session;
@@ -38,7 +37,6 @@ function EliminationBracket({
   tournament,
   participants,
   currentPlayerId,
-  onWatchMatch,
   matchGameStates,
   gameType,
   session,
@@ -68,7 +66,6 @@ function EliminationBracket({
                   format={tournament.format}
                   participants={participants}
                   currentPlayerId={currentPlayerId}
-                  onWatchMatch={onWatchMatch}
                   gameState={matchGameStates?.[match.matchId]}
                   gameType={gameType}
                   session={session}
@@ -88,7 +85,6 @@ function MatchCard({
   format,
   participants,
   currentPlayerId,
-  onWatchMatch,
   gameState,
   gameType,
   session,
@@ -98,7 +94,6 @@ function MatchCard({
   format: string;
   participants: TournamentParticipant[];
   currentPlayerId: string;
-  onWatchMatch?: (code: string) => void;
   gameState?: GameState;
   gameType?: GameType;
   session?: Session;
@@ -206,20 +201,6 @@ function MatchCard({
         </div>
       )}
 
-      {/* Watch button for active matches */}
-      {isActive && match.currentSessionCode && onWatchMatch && (
-        <button
-          onClick={() => onWatchMatch(match.currentSessionCode!)}
-          className="mt-2 w-full rounded px-2 py-1 text-xs font-medium transition-colors"
-          style={{
-            background: 'rgba(60,120,60,0.3)',
-            border: '1px solid rgba(60,120,60,0.5)',
-            color: '#90D090',
-          }}
-        >
-          Watch
-        </button>
-      )}
     </div>
   );
 }
@@ -228,7 +209,6 @@ function RoundRobinView({
   tournament,
   participants,
   currentPlayerId,
-  onWatchMatch,
   matchGameStates,
   onMatchClick,
 }: Props) {
@@ -419,21 +399,6 @@ function RoundRobinView({
                             Live
                           </span>
                         )}
-                        {match.status === 'in_progress' &&
-                          match.currentSessionCode &&
-                          onWatchMatch && (
-                            <button
-                              onClick={() => onWatchMatch(match.currentSessionCode!)}
-                              className="text-xs px-2 py-0.5 rounded transition-colors"
-                              style={{
-                                background: 'rgba(60,120,60,0.3)',
-                                border: '1px solid rgba(60,120,60,0.5)',
-                                color: '#90D090',
-                              }}
-                            >
-                              Watch
-                            </button>
-                          )}
                         {match.status === 'pending' && (
                           <span className="text-xs" style={{ color: '#3A2A1A' }}>
                             Upcoming
@@ -456,7 +421,6 @@ function TournamentBracket({
   tournament,
   participants,
   currentPlayerId,
-  onWatchMatch,
   matchGameStates,
   gameType,
   session,
@@ -502,7 +466,6 @@ function TournamentBracket({
           tournament={tournament}
           participants={participants}
           currentPlayerId={currentPlayerId}
-          onWatchMatch={onWatchMatch}
           matchGameStates={matchGameStates}
           gameType={gameType}
           session={session}
@@ -513,7 +476,6 @@ function TournamentBracket({
           tournament={tournament}
           participants={participants}
           currentPlayerId={currentPlayerId}
-          onWatchMatch={onWatchMatch}
           matchGameStates={matchGameStates}
           gameType={gameType}
           session={session}

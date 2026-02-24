@@ -456,7 +456,7 @@ export default function SessionLobby() {
                 tournament={session.tournamentState}
                 participants={session.tournamentState.participants}
                 currentPlayerId={playerId!}
-                onWatchMatch={(matchCode) => navigate(`/game/${matchCode}`)}
+  
                 matchGameStates={matchGameStates}
                 gameType={session.gameType}
                 session={session}
