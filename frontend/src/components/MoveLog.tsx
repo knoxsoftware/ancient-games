@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
 import { Move, Session, GAME_MANIFESTS, GameType } from '@ancient-games/shared';
+import { useTheme } from '../contexts/ThemeContext';
 
 export interface HistoryEntry {
   id: number;
@@ -40,6 +41,8 @@ export const MoveLog = memo(function MoveLog({
   replayingId,
 }: MoveLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
+  const isYahoo = theme === 'yahoo';
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -52,17 +55,21 @@ export const MoveLog = memo(function MoveLog({
   return (
     <div
       className="rounded-xl border"
-      style={{ background: 'rgba(8,5,0,0.6)', borderColor: '#2A1E0E' }}
+      style={{
+        background: isYahoo ? '#ffffff' : 'rgba(8,5,0,0.6)',
+        borderColor: isYahoo ? '#cccccc' : '#2A1E0E',
+        borderRadius: isYahoo ? '0' : undefined,
+      }}
     >
       <div
         className="px-3 py-2 border-b text-xs font-semibold tracking-wide"
-        style={{ color: '#907A60', borderColor: '#2A1E0E' }}
+        style={{ color: isYahoo ? '#666666' : '#907A60', borderColor: isYahoo ? '#cccccc' : '#2A1E0E' }}
       >
         Move History
       </div>
       <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '240px' }}>
         {entries.length === 0 && (
-          <div className="px-3 py-4 text-xs text-center" style={{ color: '#5A4A38' }}>
+          <div className="px-3 py-4 text-xs text-center" style={{ color: isYahoo ? '#999999' : '#5A4A38' }}>
             No moves yet
           </div>
         )}
@@ -74,10 +81,14 @@ export const MoveLog = memo(function MoveLog({
               onClick={() => onReplay(entry)}
               className="w-full text-left px-3 py-2 flex items-center gap-2 transition-colors"
               style={{
-                background: isReplaying ? 'rgba(196,168,107,0.12)' : 'transparent',
-                borderBottom: '1px solid rgba(42,30,14,0.5)',
+                background: isReplaying
+                  ? (isYahoo ? '#ffffcc' : 'rgba(196,168,107,0.12)')
+                  : 'transparent',
+                borderBottom: isYahoo ? '1px solid #eeeeee' : '1px solid rgba(42,30,14,0.5)',
                 fontSize: '11px',
-                color: isReplaying ? '#F0E6C8' : '#A09070',
+                color: isReplaying
+                  ? (isYahoo ? '#000000' : '#F0E6C8')
+                  : (isYahoo ? '#333333' : '#A09070'),
               }}
               title="Replay this move"
             >
@@ -86,7 +97,7 @@ export const MoveLog = memo(function MoveLog({
                 style={{ background: playerColor(entry.playerNumber) }}
               />
               <span className="flex-1 truncate font-mono">{describeMove(entry, session)}</span>
-              <span style={{ color: '#5A4A38', fontSize: '10px' }}>&#8634;</span>
+              <span style={{ color: isYahoo ? '#999999' : '#5A4A38', fontSize: '10px' }}>&#8634;</span>
             </button>
           );
         })}
