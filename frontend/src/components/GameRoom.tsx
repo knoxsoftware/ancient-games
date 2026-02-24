@@ -671,30 +671,32 @@ export default function GameRoom() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">{getGameTitle(session.gameType)}</h1>
-          <button
-            onClick={() => setShowRules(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-colors"
-            style={{
-              background: 'rgba(196,160,48,0.12)',
-              border: '1.5px solid rgba(196,160,48,0.35)',
-              color: '#C4A030',
-            }}
-            title="Rules"
-          >
-            ?
-          </button>
-          <button
-            onClick={() => setShowFeedback(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
-            style={{
-              background: 'rgba(196,160,48,0.12)',
-              border: '1.5px solid rgba(196,160,48,0.35)',
-              color: '#C4A030',
-            }}
-            title="Feedback"
-          >
-            ✉
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRules(true)}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-colors"
+              style={{
+                background: 'rgba(196,160,48,0.12)',
+                border: '1.5px solid rgba(196,160,48,0.35)',
+                color: '#C4A030',
+              }}
+              title="Rules"
+            >
+              ?
+            </button>
+            <button
+              onClick={() => setShowFeedback(true)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+              style={{
+                background: 'rgba(196,160,48,0.12)',
+                border: '1.5px solid rgba(196,160,48,0.35)',
+                color: '#C4A030',
+              }}
+              title="Feedback"
+            >
+              ✉
+            </button>
+          </div>
         </div>
 
         {error && (
