@@ -38,6 +38,7 @@ import ChatPanel, { ChatMessage, ChatDestination } from './ChatPanel';
 import TournamentBracket from './tournament/TournamentBracket';
 import MatchSpectatorModal from './tournament/MatchSpectatorModal';
 import GameEndModal from './GameEndModal';
+import { GamePiecePreview } from './games/GamePiecePreview';
 
 async function showNotification(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -714,6 +715,13 @@ export default function GameRoom() {
                               }}
                               title={player.status === 'away' ? 'Away' : 'Active'}
                             />
+                            <div className="flex-shrink-0">
+                              <GamePiecePreview
+                                gameType={session.gameType}
+                                playerNumber={seatIndex as 0 | 1}
+                                size={20}
+                              />
+                            </div>
                             <span
                               className="text-sm font-semibold truncate"
                               style={{ color: '#E8D8B0' }}
