@@ -4,7 +4,8 @@ export type GameType =
   | 'morris'
   | 'wolves-and-ravens'
   | 'rock-paper-scissors'
-  | 'stellar-siege';
+  | 'stellar-siege'
+  | 'fox-and-geese';
 
 export interface GameManifest {
   type: GameType;
@@ -69,6 +70,14 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     playerColors: ['#80DFFF', '#7FFF5A'],
     disabled: false,
     aiGenerated: true,
+  },
+  'fox-and-geese': {
+    type: 'fox-and-geese',
+    title: 'Fox & Geese',
+    emoji: '\u{1F98A}',
+    description: 'Asymmetric hunt',
+    playerColors: ['#9CA3AF', '#F59E0B'],
+    supportsHistory: true,
   },
 };
 
