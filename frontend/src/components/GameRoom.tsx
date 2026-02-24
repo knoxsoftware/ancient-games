@@ -606,7 +606,7 @@ export default function GameRoom() {
   const isSpectator = !currentPlayer && session.spectators.some((s) => s.id === playerId);
   const bothSeated = session.players.length === 2;
   const isMyTurn =
-    bothSeated && !isSpectator && gameState.currentTurn === currentPlayer?.playerNumber;
+    !isSpectator && gameState.currentTurn === currentPlayer?.playerNumber;
   const isTournamentMatch = !!session.tournamentHubCode;
 
   const animatingPiece = pendingAnimation
@@ -649,7 +649,7 @@ export default function GameRoom() {
         )}
 
         {/* Persistent game action strip — always visible regardless of active tab */}
-        {bothSeated ? (
+        {bothSeated || currentPlayer ? (
           <GameControls
             session={session}
             gameState={gameState}
