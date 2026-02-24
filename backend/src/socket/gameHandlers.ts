@@ -17,6 +17,20 @@ function getRoundLabel(format: string, roundIndex: number, totalRounds: number):
   return `Round of ${Math.pow(2, remaining)}`;
 }
 
+function relayGameStateToHub(
+  io: Server<ClientToServerEvents, ServerToClientEvents>,
+  session: Session,
+  gameState: GameState,
+) {
+  if (session.tournamentHubCode && session.tournamentMatchId) {
+    io.to(session.tournamentHubCode).emit('tournament:match-game-state', {
+      matchId: session.tournamentMatchId,
+      gameState,
+      sessionCode: session.sessionCode,
+    });
+  }
+}
+
 export function registerGameHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents>,
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
@@ -317,6 +331,7 @@ export function registerGameHandlers(
         const session = await sessionService.startGame(sessionCode, playerId);
         if (session) {
           io.to(sessionCode).emit('game:started', session);
+          relayGameStateToHub(io, session, session.gameState!);
         }
       }
     } catch (error) {
@@ -362,6 +377,7 @@ export function registerGameHandlers(
         roll,
         canMove,
       });
+      relayGameStateToHub(io, session, session.gameState!);
 
       if (!canMove) {
         const nextTurn = (session.gameState.currentTurn + 1) % 2;
@@ -454,6 +470,7 @@ export function registerGameHandlers(
         gameState: session.gameState,
         wasCapture,
       });
+      relayGameStateToHub(io, session, session.gameState!);
 
       if (winner !== null) {
         io.to(sessionCode).emit('game:ended', {
@@ -600,6 +617,7 @@ export function registerGameHandlers(
       });
 
       io.to(sessionCode).emit('game:state-updated', session.gameState);
+      relayGameStateToHub(io, session, session.gameState!);
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
     }
