@@ -13,6 +13,7 @@ import { api } from '../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
 import { getScoreInfo } from '../utils/gameScoreInfo';
+import FeedbackModal from './FeedbackModal';
 
 const boardComponents: Record<GameType, React.LazyExoticComponent<React.ComponentType<any>>> = {
   ur: lazy(() => import('./games/ur/UrBoard')),
@@ -74,6 +75,7 @@ export default function GameRoom() {
     'game',
   );
   const [showRules, setShowRules] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [unreadChat, setUnreadChat] = useState(0);
   const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
@@ -681,6 +683,18 @@ export default function GameRoom() {
           >
             ?
           </button>
+          <button
+            onClick={() => setShowFeedback(true)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+            style={{
+              background: 'rgba(196,160,48,0.12)',
+              border: '1.5px solid rgba(196,160,48,0.35)',
+              color: '#C4A030',
+            }}
+            title="Feedback"
+          >
+            ✉
+          </button>
         </div>
 
         {error && (
@@ -1141,6 +1155,18 @@ export default function GameRoom() {
             <GameRules gameType={session.gameType} />
           </div>
         </div>
+      )}
+
+      {showFeedback && (
+        <FeedbackModal
+          gameType={session.gameType}
+          sessionCode={sessionCode}
+          playerName={
+            session.players.find((p) => p.id === playerId)?.displayName ??
+            session.spectators.find((s) => s.id === playerId)?.displayName
+          }
+          onClose={() => setShowFeedback(false)}
+        />
       )}
 
       {selectedMatchId && (() => {
