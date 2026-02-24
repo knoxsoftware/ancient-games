@@ -327,6 +327,9 @@ export function registerGameHandlers(
             });
           }
         }
+
+        // Note: initial game states are relayed via relayGameStateToHub when each match's
+        // game:start fires (Task 2 relay). No gameState exists at tournament creation time.
       } else {
         const session = await sessionService.startGame(sessionCode, playerId);
         if (session) {
