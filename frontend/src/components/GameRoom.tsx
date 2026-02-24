@@ -776,19 +776,6 @@ export default function GameRoom() {
                 })}
               </div>
 
-              {bothSeated ? (
-                <GameControls
-                  session={session}
-                  gameState={gameState}
-                  playerId={playerId!}
-                  isMyTurn={isMyTurn}
-                  lastMove={moveHistory[moveHistory.length - 1]}
-                />
-              ) : (
-                <div className="px-2 py-1 text-center text-xs" style={{ color: '#5A4A38' }}>
-                  Waiting for both players to take their seats…
-                </div>
-              )}
             </div>
           )}
 
@@ -932,6 +919,21 @@ export default function GameRoom() {
             </div>
           )}
         </div>
+
+        {/* Persistent game action strip — always visible regardless of active tab */}
+        {bothSeated ? (
+          <GameControls
+            session={session}
+            gameState={gameState}
+            playerId={playerId!}
+            isMyTurn={isMyTurn}
+            lastMove={moveHistory[moveHistory.length - 1]}
+          />
+        ) : (
+          <div className="px-2 py-2 text-center text-xs" style={{ color: '#5A4A38' }}>
+            Waiting for both players to take their seats…
+          </div>
+        )}
 
         {/* Board */}
         <Suspense
