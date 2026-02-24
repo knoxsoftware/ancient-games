@@ -52,6 +52,21 @@
   animation: tab-fade-in 0.15s ease-out both;
 }
 
+/* Green pulse glow for active player's turn */
+@keyframes my-turn-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(34,197,94,0.2), inset 0 0 8px rgba(34,197,94,0.05);
+    border-color: rgba(34,197,94,0.3);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(34,197,94,0.45), inset 0 0 14px rgba(34,197,94,0.12);
+    border-color: rgba(34,197,94,0.6);
+  }
+}
+.my-turn-pulse {
+  animation: my-turn-pulse 2s ease-in-out infinite;
+}
+
 /* Gold sparkle celebration */
 @keyframes sparkle-float {
   0% {

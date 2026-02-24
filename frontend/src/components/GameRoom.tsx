@@ -782,21 +782,18 @@ export default function GameRoom() {
                   return (
                     <div
                       key={seatIndex}
-                      className="rounded-lg p-2.5 border transition-all"
+                      className={`rounded-lg p-2.5 border${isActive && isMe ? ' my-turn-pulse' : ' transition-all'}`}
                       style={{
                         background: isActive && isMe
                           ? 'rgba(34,197,94,0.06)'
                           : isActive
                             ? 'rgba(196,160,48,0.08)'
                             : 'rgba(8,5,0,0.5)',
-                        borderColor: isActive && isMe
-                          ? 'rgba(34,197,94,0.45)'
-                          : isActive
-                            ? 'rgba(196,160,48,0.45)'
-                            : 'rgba(42,30,14,0.8)',
-                        boxShadow: isActive && isMe
-                          ? '0 0 12px rgba(34,197,94,0.25), inset 0 0 12px rgba(34,197,94,0.08)'
-                          : undefined,
+                        borderColor: isActive && !isMe
+                          ? 'rgba(196,160,48,0.45)'
+                          : !isActive
+                            ? 'rgba(42,30,14,0.8)'
+                            : undefined,
                       }}
                     >
                       {player ? (
