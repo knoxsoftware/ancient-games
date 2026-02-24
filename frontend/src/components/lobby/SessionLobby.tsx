@@ -8,6 +8,7 @@ import { initPushNotifications } from '../../services/pushNotifications';
 import TournamentBracket from '../tournament/TournamentBracket';
 import ChatPanel, { ChatMessage } from '../ChatPanel';
 import MatchSpectatorModal from '../tournament/MatchSpectatorModal';
+import FeedbackModal from '../FeedbackModal';
 
 const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string; desc: string }[] = [
   { value: 'single', label: 'Single Match', desc: '1 game, 2 players only' },
@@ -38,6 +39,7 @@ export default function SessionLobby() {
   const prevSessionRef = useRef<Session | null>(null);
 
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem(PLAYER_ID_KEY));
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const [displayName, setDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
   const [joinLoading, setJoinLoading] = useState(false);
@@ -47,6 +49,11 @@ export default function SessionLobby() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
+
+  const currentPlayerName =
+    session?.players.find((p) => p.id === playerId)?.displayName ??
+    localStorage.getItem(PLAYER_NAME_KEY) ??
+    undefined;
 
   useEffect(() => {
     if (playerId) initPushNotifications(playerId);
@@ -447,9 +454,23 @@ export default function SessionLobby() {
                   <h1 className="text-2xl font-bold">Tournament</h1>
                   <p className="text-gray-400 text-sm">{getGameTitle(session.gameType)}</p>
                 </div>
-                <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
-                  Leave
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowFeedback(true)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+                    style={{
+                      background: 'rgba(196,160,48,0.12)',
+                      border: '1.5px solid rgba(196,160,48,0.35)',
+                      color: '#C4A030',
+                    }}
+                    title="Feedback"
+                  >
+                    ✉
+                  </button>
+                  <button onClick={handleLeave} className="text-gray-400 hover:text-white text-sm">
+                    Leave
+                  </button>
+                </div>
               </div>
 
               <TournamentBracket
@@ -549,9 +570,23 @@ export default function SessionLobby() {
               <h1 className="text-3xl font-bold mb-2">Game Lobby</h1>
               <p className="text-gray-400">{getGameTitle(session.gameType)}</p>
             </div>
-            <button onClick={handleLeave} className="text-gray-400 hover:text-white">
-              Leave
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+                style={{
+                  background: 'rgba(196,160,48,0.12)',
+                  border: '1.5px solid rgba(196,160,48,0.35)',
+                  color: '#C4A030',
+                }}
+                title="Feedback"
+              >
+                ✉
+              </button>
+              <button onClick={handleLeave} className="text-gray-400 hover:text-white">
+                Leave
+              </button>
+            </div>
           </div>
 
           {/* Session code */}
@@ -737,6 +772,15 @@ export default function SessionLobby() {
         >
           {notice}
         </div>
+      )}
+
+      {showFeedback && session && (
+        <FeedbackModal
+          gameType={session.gameType}
+          sessionCode={sessionCode}
+          playerName={currentPlayerName}
+          onClose={() => setShowFeedback(false)}
+        />
       )}
     </div>
   );
