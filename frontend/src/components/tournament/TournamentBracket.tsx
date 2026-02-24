@@ -9,6 +9,7 @@ import {
 } from '@ancient-games/shared';
 import MiniBoard from './MiniBoard';
 import { getScoreInfo } from '../../utils/gameScoreInfo';
+import { GamePiecePreview } from '../games/GamePiecePreview';
 
 interface Props {
   tournament: TournamentState;
@@ -193,6 +194,8 @@ function PlayerInfoRow({
   showSeriesWins,
   scoreInfo,
   session,
+  playerNumber,
+  gameType,
 }: {
   playerId: string | null;
   name: string;
@@ -203,6 +206,8 @@ function PlayerInfoRow({
   showSeriesWins: boolean;
   scoreInfo: string | null;
   session?: Session;
+  playerNumber?: number;
+  gameType?: GameType;
 }) {
   const playerStatus = pid ? session?.players.find((p) => p.id === pid)?.status : undefined;
   return (
@@ -219,6 +224,11 @@ function PlayerInfoRow({
             className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
             style={{ background: playerStatus === 'away' ? '#F59E0B' : '#22C55E' }}
           />
+        )}
+        {playerNumber !== undefined && gameType !== undefined && (
+          <div className="flex-shrink-0">
+            <GamePiecePreview gameType={gameType} playerNumber={playerNumber as 0 | 1} size={16} />
+          </div>
         )}
         <span
           className="text-xs font-semibold truncate flex-1"
@@ -334,6 +344,8 @@ function MatchCard({
           showSeriesWins={showSeriesWins}
           scoreInfo={p1Score}
           session={session}
+          playerNumber={p1SeatIndex}
+          gameType={gameType}
         />
         <PlayerInfoRow
           playerId={match.player2Id}
@@ -345,6 +357,8 @@ function MatchCard({
           showSeriesWins={showSeriesWins}
           scoreInfo={p2Score}
           session={session}
+          playerNumber={p2SeatIndex}
+          gameType={gameType}
         />
       </div>
 
