@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -81,6 +81,12 @@ export default function FoxAndGeeseBoard({
   // Determine which player number this client is
   const myPlayer = session.players.find((p) => p.id === playerId);
   const myPlayerNumber = myPlayer?.playerNumber ?? -1;
+
+  // Auto-roll: Fox & Geese has no real dice, so trigger the roll automatically
+  useEffect(() => {
+    if (!isMyTurn || board.diceRoll !== null) return;
+    socketService.getSocket()?.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId });
+  }, [isMyTurn, board.diceRoll, session.sessionCode, playerId]);
 
   function getValidDestinations(_pieceIndex: number, fromPos: number, playerNumber: number): number[] {
     if (!isMyTurn || board.diceRoll === null) return [];
