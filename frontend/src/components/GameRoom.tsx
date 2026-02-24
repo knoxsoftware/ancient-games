@@ -647,8 +647,8 @@ export default function GameRoom() {
   ];
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="h-screen overflow-hidden p-4">
+      <div className="max-w-6xl mx-auto flex flex-col h-full overflow-hidden min-h-0">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">{getGameTitle(session.gameType)}</h1>
@@ -675,6 +675,47 @@ export default function GameRoom() {
           </div>
         )}
 
+        {/* Persistent game action strip — always visible regardless of active tab */}
+        {bothSeated ? (
+          <GameControls
+            session={session}
+            gameState={gameState}
+            playerId={playerId!}
+            isMyTurn={isMyTurn}
+            lastMove={moveHistory[moveHistory.length - 1]}
+          />
+        ) : (
+          <div className="px-2 py-2 text-center text-xs" style={{ color: '#5A4A38' }}>
+            Waiting for both players to take their seats…
+          </div>
+        )}
+
+        {/* Board */}
+        <Suspense
+          fallback={
+            <div
+              className="flex items-center justify-center py-16 text-sm"
+              style={{ color: 'rgba(196,168,107,0.5)' }}
+            >
+              Loading…
+            </div>
+          }
+        >
+          <div className="flex-shrink-0">
+            {(() => {
+              const BoardComponent = boardComponents[session.gameType];
+              return (
+                <BoardComponent
+                  session={session}
+                  gameState={gameState}
+                  playerId={playerId!}
+                  isMyTurn={isMyTurn}
+                  animatingPiece={animatingPiece}
+                />
+              );
+            })()}
+          </div>
+        </Suspense>
         {/* Tab bar */}
         <div className="flex gap-0 border-b" style={{ borderColor: 'rgba(42,30,14,0.8)' }}>
           {tabs.map((tab) => (
@@ -710,7 +751,7 @@ export default function GameRoom() {
         </div>
 
         {/* Tab content */}
-        <div className="h-64 overflow-y-auto mb-4">
+        <div className="flex-1 min-h-48 overflow-y-auto pb-4">
           {activeTab === 'game' && (
             <div className="tab-content-enter">
               <div className="grid grid-cols-2 gap-2 p-2">
@@ -947,47 +988,6 @@ export default function GameRoom() {
           )}
         </div>
 
-        {/* Persistent game action strip — always visible regardless of active tab */}
-        {bothSeated ? (
-          <GameControls
-            session={session}
-            gameState={gameState}
-            playerId={playerId!}
-            isMyTurn={isMyTurn}
-            lastMove={moveHistory[moveHistory.length - 1]}
-          />
-        ) : (
-          <div className="px-2 py-2 text-center text-xs" style={{ color: '#5A4A38' }}>
-            Waiting for both players to take their seats…
-          </div>
-        )}
-
-        {/* Board */}
-        <Suspense
-          fallback={
-            <div
-              className="flex items-center justify-center py-16 text-sm"
-              style={{ color: 'rgba(196,168,107,0.5)' }}
-            >
-              Loading…
-            </div>
-          }
-        >
-          <div>
-            {(() => {
-              const BoardComponent = boardComponents[session.gameType];
-              return (
-                <BoardComponent
-                  session={session}
-                  gameState={gameState}
-                  playerId={playerId!}
-                  isMyTurn={isMyTurn}
-                  animatingPiece={animatingPiece}
-                />
-              );
-            })()}
-          </div>
-        </Suspense>
       </div>
 
       {/* Toasts */}
