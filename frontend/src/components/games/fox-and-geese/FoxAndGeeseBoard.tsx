@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
-import { useTheme } from '../../../contexts/ThemeContext';
 
 // 33-position cross-shaped board layout
 // [row, col] for each position index 0-32
@@ -74,8 +73,6 @@ export default function FoxAndGeeseBoard({
   isMyTurn,
 }: FoxAndGeeseProps) {
   const { board } = gameState;
-  const { theme } = useTheme();
-  const isYahoo = theme === 'yahoo';
   const [selectedPiece, setSelectedPiece] = useState<{ playerNumber: number; pieceIndex: number; pos: number } | null>(null);
 
   // Determine which player number this client is
@@ -162,14 +159,14 @@ export default function FoxAndGeeseBoard({
     }
   }
 
-  const bgColor = isYahoo ? '#f5f0e8' : '#2A1205';
+  const bgColor =  '#2A1205';
 
   return (
     <div className="flex flex-col items-center gap-2">
       <svg
         width={SVG_W}
         height={SVG_H}
-        style={{ background: bgColor, borderRadius: isYahoo ? 0 : 8, border: isYahoo ? '1px solid #cccccc' : '1px solid rgba(120,70,20,0.4)' }}
+        style={{ background: bgColor, borderRadius:  8, border:  '1px solid rgba(120,70,20,0.4)' }}
       >
         {/* Draw edges */}
         {edges.map(([a, b]) => {
@@ -231,7 +228,7 @@ export default function FoxAndGeeseBoard({
       </svg>
 
       {/* Legend */}
-      <div className="flex gap-4 text-xs" style={{ color: isYahoo ? '#666' : '#A09070' }}>
+      <div className="flex gap-4 text-xs" style={{ color: '#A09070' }}>
         <span className="flex items-center gap-1">
           <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: GOOSE_COLOR }} />
           Geese ({board.pieces.filter((p) => p.playerNumber === 0 && p.position !== 99).length} left)
