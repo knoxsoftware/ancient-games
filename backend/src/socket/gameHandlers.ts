@@ -376,6 +376,11 @@ export function registerGameHandlers(
           if (startingBot) {
             botService.notifyBotTurn(sessionCode, startingBot.id).catch(() => {});
           }
+
+          const hasBotPersona = session.players.some((p) => p.isBot && p.botPersona);
+          if (hasBotPersona) {
+            botService.notifyBotGameStart(sessionCode).catch(() => {});
+          }
         }
       }
     } catch (error) {
@@ -525,6 +530,11 @@ export function registerGameHandlers(
           winner,
           gameState: session.gameState,
         });
+
+        const hasBotPersona = session.players.some((p) => p.isBot && p.botPersona);
+        if (hasBotPersona) {
+          botService.notifyBotGameEnd(sessionCode, winner).catch(() => {});
+        }
 
         // Handle tournament game ended
         if (session.tournamentHubCode) {
@@ -780,6 +790,10 @@ export function registerGameHandlers(
       if (!session) return;
       const isSeatedPlayer = session.players.some((p) => p.id === playerId);
       if (!isSeatedPlayer) return;
+
+      // Don't mark lobby players as away — they reconnect seamlessly and
+      // marking them away would cause them to appear "re-added" on reconnect.
+      if (session.status === 'lobby') return;
 
       const updated = await sessionService.updatePresenceStatus(sessionCode, playerId, 'away');
       if (updated) io.to(sessionCode).emit('session:updated', updated);
