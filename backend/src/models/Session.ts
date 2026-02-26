@@ -17,6 +17,9 @@ const PlayerSchema = new Schema<Player>({
   playerNumber: { type: Number, required: true },
   status: { type: String, enum: ['active', 'away'], default: 'active' },
   awayAt: { type: Number, default: null },
+  isBot: { type: Boolean, default: false },
+  botDifficulty: { type: String, enum: ['easy', 'medium', 'hard', 'harder', 'hardest'], default: null },
+  botPersona: { type: String, default: null },
 });
 
 const SpectatorSchema = new Schema<Spectator>({
@@ -70,6 +73,7 @@ const SessionSchema = new Schema<SessionDocument>({
     enum: ['single', 'bo1', 'bo3', 'bo5', 'bo7', 'round-robin'],
     default: 'single',
   },
+  botConfig: { type: Schema.Types.Mixed, default: null },
 });
 
 // Auto-cleanup sessions older than 24 hours with no activity
