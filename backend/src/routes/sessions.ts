@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { SessionService } from '../services/SessionService';
+import { SessionModel } from '../models/Session';
+import { basicAuth } from '../middleware/auth';
 
 export function createSessionRoutes(sessionService: SessionService): Router {
   const router = Router();
@@ -69,6 +71,34 @@ export function createSessionRoutes(sessionService: SessionService): Router {
       }
 
       res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // GET /api/admin/sessions — list all sessions by most recent activity (auth required)
+  router.get('/admin/sessions', basicAuth, async (_req, res) => {
+    try {
+      const sessions = await SessionModel.find()
+        .sort({ lastActivity: -1 })
+        .select('sessionCode gameType status players spectators gameState lastActivity');
+
+      const result = sessions.map((s) => ({
+        sessionCode: s.sessionCode,
+        gameType: s.gameType,
+        status: s.status,
+        winner:
+          s.gameState.winner != null
+            ? s.players.find((p) => p.playerNumber === s.gameState.winner)?.displayName ?? null
+            : null,
+        lastActivity: s.lastActivity,
+        participants: [
+          ...s.players.map((p) => p.displayName),
+          ...s.spectators.map((sp) => sp.displayName),
+        ],
+      }));
+
+      res.json(result);
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
