@@ -74,7 +74,8 @@ export default function MatchSpectatorModal({
         {/* Player info panels */}
         <div className="grid grid-cols-2 gap-2 mb-4">
           {([0, 1] as const).map((seatIndex) => {
-            const player = session.players.find((p) => p.playerNumber === seatIndex);
+            const playerId = seatIndex === 0 ? match.player1Id : match.player2Id;
+            const player = session.players.find((p) => p.id === playerId);
             const isActive = player !== undefined && gameState.currentTurn === seatIndex;
             const scoreInfo = player
               ? getScoreInfo(gameType, gameState.board.pieces, seatIndex)

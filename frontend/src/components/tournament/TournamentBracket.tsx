@@ -291,8 +291,10 @@ function MatchCard({
   const isFinished = match.status === 'finished';
   const showSeriesWins = format !== 'bo1' && format !== 'round-robin';
 
-  const p1SeatIndex = session?.players.find((p) => p.id === match.player1Id)?.playerNumber ?? 0;
-  const p2SeatIndex = session?.players.find((p) => p.id === match.player2Id)?.playerNumber ?? 1;
+  // Use logical match positions (0=player1, 1=player2) for seat indexes.
+  // The hub session playerNumber reflects hub join order, not game seat assignment.
+  const p1SeatIndex = 0;
+  const p2SeatIndex = 1;
   const pieces = gameState?.board.pieces;
   const p1Score = pieces && gameType ? getScoreInfo(gameType, pieces, p1SeatIndex) : null;
   const p2Score = pieces && gameType ? getScoreInfo(gameType, pieces, p2SeatIndex) : null;
