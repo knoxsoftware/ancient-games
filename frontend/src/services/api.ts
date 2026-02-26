@@ -66,4 +66,21 @@ export const api = {
 
     return response.json();
   },
+
+  async addBot(
+    sessionCode: string,
+    requesterId: string,
+    difficulty: string,
+    persona?: string,
+    ollamaEnabled?: boolean,
+    ollamaModel?: string,
+  ): Promise<Session> {
+    const res = await fetch(`${API_URL}/sessions/${sessionCode}/add-bot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requesterId, difficulty, persona, ollamaEnabled, ollamaModel }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+  },
 };
