@@ -133,6 +133,31 @@ export function registerGameHandlers(
 
       io.to(sessionCode).emit('session:updated', freshSession);
 
+      // If rejoining a tournament hub session and there's an active match for this player,
+      // re-send tournament:match-ready in case they missed it due to a broken connection.
+      if (!session.tournamentHubCode && freshSession.tournamentState) {
+        const ts = freshSession.tournamentState;
+        const activeMatch = ts.rounds.flat().find(
+          (m) =>
+            m.status === 'in_progress' &&
+            m.currentSessionCode &&
+            (m.player1Id === playerId || m.player2Id === playerId),
+        );
+        if (activeMatch) {
+          const opponentId =
+            activeMatch.player1Id === playerId ? activeMatch.player2Id : activeMatch.player1Id;
+          const opponent = ts.participants.find((p) => p.id === opponentId);
+          if (opponent) {
+            const roundLabel = getRoundLabel(ts.format, activeMatch.roundIndex, ts.rounds.length);
+            socket.emit('tournament:match-ready', {
+              matchSessionCode: activeMatch.currentSessionCode!,
+              opponentName: opponent.displayName,
+              roundLabel,
+            });
+          }
+        }
+      }
+
       // Send current game state directly to the joining client only
       socket.emit('game:state-updated', freshSession.gameState);
 
