@@ -88,6 +88,31 @@ export function createSessionRoutes(sessionService: SessionService): Router {
     }
   });
 
+  // Remove a bot player (host only, lobby only)
+  router.delete('/sessions/:sessionCode/bot/:botId', async (req, res) => {
+    try {
+      const { sessionCode, botId } = req.params;
+      const { requesterId } = req.body;
+
+      if (!requesterId) {
+        return res.status(400).json({ error: 'requesterId is required' });
+      }
+
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) return res.status(404).json({ error: 'Session not found' });
+      if (session.hostId !== requesterId) return res.status(403).json({ error: 'Only the host can remove bots' });
+      if (session.status !== 'lobby') return res.status(400).json({ error: 'Can only remove bots in the lobby' });
+
+      const bot = session.players.find((p) => p.id === botId);
+      if (!bot || !(bot as any).isBot) return res.status(400).json({ error: 'Player is not a bot' });
+
+      const updated = await sessionService.removePlayer(sessionCode, botId);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   // Get session details
   router.get('/sessions/:sessionCode', async (req, res) => {
     try {

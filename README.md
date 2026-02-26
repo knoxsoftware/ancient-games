@@ -13,6 +13,7 @@ A mobile-friendly web application for playing ancient and classic board games on
 - 🐳 **Containerized**: Docker and Kubernetes ready
 - 💬 **In-Game Chat**: Real-time chat during sessions
 - 🔒 **Production Ready**: Health checks, TLS, and resource limits
+- 🤖 **AI Opponents**: Play against computer-controlled bots with optional LLM commentary via Ollama
 
 ## Tech Stack
 
@@ -72,6 +73,75 @@ AUTH_PASSWORD=your-secure-password
 - `AUTH_PASSWORD` - Password for basic auth on feedback endpoints (optional)
 
 Note: The feedback endpoints (`GET /api/feedback`, `DELETE /api/feedback/clear`, `DELETE /api/feedback/:id`) are protected with HTTP basic auth. If `AUTH_USERNAME` and `AUTH_PASSWORD` are not set, these endpoints will return `403 Forbidden` for all requests.
+
+### AI Opponents & Ollama Commentary (Optional)
+
+AI bots use an expectiminimax engine and work without any external services. Optionally, bots can generate in-character commentary after notable moves using a locally-running [Ollama](https://ollama.com) instance.
+
+**To enable LLM commentary:**
+
+1. **Install Ollama** — download from https://ollama.com and follow the installer for your OS.
+
+2. **Pull a model** — the default model is `llama3.2:1b` (fast, ~800 MB):
+
+   ```bash
+   ollama pull llama3.2:1b
+   ```
+
+   Any other model supported by Ollama can be used (e.g. `llama3.2:3b`, `mistral`). The model is selected per-session when creating a game with a bot opponent.
+
+3. **Start Ollama** — it runs as a local HTTP server on port 11434:
+
+   ```bash
+   ollama serve
+   ```
+
+   Ollama starts automatically on most platforms after installation. Verify it is running:
+
+   ```bash
+   curl http://localhost:11434/api/tags
+   ```
+
+4. **Enable commentary in the UI** — when creating a session with an AI opponent, enable the "AI Commentary" option and optionally specify a model name. If Ollama is not running or the model is unavailable, commentary is silently skipped and the game continues normally.
+
+**Notes:**
+- Set the `OLLAMA_URL` environment variable to point the backend at a remote Ollama instance (default: `http://localhost:11434`).
+- Commentary generation has a 3-second timeout. Slow models will time out silently.
+- Ollama is never required — AI opponents work fully without it.
+
+**Using Docker Compose (shared Ollama instance):**
+
+Ollama is included as a service in `docker-compose.yml`. An `ollama-init` sidecar pulls the default model (`llama3.2:1b`) on first run. The app container is automatically pointed at it via `OLLAMA_URL=http://ollama:11434`.
+
+To use a different model, set `OLLAMA_MODEL` before starting:
+
+```bash
+OLLAMA_MODEL=llama3.2:3b docker-compose up --build
+```
+
+Model weights are stored in the `ollama_data` Docker volume and survive restarts.
+
+**Using Kubernetes (shared Ollama instance):**
+
+```bash
+kubectl apply -f k8s/ollama.yaml
+kubectl apply -f k8s/deployment.yaml
+```
+
+`k8s/ollama.yaml` creates:
+- A `Deployment` running `ollama/ollama:latest` with an init container that pulls the model on first start
+- A `ClusterIP` Service at `ollama-service:11434`
+- A `PersistentVolumeClaim` (5 Gi) for model weights
+- A `ConfigMap` to set the model name (default: `llama3.2:1b`)
+
+To change the model, edit the `ollama-config` ConfigMap and restart the Ollama pod:
+
+```bash
+kubectl patch configmap ollama-config -p '{"data":{"model":"llama3.2:3b"}}'
+kubectl rollout restart deployment/ollama
+```
+
+The app deployment is pre-configured to use `http://ollama-service:11434` via the `OLLAMA_URL` env var.
 
 3. **Start MongoDB** (if not using external service)
 
@@ -402,5 +472,4 @@ Contributions welcome! Please open an issue or PR.
 - User accounts and game history
 - Game replays
 - Additional games (Mancala, etc.)
-- AI opponents
 - Sound effects and animations

@@ -24,6 +24,7 @@ export class BotService {
   private io: Server<ClientToServerEvents, ServerToClientEvents>;
   private sessionService: SessionService;
   private ollama: OllamaService;
+  private ollamaUrl: string;
 
   constructor(
     io: Server<ClientToServerEvents, ServerToClientEvents>,
@@ -32,7 +33,9 @@ export class BotService {
   ) {
     this.io = io;
     this.sessionService = sessionService;
+    this.ollamaUrl = ollamaUrl;
     this.ollama = new OllamaService(ollamaUrl);
+    this.ollama.warmUp().catch(() => {});
   }
 
   async notifyBotTurn(sessionCode: string, botPlayerId: string): Promise<void> {
@@ -50,7 +53,7 @@ export class BotService {
       // Re-fetch session after delay (state may have changed)
       const fresh = await this.sessionService.getSession(sessionCode);
       if (!fresh?.gameState || fresh.gameState.currentTurn !== bot.playerNumber) return;
-      if (fresh.gameState.board.diceRoll !== null) return; // already rolled
+      if (fresh.gameState.board.diceRoll !== null) return;
 
       const gameEngine = GameRegistry.getGame(fresh.gameType);
       const roll = gameEngine.rollDice();
@@ -207,7 +210,7 @@ export class BotService {
     const boardSummary = `${onBoard} pieces on board, ${finished} finished`;
 
     const model = session.botConfig?.ollamaModel ?? 'llama3.2:1b';
-    const ollamaWithModel = new OllamaService('http://localhost:11434', model);
+    const ollamaWithModel = new OllamaService(this.ollamaUrl, model);
     const comment = await ollamaWithModel.generateComment({
       persona: bot.botPersona ?? 'Bot',
       gameName: getGameTitle(gameType as any),

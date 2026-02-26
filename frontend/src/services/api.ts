@@ -83,4 +83,14 @@ export const api = {
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();
   },
+
+  async removeBot(sessionCode: string, requesterId: string, botId: string): Promise<Session> {
+    const res = await fetch(`${API_URL}/sessions/${sessionCode}/bot/${botId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requesterId }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+  },
 };

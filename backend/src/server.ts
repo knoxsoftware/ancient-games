@@ -44,7 +44,7 @@ app.get('/health', (req, res) => {
 // Services
 const sessionService = new SessionService();
 const pushService = new PushService();
-const botService = new BotService(io, sessionService);
+const botService = new BotService(io, sessionService, process.env.OLLAMA_URL);
 
 // API Routes
 app.use('/api', createSessionRoutes(sessionService));

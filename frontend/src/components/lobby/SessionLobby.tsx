@@ -338,6 +338,16 @@ export default function SessionLobby() {
     }
   };
 
+  const handleRemoveBot = async (botId: string) => {
+    if (!playerId || !sessionCode) return;
+    try {
+      const updated = await api.removeBot(sessionCode, playerId, botId);
+      setSession(updated);
+    } catch (e) {
+      showNotice((e as Error).message);
+    }
+  };
+
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
@@ -662,13 +672,23 @@ export default function SessionLobby() {
                   )}
                 </div>
                 {isHost && player.id !== playerId && (
-                  <button
-                    onClick={() => handleHostStandUp(player.id)}
-                    className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
-                    title="Move to spectators"
-                  >
-                    Stand
-                  </button>
+                  (player as any).isBot ? (
+                    <button
+                      onClick={() => handleRemoveBot(player.id)}
+                      className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-900/30 transition-colors"
+                      title="Remove bot"
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleHostStandUp(player.id)}
+                      className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
+                      title="Move to spectators"
+                    >
+                      Stand
+                    </button>
+                  )
                 )}
               </div>
             ))}
