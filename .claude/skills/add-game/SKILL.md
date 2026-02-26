@@ -349,6 +349,11 @@ export default function GAMECLASSBoard({
 Board rendering notes:
 
 - Use SVG or CSS grid — look at `UrBoard.tsx` for SVG patterns, `MorrisBoard.tsx` for grid patterns
+- **SVG must be responsive on mobile**: Use `viewBox` attribute and `width="100%"` with `style={{ maxWidth: SVG_W }}` instead of fixed `width={SVG_W}`. This ensures the board scales down on narrow viewports while staying centered via parent `items-center` flex layout.
+  ```tsx
+  const SVG_W = 412; // your computed width
+  <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} width="100%" style={{ maxWidth: SVG_W, ... }}>
+  ```
 - Pieces are in `board.pieces`, filtered by `playerNumber` and `position`
 - Use `session.sessionCode` (not `session.code`) when emitting socket events
 - `game:move` requires top-level `playerId` in the payload
@@ -501,6 +506,7 @@ Thanks to the manifest and registry architecture, these files need **no changes*
 7. **`session.sessionCode` not `session.code`** — use `session.sessionCode` in socket events
 8. **`game:move` requires top-level `playerId`** — payload is `{ sessionCode, playerId, move }`
 9. **`isCaptureMove` must be implemented** — even if just returning `false`. The server calls this on every move to determine capture status.
+10. **SVG board must use `viewBox` + responsive `width`** — Don't use fixed `width={SVG_W}`. Instead use `viewBox={`0 0 ${SVG_W} ${SVG_H}`}` with `width="100%"` and `style={{ maxWidth: SVG_W, ... }}`. This ensures the board centers on mobile and scales properly without horizontal overflow.
 
 ## Checklist
 

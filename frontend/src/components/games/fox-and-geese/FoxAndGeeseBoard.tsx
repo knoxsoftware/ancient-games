@@ -164,9 +164,9 @@ export default function FoxAndGeeseBoard({
   return (
     <div className="flex flex-col items-center gap-2">
       <svg
-        width={SVG_W}
-        height={SVG_H}
-        style={{ background: bgColor, borderRadius:  8, border:  '1px solid rgba(120,70,20,0.4)' }}
+        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+        width="100%"
+        style={{ maxWidth: SVG_W, background: bgColor, borderRadius: 8, border: '1px solid rgba(120,70,20,0.4)' }}
       >
         {/* Draw edges */}
         {edges.map(([a, b]) => {

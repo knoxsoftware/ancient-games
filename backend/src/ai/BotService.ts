@@ -149,6 +149,7 @@ export class BotService {
 
       if (winner !== null) {
         this.io.to(sessionCode).emit('game:ended', { winner, gameState: fresh.gameState });
+        this.notifyBotGameEnd(sessionCode, winner).catch(() => {});
       } else {
         this.io.to(sessionCode).emit('game:turn-changed', { currentTurn: fresh.gameState.currentTurn });
 
@@ -161,9 +162,10 @@ export class BotService {
         }
       }
 
-      // Ollama commentary for notable moves
+      // Ollama commentary — on notable moves, fire 100% of the time; otherwise 20%
       const notable = wasCapture || landedRosette || scored;
-      if (notable && fresh.botConfig?.ollamaEnabled) {
+      const shouldComment = notable || Math.random() < 0.2;
+      if (shouldComment && fresh.botConfig?.ollamaEnabled) {
         this.generateAndSendComment(
           sessionCode,
           bot,
@@ -176,6 +178,81 @@ export class BotService {
       }
     } catch (err) {
       console.error('[BotService] notifyBotTurn error:', err);
+    }
+  }
+
+  async notifyBotGameStart(sessionCode: string): Promise<void> {
+    try {
+      const session = await this.sessionService.getSession(sessionCode);
+      if (!session?.gameState || !session.botConfig?.ollamaEnabled) return;
+
+      const bots = session.players.filter((p) => p.isBot && p.botPersona);
+      for (const bot of bots) {
+        const opponent = session.players.find((p) => p.id !== bot.id);
+        if (!opponent) continue;
+
+        const model = session.botConfig.ollamaModel ?? 'llama3.2:1b';
+        const ollamaWithModel = new OllamaService(this.ollamaUrl, model);
+        const comment = await ollamaWithModel.generateIntro({
+          persona: bot.botPersona ?? bot.displayName,
+          gameName: getGameTitle(session.gameType as any),
+          opponentName: opponent.displayName,
+        });
+
+        if (!comment) continue;
+
+        const message = {
+          id: nanoid(),
+          playerId: bot.id,
+          displayName: bot.displayName,
+          text: comment,
+          timestamp: Date.now(),
+          isSpectator: false,
+        };
+
+        await this.sessionService.addChatMessage(sessionCode, message);
+        this.io.to(sessionCode).emit('chat:message', message);
+      }
+    } catch (err) {
+      console.error('[BotService] notifyBotGameStart error:', err);
+    }
+  }
+
+  async notifyBotGameEnd(sessionCode: string, winner: number): Promise<void> {
+    try {
+      const session = await this.sessionService.getSession(sessionCode);
+      if (!session?.gameState || !session.botConfig?.ollamaEnabled) return;
+
+      const bots = session.players.filter((p) => p.isBot && p.botPersona);
+      for (const bot of bots) {
+        const opponent = session.players.find((p) => p.id !== bot.id);
+        if (!opponent) continue;
+
+        const model = session.botConfig.ollamaModel ?? 'llama3.2:1b';
+        const ollamaWithModel = new OllamaService(this.ollamaUrl, model);
+        const comment = await ollamaWithModel.generateOutro({
+          persona: bot.botPersona ?? bot.displayName,
+          gameName: getGameTitle(session.gameType as any),
+          opponentName: opponent.displayName,
+          won: winner === bot.playerNumber,
+        });
+
+        if (!comment) continue;
+
+        const message = {
+          id: nanoid(),
+          playerId: bot.id,
+          displayName: bot.displayName,
+          text: comment,
+          timestamp: Date.now(),
+          isSpectator: false,
+        };
+
+        await this.sessionService.addChatMessage(sessionCode, message);
+        this.io.to(sessionCode).emit('chat:message', message);
+      }
+    } catch (err) {
+      console.error('[BotService] notifyBotGameEnd error:', err);
     }
   }
 

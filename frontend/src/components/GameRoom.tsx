@@ -70,7 +70,7 @@ export default function GameRoom() {
   );
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
-  const [skipNotice, setSkipNotice] = useState<{ playerName: string } | null>(null);
+  const [skipNotice, setSkipNotice] = useState<{ playerName: string; roll: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'game' | 'chat' | 'room' | 'history' | 'bracket'>(
     'game',
   );
@@ -207,7 +207,7 @@ export default function GameRoom() {
             isSkip: true,
           },
         ]);
-        setSkipNotice({ playerName });
+        setSkipNotice({ playerName, roll });
         setTimeout(() => setSkipNotice(null), 2500);
       }
     });
@@ -1111,7 +1111,7 @@ export default function GameRoom() {
             transform: 'translateX(-50%)',
           }}
         >
-          No valid moves — {skipNotice.playerName}&apos;s turn passes
+	{skipNotice.playerName} rolled a {skipNotice.roll} — No valid moves. Pass.
         </div>
       )}
 
