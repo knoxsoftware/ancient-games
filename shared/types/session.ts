@@ -29,6 +29,10 @@ export interface Session {
   tournamentHubCode?: string;
   tournamentMatchId?: string;
   lobbyFormat?: TournamentFormat | 'single';
+  botConfig?: {
+    ollamaEnabled: boolean;
+    ollamaModel?: string;
+  };
 }
 
 export interface CreateSessionRequest {

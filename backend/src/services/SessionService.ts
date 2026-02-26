@@ -1,4 +1,4 @@
-import { customAlphabet } from 'nanoid';
+import { customAlphabet, nanoid as nanoidDefault } from 'nanoid';
 import { SessionModel } from '../models/Session';
 import { GameRegistry } from '../games/GameRegistry';
 import {
@@ -14,6 +14,7 @@ import {
   TournamentParticipant,
   TournamentState,
   TournamentStanding,
+  BotDifficulty,
 } from '@ancient-games/shared';
 
 const nanoid = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 6);
@@ -944,6 +945,48 @@ export class SessionService {
     return result;
   }
 
+  async addBotPlayer(
+    sessionCode: string,
+    requesterId: string,
+    opts: { difficulty: BotDifficulty; persona?: string; ollamaEnabled?: boolean; ollamaModel?: string },
+  ): Promise<Session> {
+    const session = await this.getSession(sessionCode);
+    if (!session) throw new Error('Session not found');
+    if (session.hostId !== requesterId) throw new Error('Only the host can add bots');
+    if (session.players.length >= 2) throw new Error('Session is full');
+
+    const persona = opts.persona ?? 'Bot';
+    const botId = nanoidDefault();
+    const botPlayer: Player = {
+      id: botId,
+      displayName: persona,
+      socketId: 'bot',
+      ready: true,
+      playerNumber: session.players.length,
+      status: 'active',
+      isBot: true,
+      botDifficulty: opts.difficulty,
+      botPersona: persona,
+    };
+
+    await SessionModel.updateOne(
+      { sessionCode },
+      {
+        $push: { players: botPlayer },
+        ...(opts.ollamaEnabled !== undefined && {
+          $set: {
+            botConfig: {
+              ollamaEnabled: opts.ollamaEnabled,
+              ollamaModel: opts.ollamaModel ?? 'llama3.2:1b',
+            },
+          },
+        }),
+      },
+    );
+
+    return (await this.getSession(sessionCode))!;
+  }
+
   private generatePlayerId(): string {
     return nanoid();
   }
@@ -965,6 +1008,7 @@ export class SessionService {
       tournamentHubCode: doc.tournamentHubCode ?? undefined,
       tournamentMatchId: doc.tournamentMatchId ?? undefined,
       lobbyFormat: doc.lobbyFormat ?? 'single',
+      botConfig: doc.botConfig ?? undefined,
     };
   }
 }

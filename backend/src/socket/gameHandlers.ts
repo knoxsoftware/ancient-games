@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { nanoid } from 'nanoid';
 import { SessionService } from '../services/SessionService';
 import { PushService } from '../services/PushService';
+import { BotService } from '../ai/BotService';
 import { GameRegistry } from '../games/GameRegistry';
 import {
   ClientToServerEvents,
@@ -42,6 +43,7 @@ export function registerGameHandlers(
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
   sessionService: SessionService,
   pushService: PushService,
+  botService: BotService,
 ) {
   // Join a session room
   socket.on('session:join', async ({ sessionCode, playerId }) => {
@@ -341,6 +343,14 @@ export function registerGameHandlers(
         if (session) {
           io.to(sessionCode).emit('game:started', session);
           relayGameStateToHub(io, session, session.gameState!);
+
+          // If first player is a bot, kick off their turn
+          const startingBot = session.players.find(
+            (p) => p.isBot && p.playerNumber === session.gameState.currentTurn,
+          );
+          if (startingBot) {
+            botService.notifyBotTurn(sessionCode, startingBot.id).catch(() => {});
+          }
         }
       }
     } catch (error) {
@@ -411,11 +421,15 @@ export function registerGameHandlers(
 
         const nextPlayer = session.players.find((p) => p.playerNumber === nextTurn);
         if (nextPlayer) {
-          await pushService.sendNotification(nextPlayer.id, {
-            title: 'Your turn!',
-            body: `${player.displayName} had no moves in ${getGameTitle(session.gameType)}`,
-            url: `/game/${sessionCode}`,
-          });
+          if (!nextPlayer.isBot) {
+            await pushService.sendNotification(nextPlayer.id, {
+              title: 'Your turn!',
+              body: `${player.displayName} had no moves in ${getGameTitle(session.gameType)}`,
+              url: `/game/${sessionCode}`,
+            });
+          } else {
+            botService.notifyBotTurn(sessionCode, nextPlayer.id).catch(() => {});
+          }
         }
       }
 
@@ -583,11 +597,15 @@ export function registerGameHandlers(
           (p) => p.playerNumber === session.gameState.currentTurn,
         );
         if (nextPlayer && nextPlayer.id !== playerId) {
-          await pushService.sendNotification(nextPlayer.id, {
-            title: 'Your turn!',
-            body: `${player.displayName} made a move in ${getGameTitle(session.gameType)}`,
-            url: `/game/${sessionCode}`,
-          });
+          if (nextPlayer.isBot) {
+            botService.notifyBotTurn(sessionCode, nextPlayer.id).catch(() => {});
+          } else {
+            await pushService.sendNotification(nextPlayer.id, {
+              title: 'Your turn!',
+              body: `${player.displayName} made a move in ${getGameTitle(session.gameType)}`,
+              url: `/game/${sessionCode}`,
+            });
+          }
         }
       }
     } catch (error) {

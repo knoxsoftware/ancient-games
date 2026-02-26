@@ -50,6 +50,12 @@ export default function SessionLobby() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
 
+  const [showBotForm, setShowBotForm] = useState(false);
+  const [botDifficulty, setBotDifficulty] = useState('medium');
+  const [botPersona, setBotPersona] = useState('Ancient Strategist');
+  const [botOllamaEnabled, setBotOllamaEnabled] = useState(false);
+  const [addingBot, setAddingBot] = useState(false);
+
   const currentPlayerName =
     session?.players.find((p) => p.id === playerId)?.displayName ??
     localStorage.getItem(PLAYER_NAME_KEY) ??
@@ -311,6 +317,36 @@ export default function SessionLobby() {
   const handleMatchClick = useCallback((matchId: string) => {
     setSelectedMatchId(matchId);
   }, []);
+
+  const handleAddBot = async () => {
+    if (!playerId || !sessionCode) return;
+    setAddingBot(true);
+    try {
+      const updated = await api.addBot(
+        sessionCode,
+        playerId,
+        botDifficulty,
+        botPersona,
+        botOllamaEnabled,
+      );
+      setSession(updated);
+      setShowBotForm(false);
+    } catch (e) {
+      showNotice((e as Error).message);
+    } finally {
+      setAddingBot(false);
+    }
+  };
+
+  const handleRemoveBot = async (botId: string) => {
+    if (!playerId || !sessionCode) return;
+    try {
+      const updated = await api.removeBot(sessionCode, playerId, botId);
+      setSession(updated);
+    } catch (e) {
+      showNotice((e as Error).message);
+    }
+  };
 
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
@@ -619,6 +655,11 @@ export default function SessionLobby() {
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-green-500" />
                   <span className="font-medium">{player.displayName}</span>
+                  {(player as any).isBot && (
+                    <span className="text-xs bg-stone-700 text-stone-400 px-1.5 py-0.5 rounded ml-1">
+                      🤖 Bot
+                    </span>
+                  )}
                   {player.id === session.hostId && (
                     <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-1 rounded">
                       Host
@@ -631,20 +672,90 @@ export default function SessionLobby() {
                   )}
                 </div>
                 {isHost && player.id !== playerId && (
-                  <button
-                    onClick={() => handleHostStandUp(player.id)}
-                    className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
-                    title="Move to spectators"
-                  >
-                    Stand
-                  </button>
+                  (player as any).isBot ? (
+                    <button
+                      onClick={() => handleRemoveBot(player.id)}
+                      className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-900/30 transition-colors"
+                      title="Remove bot"
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleHostStandUp(player.id)}
+                      className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
+                      title="Move to spectators"
+                    >
+                      Stand
+                    </button>
+                  )
                 )}
               </div>
             ))}
 
-            {session.players.length < 2 && (
+            {session.players.length < 2 && !showBotForm && (
               <div className="bg-gray-700/30 rounded-lg p-3 text-center text-gray-400">
                 Waiting for another player...
+              </div>
+            )}
+
+            {isHost && format === 'single' && session.players.length < 2 && (
+              <div className="mt-3">
+                {!showBotForm ? (
+                  <button
+                    onClick={() => setShowBotForm(true)}
+                    className="text-sm text-stone-400 hover:text-stone-200 border border-stone-600 hover:border-stone-400 rounded px-3 py-1.5 transition-colors w-full"
+                  >
+                    + Add Bot Player
+                  </button>
+                ) : (
+                  <div className="border border-stone-600 rounded-lg p-3 space-y-2">
+                    <p className="text-sm font-medium text-stone-300">Bot Settings</p>
+                    <div className="flex gap-2">
+                      <select
+                        value={botDifficulty}
+                        onChange={(e) => setBotDifficulty(e.target.value)}
+                        className="flex-1 bg-stone-800 border border-stone-600 rounded px-2 py-1 text-sm text-stone-200"
+                      >
+                        {['easy', 'medium', 'hard', 'harder', 'hardest'].map((d) => (
+                          <option key={d} value={d}>
+                            {d.charAt(0).toUpperCase() + d.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={botPersona}
+                        onChange={(e) => setBotPersona(e.target.value)}
+                        placeholder="Bot name"
+                        className="flex-1 bg-stone-800 border border-stone-600 rounded px-2 py-1 text-sm text-stone-200"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-stone-400">
+                      <input
+                        type="checkbox"
+                        checked={botOllamaEnabled}
+                        onChange={(e) => setBotOllamaEnabled(e.target.checked)}
+                        className="rounded"
+                      />
+                      Enable AI commentary (requires local Ollama)
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleAddBot}
+                        disabled={addingBot}
+                        className="bg-amber-700 hover:bg-amber-600 text-white text-sm rounded px-3 py-1 disabled:opacity-50"
+                      >
+                        {addingBot ? 'Adding...' : 'Add Bot'}
+                      </button>
+                      <button
+                        onClick={() => setShowBotForm(false)}
+                        className="text-stone-400 hover:text-stone-200 text-sm px-3 py-1"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

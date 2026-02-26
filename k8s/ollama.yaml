@@ -1,0 +1,120 @@
+---
+# PersistentVolumeClaim for model weights (~800 MB for llama3.2:1b)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      # Pull the model before the main container starts
+      initContainers:
+        - name: pull-model
+          image: ollama/ollama:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              ollama serve &
+              SERVER_PID=$!
+              echo "Waiting for ollama to be ready..."
+              until ollama list 2>/dev/null; do sleep 2; done
+              echo "Pulling model ${OLLAMA_MODEL}..."
+              ollama pull ${OLLAMA_MODEL}
+              kill $SERVER_PID
+          env:
+            - name: OLLAMA_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: ollama-config
+                  key: model
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /root/.ollama
+
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+              name: http
+          env:
+            - name: OLLAMA_HOST
+              value: '0.0.0.0'
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /root/.ollama
+          resources:
+            requests:
+              memory: '1Gi'
+              cpu: '500m'
+            limits:
+              memory: '4Gi'
+              cpu: '2000m'
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: 11434
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/tags
+              port: 11434
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+      volumes:
+        - name: ollama-models
+          persistentVolumeClaim:
+            claimName: ollama-models-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-service
+  labels:
+    app: ollama
+spec:
+  type: ClusterIP
+  ports:
+    - port: 11434
+      targetPort: 11434
+      protocol: TCP
+      name: http
+  selector:
+    app: ollama
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ollama-config
+data:
+  model: 'llama3.2:1b'

@@ -123,6 +123,8 @@ export interface TournamentState {
   winnerId: string | null;
 }
 
+export type BotDifficulty = 'easy' | 'medium' | 'hard' | 'harder' | 'hardest';
+
 export interface Player {
   id: string;
   displayName: string;
@@ -131,6 +133,9 @@ export interface Player {
   playerNumber: number; // 0 or 1
   status: 'active' | 'away';
   awayAt?: number; // unix ms timestamp set when player disconnects
+  isBot?: boolean;
+  botDifficulty?: BotDifficulty;
+  botPersona?: string;
 }
 
 export interface Spectator {

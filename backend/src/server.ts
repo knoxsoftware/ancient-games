@@ -11,6 +11,7 @@ import { createSessionRoutes } from './routes/sessions';
 import { createPushRoutes } from './routes/push';
 import { createFeedbackRoutes } from './routes/feedback';
 import { registerGameHandlers } from './socket/gameHandlers';
+import { BotService } from './ai/BotService';
 import { ClientToServerEvents, ServerToClientEvents } from '@ancient-games/shared';
 
 dotenv.config();
@@ -43,6 +44,7 @@ app.get('/health', (req, res) => {
 // Services
 const sessionService = new SessionService();
 const pushService = new PushService();
+const botService = new BotService(io, sessionService, process.env.OLLAMA_URL);
 
 // API Routes
 app.use('/api', createSessionRoutes(sessionService));
@@ -64,7 +66,7 @@ if (process.env.NODE_ENV === 'production') {
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
-  registerGameHandlers(io, socket, sessionService, pushService);
+  registerGameHandlers(io, socket, sessionService, pushService, botService);
 });
 
 // Database connection and server start

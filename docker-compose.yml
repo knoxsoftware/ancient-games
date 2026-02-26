@@ -14,6 +14,47 @@ services:
     networks:
       - ancient-games-network
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ancient-games-ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_LOAD_TIMEOUT=10m
+    ports:
+      - '11434:11434'
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ancient-games-network
+    healthcheck:
+      test: ['CMD', 'ollama', 'list']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ancient-games-ollama-init
+    restart: 'no'
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ancient-games-network
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        until ollama list 2>/dev/null; do
+          echo "Waiting for ollama..."
+          sleep 2
+        done
+        ollama pull ${OLLAMA_MODEL:-llama3.2:1b}
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+
   app:
     build:
       context: .
@@ -29,8 +70,10 @@ services:
       CORS_ORIGIN: http://localhost:3000
       AUTH_USERNAME: admin
       AUTH_PASSWORD: changeme
+      OLLAMA_URL: http://ollama:11434
     depends_on:
       - mongodb
+      - ollama
     networks:
       - ancient-games-network
     healthcheck:
@@ -48,6 +91,8 @@ services:
 
 volumes:
   mongodb_data:
+    driver: local
+  ollama_data:
     driver: local
 
 networks:

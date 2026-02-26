@@ -60,6 +60,61 @@ export function createSessionRoutes(sessionService: SessionService): Router {
     }
   });
 
+  // Add a bot player (host only)
+  router.post('/sessions/:sessionCode/add-bot', async (req, res) => {
+    try {
+      const { sessionCode } = req.params;
+      const { requesterId, difficulty, persona, ollamaEnabled, ollamaModel } = req.body;
+
+      if (!requesterId || !difficulty) {
+        return res.status(400).json({ error: 'requesterId and difficulty are required' });
+      }
+
+      const validDifficulties = ['easy', 'medium', 'hard', 'harder', 'hardest'];
+      if (!validDifficulties.includes(difficulty)) {
+        return res.status(400).json({ error: 'Invalid difficulty' });
+      }
+
+      const session = await sessionService.addBotPlayer(sessionCode, requesterId, {
+        difficulty,
+        persona,
+        ollamaEnabled,
+        ollamaModel,
+      });
+
+      res.json(session);
+    } catch (error) {
+      const msg = (error as Error).message;
+      const status = msg.includes('host') || msg.includes('full') ? 400 : 500;
+      res.status(status).json({ error: msg });
+    }
+  });
+
+  // Remove a bot player (host only, lobby only)
+  router.delete('/sessions/:sessionCode/bot/:botId', async (req, res) => {
+    try {
+      const { sessionCode, botId } = req.params;
+      const { requesterId } = req.body;
+
+      if (!requesterId) {
+        return res.status(400).json({ error: 'requesterId is required' });
+      }
+
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) return res.status(404).json({ error: 'Session not found' });
+      if (session.hostId !== requesterId) return res.status(403).json({ error: 'Only the host can remove bots' });
+      if (session.status !== 'lobby') return res.status(400).json({ error: 'Can only remove bots in the lobby' });
+
+      const bot = session.players.find((p) => p.id === botId);
+      if (!bot || !(bot as any).isBot) return res.status(400).json({ error: 'Player is not a bot' });
+
+      const updated = await sessionService.removePlayer(sessionCode, botId);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   // Get session details
   router.get('/sessions/:sessionCode', async (req, res) => {
     try {
