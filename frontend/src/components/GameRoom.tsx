@@ -650,13 +650,14 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
     <div className="h-screen overflow-hidden p-4">
       <div className="max-w-6xl mx-auto flex flex-col h-full overflow-hidden min-h-0">
         {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold mb-2">{getGameTitle(session.gameType)}</h1>
-          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-0.5">
+        <div className="flex items-center justify-between mb-4 gap-2 flex-nowrap">
+          <h1 className="text-2xl font-bold flex-shrink-0">{getGameTitle(session.gameType)}</h1>
+          <div className="flex items-center gap-1 flex-shrink-0">
             {/* Rules */}
             <button
               onClick={() => setShowRules(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+              aria-label="Rules"
+              className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
               style={{
                 background: 'rgba(196,160,48,0.12)',
                 border: '1.5px solid rgba(196,160,48,0.35)',
@@ -668,12 +669,13 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 <path d="M8 11V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 <circle cx="8" cy="5.5" r="0.75" fill="currentColor"/>
               </svg>
-              Rules
+              <span className="hidden sm:inline">Rules</span>
             </button>
             {/* Feedback */}
             <button
               onClick={() => setShowFeedback(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+              aria-label="Feedback"
+              className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
               style={{
                 background: 'rgba(196,160,48,0.12)',
                 border: '1.5px solid rgba(196,160,48,0.35)',
@@ -684,13 +686,14 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M1.5 5L8 9.5L14.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
-              Feedback
+              <span className="hidden sm:inline">Feedback</span>
             </button>
             {/* Bracket — tournament matches only */}
             {isTournamentMatch && (
               <button
                 onClick={() => setShowBracket(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+                aria-label="Bracket"
+                className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
                 style={{
                   background: 'rgba(196,160,48,0.12)',
                   border: '1.5px solid rgba(196,160,48,0.35)',
@@ -705,14 +708,15 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                   <path d="M5 12.5H8V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M8 8H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                 </svg>
-                Bracket
+                <span className="hidden sm:inline">Bracket</span>
               </button>
             )}
             {/* Stand Up — seated players only */}
             {!isSpectator && (
               <button
                 onClick={handleStandUp}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+                aria-label="Stand Up"
+                className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
                 style={{
                   background: 'rgba(196,160,48,0.12)',
                   border: '1.5px solid rgba(196,160,48,0.35)',
@@ -724,13 +728,14 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                   <path d="M8 5.5V10M5 8l3-2.5L11 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M6 13l2-3 2 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Stand Up
+                <span className="hidden sm:inline">Stand Up</span>
               </button>
             )}
             {/* Leave */}
             <button
               onClick={handleLeave}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+              aria-label="Leave"
+              className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
               style={{
                 background: 'rgba(196,160,48,0.12)',
                 border: '1.5px solid rgba(196,160,48,0.35)',
@@ -741,7 +746,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 <path d="M6 3H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Leave
+              <span className="hidden sm:inline">Leave</span>
             </button>
           </div>
         </div>
@@ -779,20 +784,22 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           </div>
         </Suspense>
 
-        {/* Game action strip — below board */}
-        {bothSeated || currentPlayer ? (
-          <GameControls
-            session={session}
-            gameState={gameState}
-            playerId={playerId!}
-            isMyTurn={isMyTurn}
-            lastMove={moveHistory[moveHistory.length - 1]}
-          />
-        ) : (
-          <div className="px-2 py-1 text-center text-xs" style={{ color: '#5A4A38' }}>
-            Waiting for both players to take their seats…
-          </div>
-        )}
+        {/* Game action strip — below board, fixed height to prevent layout shifts */}
+        <div className="flex-shrink-0 h-24 sm:h-40 overflow-hidden">
+          {bothSeated || currentPlayer ? (
+            <GameControls
+              session={session}
+              gameState={gameState}
+              playerId={playerId!}
+              isMyTurn={isMyTurn}
+              lastMove={moveHistory[moveHistory.length - 1]}
+            />
+          ) : (
+            <div className="px-2 py-1 text-center text-xs" style={{ color: '#5A4A38' }}>
+              Waiting for both players to take their seats…
+            </div>
+          )}
+        </div>
 
         {/* Chat panel — always visible */}
         <div className="flex-1 min-h-48 overflow-y-auto pb-4">
