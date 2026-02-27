@@ -10,13 +10,13 @@ import ChatPanel, { ChatMessage } from '../ChatPanel';
 import MatchSpectatorModal from '../tournament/MatchSpectatorModal';
 import FeedbackModal from '../FeedbackModal';
 
-const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string; desc: string }[] = [
-  { value: 'single', label: 'Single Match', desc: '1 game, 2 players only' },
-  { value: 'bo1', label: 'Best of 1', desc: 'Elimination, 1 game per match' },
-  { value: 'bo3', label: 'Best of 3', desc: 'Elimination, first to 2 wins' },
-  { value: 'bo5', label: 'Best of 5', desc: 'Elimination, first to 3 wins' },
-  { value: 'bo7', label: 'Best of 7', desc: 'Elimination, first to 4 wins' },
-  { value: 'round-robin', label: 'Round Robin', desc: 'Everyone plays everyone' },
+const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string }[] = [
+  { value: 'single', label: 'Single Match' },
+  { value: 'bo1', label: 'Best of 1' },
+  { value: 'bo3', label: 'Best of 3' },
+  { value: 'bo5', label: 'Best of 5' },
+  { value: 'bo7', label: 'Best of 7' },
+  { value: 'round-robin', label: 'Round Robin' },
 ];
 
 export function nextPowerOf2(n: number): number {
