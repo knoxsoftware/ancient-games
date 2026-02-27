@@ -866,7 +866,9 @@ export default function SessionLobby() {
                     }}
                   >
                     <div className="text-sm font-semibold">{opt.label}</div>
-                    <div className="text-xs mt-0.5 opacity-70">{opt.desc}</div>
+                    <div className="text-xs mt-0.5 opacity-70">
+                      {getTournamentInfo(opt.value, session.players.length)}
+                    </div>
                   </button>
                 ))}
               </div>
