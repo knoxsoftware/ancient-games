@@ -69,25 +69,19 @@ export default function GameRoom() {
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string; roll: number } | null>(null);
-  const [activeTab, setActiveTab] = useState<'game' | 'room' | 'bracket'>(
-    'game',
-  );
   const [showRules, setShowRules] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showBracket, setShowBracket] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [unreadChat, setUnreadChat] = useState(0);
   const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
   const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeTabRef = useRef<'game' | 'room' | 'bracket'>('game');
-  const [copiedSpectatorLink, setCopiedSpectatorLink] = useState(false);
-  const [showGameEndModal, setShowGameEndModal] = useState(false);
+const [showGameEndModal, setShowGameEndModal] = useState(false);
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
   const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [matchGameStates, setMatchGameStates] = useState<Record<string, GameState>>({});
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   // Synchronous ref updates — always reflects latest value without needing an effect
-  activeTabRef.current = activeTab;
   const gameStateRef = useRef<GameState | null>(null);
   gameStateRef.current = gameState;
   const sessionRef = useRef<Session | null>(null);
@@ -298,15 +292,11 @@ export default function GameRoom() {
 
     socket.on('chat:message', (msg) => {
       setChatMessages((prev) => [...prev, msg as ChatMessage]);
-      if (activeTabRef.current !== 'game') {
-        setUnreadChat((n) => n + 1);
-        if (!document.hidden) {
-          if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
-          setChatToast({ displayName: msg.displayName, text: msg.text });
-          chatToastTimerRef.current = setTimeout(() => setChatToast(null), 3000);
-        } else {
-          showNotification(msg.displayName, msg.text);
-        }
+      if (!document.hidden) {
+        if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
+        setChatToast({ displayName: msg.displayName, text: msg.text });
+        chatToastTimerRef.current = setTimeout(() => setChatToast(null), 3000);
+        showNotification(msg.displayName, msg.text);
       }
     });
 
@@ -462,18 +452,18 @@ export default function GameRoom() {
     socket.emit('session:boot-player', { sessionCode, playerId, targetPlayerId });
   };
 
-  const handleStandUp = () => {
-    if (!sessionCode || !playerId) return;
-    const socket = socketService.getSocket();
-    if (!socket) return;
-    socket.emit('session:stand-up', { sessionCode, playerId });
-  };
-
   const handleTakeSeat = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
     if (!socket) return;
     socket.emit('session:take-seat', { sessionCode, playerId });
+  };
+
+  const handleStandUp = () => {
+    if (!sessionCode || !playerId) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('session:stand-up', { sessionCode, playerId });
   };
 
   const handleLeave = () => {
@@ -655,43 +645,103 @@ export default function GameRoom() {
     ? { playerNumber: pendingAnimation.playerNumber, pieceIndex: pendingAnimation.move.pieceIndex }
     : null;
 
-  type TabName = 'game' | 'room' | 'bracket';
-  const tabs: TabName[] = [
-    'game',
-    'room',
-    ...(isTournamentMatch ? ['bracket' as TabName] : []),
-  ];
 
   return (
     <div className="h-screen overflow-hidden p-4">
       <div className="max-w-6xl mx-auto flex flex-col h-full overflow-hidden min-h-0">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">{getGameTitle(session.gameType)}</h1>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <h1 className="text-2xl font-bold flex-shrink-0">{getGameTitle(session.gameType)}</h1>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {/* Rules */}
             <button
               onClick={() => setShowRules(true)}
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
               style={{
                 background: 'rgba(196,160,48,0.12)',
                 border: '1.5px solid rgba(196,160,48,0.35)',
                 color: '#C4A030',
               }}
-              title="Rules"
             >
-              ?
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M8 11V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="8" cy="5.5" r="0.75" fill="currentColor"/>
+              </svg>
+              Rules
             </button>
+            {/* Feedback */}
             <button
               onClick={() => setShowFeedback(true)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
               style={{
                 background: 'rgba(196,160,48,0.12)',
                 border: '1.5px solid rgba(196,160,48,0.35)',
                 color: '#C4A030',
               }}
-              title="Feedback"
             >
-              ✉
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M1.5 5L8 9.5L14.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Feedback
+            </button>
+            {/* Bracket — tournament matches only */}
+            {isTournamentMatch && (
+              <button
+                onClick={() => setShowBracket(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+                style={{
+                  background: 'rgba(196,160,48,0.12)',
+                  border: '1.5px solid rgba(196,160,48,0.35)',
+                  color: '#C4A030',
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <rect x="1" y="2" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
+                  <rect x="1" y="11" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
+                  <rect x="11" y="6.5" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M5 3.5H8V8H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 12.5H8V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M8 8H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                Bracket
+              </button>
+            )}
+            {/* Stand Up — seated players only */}
+            {!isSpectator && (
+              <button
+                onClick={handleStandUp}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+                style={{
+                  background: 'rgba(196,160,48,0.12)',
+                  border: '1.5px solid rgba(196,160,48,0.35)',
+                  color: '#C4A030',
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M8 5.5V10M5 8l3-2.5L11 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6 13l2-3 2 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Stand Up
+              </button>
+            )}
+            {/* Leave */}
+            <button
+              onClick={handleLeave}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+              style={{
+                background: 'rgba(196,160,48,0.12)',
+                border: '1.5px solid rgba(196,160,48,0.35)',
+                color: '#C4A030',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M6 3H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Leave
             </button>
           </div>
         </div>
@@ -743,202 +793,24 @@ export default function GameRoom() {
             })()}
           </div>
         </Suspense>
-        {/* Tab bar */}
-        <div className="flex gap-0 border-b" style={{ borderColor: 'rgba(42,30,14,0.8)' }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => {
-                setActiveTab(tab);
-                if (tab === 'game') {
-                  setUnreadChat(0);
-                  if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
-                  setChatToast(null);
-                }
-              }}
-              className="px-4 py-2 text-sm font-medium transition-colors capitalize relative"
-              style={{
-                color: activeTab === tab ? '#E8C870' : '#6A5A40',
-                borderBottom: activeTab === tab ? '2px solid #C4A030' : '2px solid transparent',
-                marginBottom: '-1px',
-                background: 'transparent',
-              }}
-            >
-              {tab === 'bracket' ? 'Bracket' : tab === 'game' ? 'Chat' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              {tab === 'game' && unreadChat > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-xs font-bold"
-                  style={{ background: '#C4A030', color: '#1A1008', fontSize: '10px' }}
-                >
-                  {unreadChat > 99 ? '99+' : unreadChat}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
+        {/* Chat panel — always visible */}
         <div className="flex-1 min-h-48 overflow-y-auto pb-4">
-          {activeTab === 'game' && (
-            <div className="tab-content-enter h-full">
-              <ChatPanel
-                messages={chatMessages}
-                currentPlayerId={playerId!}
-                chatDestinations={chatDestinations}
-                onSend={handleChatSend}
-                session={session}
-                gameState={gameState}
-                gameType={session.gameType}
-                moveHistory={moveHistory}
-                onReplay={handleReplay}
-                replayingId={replayingEntryId}
-              />
-            </div>
-          )}
-
-          {activeTab === 'room' && (
-            <div className="tab-content-enter p-3 space-y-4">
-              <div>
-                <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
-                  Players
-                </div>
-                {session.players.length === 0 ? (
-                  <div className="text-xs" style={{ color: '#5A4A38' }}>
-                    No players seated
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {([0, 1] as const).map((seatIndex) => {
-                      const p = session.players.find((pl) => pl.playerNumber === seatIndex);
-                      return p ? (
-                        <div key={p.id} className="flex items-center gap-2">
-                          <span
-                            className="flex-shrink-0 w-2 h-2 rounded-full"
-                            style={{ background: p.status === 'away' ? '#F59E0B' : '#22C55E' }}
-                            title={p.status === 'away' ? 'Away' : 'Active'}
-                          />
-                          <span className="text-sm" style={{ color: '#D4C8A8' }}>
-                            {p.displayName}
-                          </span>
-                          {p.id === playerId && (
-                            <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>
-                          )}
-                          {p.id !== playerId && !isSpectator && bootablePlayerIds.has(p.id) && (
-                            <button
-                              onClick={() => handleBootPlayer(p.id)}
-                              className="ml-auto text-xs px-2 py-0.5 rounded transition-colors"
-                              style={{
-                                background: 'rgba(239,68,68,0.15)',
-                                border: '1px solid rgba(239,68,68,0.4)',
-                                color: '#FCA5A5',
-                              }}
-                            >
-                              Boot
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div key={seatIndex} className="flex items-center gap-2">
-                          <span className="text-xs" style={{ color: '#5A4A38' }}>
-                            {seatIndex === 0 ? 'Player 1' : 'Player 2'} — Empty
-                          </span>
-                          {isSpectator && (
-                            <button
-                              onClick={handleTakeSeat}
-                              className="ml-auto btn btn-secondary text-xs py-0.5 px-2"
-                            >
-                              Take Seat
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {session.spectators.length > 0 && (
-                <div>
-                  <div className="text-xs font-medium mb-2" style={{ color: '#8A7A60' }}>
-                    Watching ({session.spectators.length})
-                  </div>
-                  <div className="space-y-1">
-                    {session.spectators.map((s) => (
-                      <div key={s.id} className="flex items-center gap-2">
-                        <span
-                          className="flex-shrink-0 w-2 h-2 rounded-full"
-                          style={{ background: s.status === 'away' ? '#F59E0B' : '#22C55E' }}
-                          title={s.status === 'away' ? 'Away' : 'Active'}
-                        />
-                        <span className="text-xs" style={{ color: '#A09070' }}>
-                          {s.displayName}
-                        </span>
-                        {s.id === playerId && (
-                          <span className="text-xs" style={{ color: '#6A5A40' }}>
-                            you
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Spectator invite link */}
-              <div>
-                <div className="text-xs font-medium mb-1" style={{ color: '#8A7A60' }}>
-                  Invite spectators
-                </div>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/game/${sessionCode}`);
-                    setCopiedSpectatorLink(true);
-                    setTimeout(() => setCopiedSpectatorLink(false), 2000);
-                  }}
-                  className="text-sm transition-colors"
-                  style={{ color: copiedSpectatorLink ? '#90C870' : '#6A9A60' }}
-                >
-                  {copiedSpectatorLink ? '✓ Copied spectator link' : 'Copy spectator link'}
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-2 pt-1">
-                {!isSpectator && (
-                  <button onClick={handleStandUp} className="btn btn-outline text-sm">
-                    Stand Up
-                  </button>
-                )}
-                {isTournamentMatch && (
-                  <button onClick={handleReturnToBracket} className="btn btn-outline text-sm">
-                    View Bracket
-                  </button>
-                )}
-                <button onClick={handleLeave} className="btn btn-outline text-sm">
-                  Leave Room
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'bracket' && isTournamentMatch && (
-            <div className="tab-content-enter p-3">
-              {hubSession?.tournamentState ? (
-                <TournamentBracket
-                  tournament={hubSession.tournamentState}
-                  participants={hubSession.tournamentState.participants}
-                  currentPlayerId={playerId!}
-                  matchGameStates={matchGameStates}
-                  gameType={hubSession.gameType}
-                  session={hubSession}
-                  onMatchClick={(matchId) => setSelectedMatchId(matchId)}
-                />
-              ) : (
-                <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
-                  Loading bracket…
-                </div>
-              )}
-            </div>
-          )}
+          <ChatPanel
+            messages={chatMessages}
+            currentPlayerId={playerId!}
+            chatDestinations={chatDestinations}
+            onSend={handleChatSend}
+            session={session}
+            gameState={gameState}
+            gameType={session.gameType}
+            moveHistory={moveHistory}
+            onReplay={handleReplay}
+            replayingId={replayingEntryId}
+            isSpectator={isSpectator}
+            bootablePlayerIds={bootablePlayerIds}
+            onBootPlayer={handleBootPlayer}
+            onTakeSeat={handleTakeSeat}
+          />
         </div>
 
       </div>
@@ -1031,6 +903,47 @@ export default function GameRoom() {
             setReplayingEntryId(null);
           }}
         />
+      )}
+
+      {showBracket && isTournamentMatch && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowBracket(false)}
+        >
+          <div
+            className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-xl p-6"
+            style={{ background: '#1A1008', border: '1px solid rgba(196,160,48,0.3)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowBracket(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+              style={{
+                background: 'rgba(80,60,30,0.5)',
+                color: '#E8C870',
+                border: '1px solid rgba(196,160,48,0.25)',
+              }}
+            >
+              ✕
+            </button>
+            {hubSession?.tournamentState ? (
+              <TournamentBracket
+                tournament={hubSession.tournamentState}
+                participants={hubSession.tournamentState.participants}
+                currentPlayerId={playerId!}
+                matchGameStates={matchGameStates}
+                gameType={hubSession.gameType}
+                session={hubSession}
+                onMatchClick={(matchId) => { setSelectedMatchId(matchId); setShowBracket(false); }}
+              />
+            ) : (
+              <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
+                Loading bracket…
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {showRules && (

@@ -40,6 +40,10 @@ interface ChatPanelProps {
   moveHistory?: HistoryEntry[];
   onReplay?: (entry: HistoryEntry) => void;
   replayingId?: number | null;
+  isSpectator?: boolean;
+  bootablePlayerIds?: Set<string>;
+  onBootPlayer?: (targetPlayerId: string) => void;
+  onTakeSeat?: () => void;
 }
 
 function getSenderStatus(session: Session | undefined, playerId: string): 'active' | 'away' | null {
@@ -62,6 +66,10 @@ function ChatPanel({
   moveHistory,
   onReplay,
   replayingId,
+  isSpectator,
+  bootablePlayerIds,
+  onBootPlayer,
+  onTakeSeat,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [destination, setDestination] = useState<string>('match');
@@ -139,54 +147,89 @@ function ChatPanel({
       }}
     >
       {/* Game Status Bar */}
-      {gameState && gameState.started && !gameState.finished && session && gameType && (() => {
-        return (
-          <div
-            className="px-3 py-2 border-b flex items-center gap-2"
-            style={{ borderColor: '#2A1E0E', background: 'rgba(20,12,0,0.4)' }}
-          >
-            {([0, 1] as const).map((seatIndex) => {
-              const player = session.players.find((p) => p.playerNumber === seatIndex);
-              const isActive = gameState.currentTurn === seatIndex;
-              const isMe = player?.id === currentPlayerId;
-              const isActiveMe = isActive && isMe;
-              const isActiveOther = isActive && !isMe;
-              const score = getScoreInfo(gameType, gameState.board.pieces, seatIndex);
-              return (
-                <div
-                  key={seatIndex}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium flex-1 min-w-0${isActiveMe ? ' my-turn-pulse' : ''}`}
-                  style={{
-                    background: isActiveMe
-                      ? 'rgba(34,197,94,0.06)'
-                      : isActiveOther
-                        ? 'rgba(196,160,48,0.08)'
-                        : 'rgba(8,5,0,0.4)',
-                    borderColor: isActiveOther
-                      ? 'rgba(196,160,48,0.45)'
-                      : isActiveMe
-                        ? undefined
-                        : 'rgba(42,30,14,0.6)',
-                  }}
-                >
-                  <GamePiecePreview gameType={gameType} playerNumber={seatIndex} size={14} />
-                  <span className="truncate" style={{ color: isActiveMe ? '#A8D8A0' : isActiveOther ? '#C8A850' : '#6A5A40' }}>
-                    {player?.displayName ?? '—'}
-                    {isMe && player && (
-                      <span style={{ color: isActiveMe ? '#6A9A60' : '#4A3A28' }}> (you)</span>
-                    )}
-                  </span>
-                  {score !== null && (
-                    <span className="ml-auto flex-shrink-0" style={{ color: isActiveMe ? '#6A9A60' : isActiveOther ? '#9A7A30' : '#4A3A28' }}>
-                      {score}
+      {session && gameType && (
+        <div
+          className="px-3 py-2 border-b flex items-center gap-2"
+          style={{ borderColor: '#2A1E0E', background: 'rgba(20,12,0,0.4)' }}
+        >
+          {([0, 1] as const).map((seatIndex) => {
+            const player = session.players.find((p) => p.playerNumber === seatIndex);
+            const isActive = gameState?.started && !gameState.finished && gameState.currentTurn === seatIndex;
+            const isMe = player?.id === currentPlayerId;
+            const isActiveMe = isActive && isMe;
+            const isActiveOther = isActive && !isMe;
+            const score = gameState?.started && !gameState.finished && gameState.board.pieces
+              ? getScoreInfo(gameType, gameState.board.pieces, seatIndex)
+              : null;
+            const isBootable = player && bootablePlayerIds?.has(player.id) && !isMe && !isSpectator;
+            const canTakeSeat = !player && isSpectator;
+            return (
+              <div
+                key={seatIndex}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium flex-1 min-w-0${isActiveMe ? ' my-turn-pulse' : ''}`}
+                style={{
+                  background: isActiveMe
+                    ? 'rgba(34,197,94,0.06)'
+                    : isActiveOther
+                      ? 'rgba(196,160,48,0.08)'
+                      : 'rgba(8,5,0,0.4)',
+                  borderColor: isActiveOther
+                    ? 'rgba(196,160,48,0.45)'
+                    : isActiveMe
+                      ? undefined
+                      : 'rgba(42,30,14,0.6)',
+                }}
+              >
+                <GamePiecePreview gameType={gameType} playerNumber={seatIndex} size={14} />
+                {player ? (
+                  <>
+                    {/* Presence dot */}
+                    <span
+                      className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
+                      style={{ background: player.status === 'away' ? '#F59E0B' : '#22C55E' }}
+                      title={player.status === 'away' ? 'Away' : 'Active'}
+                    />
+                    <span className="truncate" style={{ color: isActiveMe ? '#A8D8A0' : isActiveOther ? '#C8A850' : '#6A5A40' }}>
+                      {player.displayName}
+                      {isMe && (
+                        <span style={{ color: isActiveMe ? '#6A9A60' : '#4A3A28' }}> (you)</span>
+                      )}
                     </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
+                    {score !== null && (
+                      <span className="ml-auto flex-shrink-0" style={{ color: isActiveMe ? '#6A9A60' : isActiveOther ? '#9A7A30' : '#4A3A28' }}>
+                        {score}
+                      </span>
+                    )}
+                    {isBootable && (
+                      <button
+                        onClick={() => onBootPlayer?.(player.id)}
+                        className="ml-auto flex-shrink-0 px-1.5 py-0.5 rounded text-xs transition-colors"
+                        style={{
+                          background: 'rgba(239,68,68,0.15)',
+                          border: '1px solid rgba(239,68,68,0.4)',
+                          color: '#FCA5A5',
+                        }}
+                      >
+                        Boot
+                      </button>
+                    )}
+                  </>
+                ) : canTakeSeat ? (
+                  <button
+                    onClick={onTakeSeat}
+                    className="flex-1 text-left transition-colors truncate"
+                    style={{ color: '#6A9A60' }}
+                  >
+                    Take Seat
+                  </button>
+                ) : (
+                  <span className="truncate" style={{ color: '#3A2A1A' }}>Empty</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Spectators row */}
       {session && session.spectators.length > 0 && (

@@ -1,5 +1,4 @@
 import { socketService } from '../../../services/socket';
-import { describeMove } from '../../MoveLog';
 import { GameControlsProps } from '../../GameControls';
 import { TetraDice } from './UrBoard';
 
@@ -8,7 +7,6 @@ export default function UrControls({
   gameState,
   playerId,
   isMyTurn,
-  lastMove,
 }: GameControlsProps) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
@@ -23,17 +21,6 @@ export default function UrControls({
 
   return (
     <div className="p-2 space-y-2">
-      {lastMove && (
-        <div className="flex items-center gap-1.5 px-1">
-          <span
-            className="flex-shrink-0 w-2 h-2 rounded-full"
-            style={{ background: lastMove.playerNumber === 0 ? '#2F6BAD' : '#7A4A22' }}
-          />
-          <span className="text-xs font-mono truncate" style={{ color: '#907A60' }}>
-            {describeMove(lastMove, session)}
-          </span>
-        </div>
-      )}
       <div
         className="rounded-xl px-4 py-3 border"
         style={{ background: 'rgba(5,3,0,0.7)', borderColor: '#2A1E0E' }}

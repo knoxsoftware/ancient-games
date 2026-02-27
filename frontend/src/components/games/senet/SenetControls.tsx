@@ -1,5 +1,4 @@
 import { socketService } from '../../../services/socket';
-import { describeMove } from '../../MoveLog';
 import { GameControlsProps } from '../../GameControls';
 import { ThrowingSticks } from './SenetBoard';
 
@@ -8,7 +7,6 @@ export default function SenetControls({
   gameState,
   playerId,
   isMyTurn,
-  lastMove,
 }: GameControlsProps) {
   const { sessionCode } = session;
   const diceRoll = gameState.board.diceRoll;
@@ -25,17 +23,6 @@ export default function SenetControls({
 
   return (
     <div className="p-2 space-y-2">
-      {lastMove && (
-        <div className="flex items-center gap-1.5 px-1">
-          <span
-            className="flex-shrink-0 w-2 h-2 rounded-full"
-            style={{ background: lastMove.playerNumber === 0 ? '#C4A870' : '#7A5030' }}
-          />
-          <span className="text-xs font-mono truncate" style={{ color: '#A09070' }}>
-            {describeMove(lastMove, session)}
-          </span>
-        </div>
-      )}
       <div
         className="rounded-xl px-4 py-3 border"
         style={{ background: 'rgba(8,4,0,0.65)', borderColor: '#3A2810' }}
