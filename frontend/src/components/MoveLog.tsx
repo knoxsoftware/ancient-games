@@ -7,6 +7,7 @@ export interface HistoryEntry {
   playerNumber: number;
   wasCapture: boolean;
   isSkip?: boolean;
+  timestamp?: number;
 }
 
 interface MoveLogProps {

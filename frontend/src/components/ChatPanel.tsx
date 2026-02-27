@@ -1,7 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { Session, GameState, GameType } from '@ancient-games/shared';
+import { Session, GameState, GameType, GAME_MANIFESTS } from '@ancient-games/shared';
 import { GamePiecePreview } from './games/GamePiecePreview';
 import { getScoreInfo } from '../utils/gameScoreInfo';
+import { HistoryEntry, describeMove } from './MoveLog';
 
 export interface ChatMessage {
   id: string;
@@ -36,6 +37,9 @@ interface ChatPanelProps {
   session?: Session;
   gameState?: GameState | null;
   gameType?: GameType;
+  moveHistory?: HistoryEntry[];
+  onReplay?: (entry: HistoryEntry) => void;
+  replayingId?: number | null;
 }
 
 function getSenderStatus(session: Session | undefined, playerId: string): 'active' | 'away' | null {
@@ -55,6 +59,9 @@ function ChatPanel({
   session,
   gameState,
   gameType,
+  moveHistory,
+  onReplay,
+  replayingId,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [destination, setDestination] = useState<string>('match');
@@ -70,7 +77,7 @@ function ChatPanel({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages.length]);
+  }, [messages.length, moveHistory?.length]);
 
   const handleQuickReaction = (text: string) => {
     onSend(text, chatDestinations ? destination : undefined);
@@ -95,6 +102,33 @@ function ChatPanel({
     return null;
   }
 
+  // Build a merged, sorted feed of chat messages and move history entries.
+  type FeedItem =
+    | { kind: 'chat'; msg: ChatMessage; key: string; ts: number }
+    | { kind: 'move'; entry: HistoryEntry; key: string; ts: number };
+
+  const chatItems: FeedItem[] = messages.map((msg, i) => ({
+    kind: 'chat' as const,
+    msg,
+    key: `chat-${i}`,
+    ts: msg.timestamp,
+  }));
+
+  // Live entries have a real timestamp; entries loaded from server history don't,
+  // so we fall back to their sequential id (which keeps them in order but sorts
+  // before any real timestamps, i.e. they cluster at the top as history).
+  const moveItems: FeedItem[] =
+    moveHistory && gameType && session
+      ? moveHistory.map((entry) => ({
+          kind: 'move' as const,
+          entry,
+          key: `move-${entry.id}`,
+          ts: entry.timestamp ?? entry.id,
+        }))
+      : [];
+
+  const feed = [...chatItems, ...moveItems].sort((a, b) => a.ts - b.ts);
+
   return (
     <div
       className="rounded-xl border flex flex-col"
@@ -106,55 +140,117 @@ function ChatPanel({
     >
       {/* Game Status Bar */}
       {gameState && gameState.started && !gameState.finished && session && gameType && (() => {
-        const currentTurnSeat = gameState.currentTurn; // 0 or 1
-        const turnPlayer = session.players[currentTurnSeat];
-        const isMyTurn = turnPlayer?.id === currentPlayerId;
-        const score0 = getScoreInfo(gameType, gameState.board.pieces, 0);
-        const score1 = getScoreInfo(gameType, gameState.board.pieces, 1);
-        const hasScore = score0 !== null || score1 !== null;
         return (
           <div
-            className="px-3 py-2 border-b flex items-center gap-2 flex-wrap"
+            className="px-3 py-2 border-b flex items-center gap-2"
             style={{ borderColor: '#2A1E0E', background: 'rgba(20,12,0,0.4)' }}
           >
-            <GamePiecePreview gameType={gameType} playerNumber={currentTurnSeat as 0 | 1} size={18} />
-            <span className="text-xs font-medium" style={{ color: isMyTurn ? '#E8C870' : '#A09070' }}>
-              {isMyTurn ? 'Your turn' : `${turnPlayer?.displayName ?? 'Opponent'}'s turn`}
-            </span>
-            {hasScore && (
-              <span className="ml-auto text-xs flex items-center gap-1.5" style={{ color: '#6A5A40' }}>
-                {session.players[0] && (
-                  <>
-                    <GamePiecePreview gameType={gameType} playerNumber={0} size={12} />
-                    <span style={{ color: '#A09070' }}>{score0 ?? '—'}</span>
-                  </>
-                )}
-                <span style={{ color: '#3A2A1A' }}>·</span>
-                {session.players[1] && (
-                  <>
-                    <GamePiecePreview gameType={gameType} playerNumber={1} size={12} />
-                    <span style={{ color: '#A09070' }}>{score1 ?? '—'}</span>
-                  </>
-                )}
-              </span>
-            )}
+            {([0, 1] as const).map((seatIndex) => {
+              const player = session.players.find((p) => p.playerNumber === seatIndex);
+              const isActive = gameState.currentTurn === seatIndex;
+              const isMe = player?.id === currentPlayerId;
+              const isActiveMe = isActive && isMe;
+              const isActiveOther = isActive && !isMe;
+              const score = getScoreInfo(gameType, gameState.board.pieces, seatIndex);
+              return (
+                <div
+                  key={seatIndex}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium flex-1 min-w-0${isActiveMe ? ' my-turn-pulse' : ''}`}
+                  style={{
+                    background: isActiveMe
+                      ? 'rgba(34,197,94,0.06)'
+                      : isActiveOther
+                        ? 'rgba(196,160,48,0.08)'
+                        : 'rgba(8,5,0,0.4)',
+                    borderColor: isActiveOther
+                      ? 'rgba(196,160,48,0.45)'
+                      : isActiveMe
+                        ? undefined
+                        : 'rgba(42,30,14,0.6)',
+                  }}
+                >
+                  <GamePiecePreview gameType={gameType} playerNumber={seatIndex} size={14} />
+                  <span className="truncate" style={{ color: isActiveMe ? '#A8D8A0' : isActiveOther ? '#C8A850' : '#6A5A40' }}>
+                    {player?.displayName ?? '—'}
+                    {isMe && player && (
+                      <span style={{ color: isActiveMe ? '#6A9A60' : '#4A3A28' }}> (you)</span>
+                    )}
+                  </span>
+                  {score !== null && (
+                    <span className="ml-auto flex-shrink-0" style={{ color: isActiveMe ? '#6A9A60' : isActiveOther ? '#9A7A30' : '#4A3A28' }}>
+                      {score}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })()}
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-2">
-        {messages.length === 0 && (
+      {/* Spectators row */}
+      {session && session.spectators.length > 0 && (
+        <div
+          className="px-3 py-1.5 border-b flex items-center gap-2 overflow-hidden"
+          style={{ borderColor: '#2A1E0E', background: 'rgba(20,12,0,0.3)' }}
+        >
+          <span className="flex-shrink-0 text-sm">👁</span>
+          <div className="flex items-center gap-1.5 overflow-hidden flex-nowrap min-w-0">
+            {session.spectators.map((s) => (
+              <span
+                key={s.id}
+                className="flex-shrink-0 px-1.5 py-0.5 rounded text-xs truncate max-w-[100px]"
+                style={{
+                  background: 'rgba(42,30,14,0.5)',
+                  border: '1px solid rgba(42,30,14,0.8)',
+                  color: s.id === currentPlayerId ? '#A09070' : '#6A5A40',
+                }}
+                title={s.displayName}
+              >
+                {s.displayName}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Merged feed: move history + chat, sorted by timestamp */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1">
+        {feed.length === 0 && (
           <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
             No messages yet
           </div>
         )}
-        {messages.map((msg, i) => {
+        {feed.map((item) => {
+          if (item.kind === 'move') {
+            const { entry } = item;
+            const isReplaying = entry.id === replayingId;
+            const playerColor = GAME_MANIFESTS[gameType!].playerColors[entry.playerNumber];
+            return (
+              <button
+                key={item.key}
+                onClick={() => onReplay?.(entry)}
+                className="w-full text-left flex items-center gap-2 px-2 py-1 rounded transition-colors"
+                style={{
+                  background: isReplaying ? 'rgba(196,168,107,0.12)' : 'transparent',
+                  fontSize: '11px',
+                  color: isReplaying ? '#F0E6C8' : '#6A5A40',
+                }}
+                title="Replay this move"
+              >
+                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: playerColor }} />
+                <span className="flex-1 truncate font-mono">{describeMove(entry, session!)}</span>
+                <span style={{ color: '#3A2A1A', fontSize: '10px' }}>&#8634;</span>
+              </button>
+            );
+          }
+
+          const { msg } = item;
           const isMe = msg.playerId === currentPlayerId;
           const badge = getScopeBadge(msg);
           const status = getSenderStatus(session, msg.playerId);
           return (
-            <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+            <div key={item.key} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
                 {status && (
                   <span

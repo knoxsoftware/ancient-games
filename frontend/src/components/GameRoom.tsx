@@ -12,7 +12,6 @@ import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
-import { getScoreInfo } from '../utils/gameScoreInfo';
 import FeedbackModal from './FeedbackModal';
 
 const boardComponents: Record<GameType, React.LazyExoticComponent<React.ComponentType<any>>> = {
@@ -33,14 +32,13 @@ import {
   renderPiece as senetRenderPiece,
   getExitSelector as senetGetExitSelector,
 } from './games/senet/senetAnimationHelpers';
-import { MoveLog, HistoryEntry } from './MoveLog';
+import { HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
 import GameControls from './GameControls';
 import ChatPanel, { ChatMessage, ChatDestination } from './ChatPanel';
 import TournamentBracket from './tournament/TournamentBracket';
 import MatchSpectatorModal from './tournament/MatchSpectatorModal';
 import GameEndModal from './GameEndModal';
-import { GamePiecePreview } from './games/GamePiecePreview';
 
 async function showNotification(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -71,7 +69,7 @@ export default function GameRoom() {
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string; roll: number } | null>(null);
-  const [activeTab, setActiveTab] = useState<'game' | 'chat' | 'room' | 'history' | 'bracket'>(
+  const [activeTab, setActiveTab] = useState<'game' | 'room' | 'bracket'>(
     'game',
   );
   const [showRules, setShowRules] = useState(false);
@@ -80,7 +78,7 @@ export default function GameRoom() {
   const [unreadChat, setUnreadChat] = useState(0);
   const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
   const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeTabRef = useRef<'game' | 'chat' | 'room' | 'history' | 'bracket'>('game');
+  const activeTabRef = useRef<'game' | 'room' | 'bracket'>('game');
   const [copiedSpectatorLink, setCopiedSpectatorLink] = useState(false);
   const [showGameEndModal, setShowGameEndModal] = useState(false);
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
@@ -205,6 +203,7 @@ export default function GameRoom() {
             playerNumber,
             wasCapture: false,
             isSkip: true,
+            timestamp: Date.now(),
           },
         ]);
         setSkipNotice({ playerName, roll });
@@ -239,7 +238,7 @@ export default function GameRoom() {
       historyIdRef.current += 1;
       setMoveHistory((prev) => [
         ...prev,
-        { id: historyIdRef.current, move, playerNumber: playerNum, wasCapture },
+        { id: historyIdRef.current, move, playerNumber: playerNum, wasCapture, timestamp: Date.now() },
       ]);
 
       if (
@@ -299,7 +298,7 @@ export default function GameRoom() {
 
     socket.on('chat:message', (msg) => {
       setChatMessages((prev) => [...prev, msg as ChatMessage]);
-      if (activeTabRef.current !== 'chat') {
+      if (activeTabRef.current !== 'game') {
         setUnreadChat((n) => n + 1);
         if (!document.hidden) {
           if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
@@ -656,12 +655,10 @@ export default function GameRoom() {
     ? { playerNumber: pendingAnimation.playerNumber, pieceIndex: pendingAnimation.move.pieceIndex }
     : null;
 
-  type TabName = 'game' | 'chat' | 'room' | 'history' | 'bracket';
+  type TabName = 'game' | 'room' | 'bracket';
   const tabs: TabName[] = [
     'game',
-    'chat',
     'room',
-    'history',
     ...(isTournamentMatch ? ['bracket' as TabName] : []),
   ];
 
@@ -753,7 +750,7 @@ export default function GameRoom() {
               key={tab}
               onClick={() => {
                 setActiveTab(tab);
-                if (tab === 'chat') {
+                if (tab === 'game') {
                   setUnreadChat(0);
                   if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
                   setChatToast(null);
@@ -767,8 +764,8 @@ export default function GameRoom() {
                 background: 'transparent',
               }}
             >
-              {tab === 'bracket' ? 'Bracket' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              {tab === 'chat' && unreadChat > 0 && (
+              {tab === 'bracket' ? 'Bracket' : tab === 'game' ? 'Chat' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'game' && unreadChat > 0 && (
                 <span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-xs font-bold"
                   style={{ background: '#C4A030', color: '#1A1008', fontSize: '10px' }}
@@ -783,122 +780,6 @@ export default function GameRoom() {
         {/* Tab content */}
         <div className="flex-1 min-h-48 overflow-y-auto pb-4">
           {activeTab === 'game' && (
-            <div className="tab-content-enter">
-              <div className="grid grid-cols-2 gap-2 p-2">
-                {([0, 1] as const).map((seatIndex) => {
-                  const player = session.players.find((p) => p.playerNumber === seatIndex);
-                  const isActive = player !== undefined && gameState.currentTurn === seatIndex;
-                  const isMe = player?.id === playerId;
-                  const boardPieces = gameState.board.pieces;
-
-                  const scoreInfo = player
-                    ? getScoreInfo(session.gameType, boardPieces, seatIndex)
-                    : null;
-
-                  return (
-                    <div
-                      key={seatIndex}
-                      className={`rounded-lg p-2.5 border${isActive && isMe ? ' my-turn-pulse' : ' transition-all'}`}
-                      style={{
-                        background: isActive && isMe
-                          ? 'rgba(34,197,94,0.06)'
-                          : isActive
-                            ? 'rgba(196,160,48,0.08)'
-                            : 'rgba(8,5,0,0.5)',
-                        borderColor: isActive && !isMe
-                          ? 'rgba(196,160,48,0.45)'
-                          : !isActive
-                            ? 'rgba(42,30,14,0.8)'
-                            : undefined,
-                      }}
-                    >
-                      {player ? (
-                        <div>
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span
-                              className="flex-shrink-0 w-2 h-2 rounded-full"
-                              style={{
-                                background: player.status === 'away' ? '#F59E0B' : '#22C55E',
-                              }}
-                              title={player.status === 'away' ? 'Away' : 'Active'}
-                            />
-                            <div className="flex-shrink-0">
-                              <GamePiecePreview
-                                gameType={session.gameType}
-                                playerNumber={seatIndex as 0 | 1}
-                                size={20}
-                              />
-                            </div>
-                            <span
-                              className="text-sm font-semibold truncate"
-                              style={{ color: '#E8D8B0' }}
-                            >
-                              {player.displayName}
-                              {isMe && (
-                                <span
-                                  className="ml-1 text-xs font-normal"
-                                  style={{ color: '#6A5A40' }}
-                                >
-                                  (you)
-                                </span>
-                              )}
-                            </span>
-                            {isActive && (
-                              <span
-                                className="ml-auto flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-bold"
-                                style={{ background: 'rgba(196,160,48,0.25)', color: '#E8C870' }}
-                              >
-                                Turn
-                              </span>
-                            )}
-                          </div>
-                          {scoreInfo && (
-                            <div className="text-xs mt-0.5" style={{ color: '#8A7A60' }}>
-                              {scoreInfo}
-                            </div>
-                          )}
-                          {!isMe && !isSpectator && bootablePlayerIds.has(player.id) && (
-                            <button
-                              onClick={() => handleBootPlayer(player.id)}
-                              className="mt-1.5 w-full text-xs px-2 py-1 rounded transition-colors"
-                              style={{
-                                background: 'rgba(239,68,68,0.15)',
-                                border: '1px solid rgba(239,68,68,0.4)',
-                                color: '#FCA5A5',
-                              }}
-                            >
-                              Boot (disconnected)
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs" style={{ color: '#5A4A38' }}>
-                            {seatIndex === 0 ? 'Player 1' : 'Player 2'}
-                          </span>
-                          {isSpectator ? (
-                            <button
-                              onClick={handleTakeSeat}
-                              className="btn btn-secondary text-xs py-0.5 px-2"
-                            >
-                              Take Seat
-                            </button>
-                          ) : (
-                            <span className="text-xs" style={{ color: '#3A2A1A' }}>
-                              Empty
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-            </div>
-          )}
-
-          {activeTab === 'chat' && (
             <div className="tab-content-enter h-full">
               <ChatPanel
                 messages={chatMessages}
@@ -908,6 +789,9 @@ export default function GameRoom() {
                 session={session}
                 gameState={gameState}
                 gameType={session.gameType}
+                moveHistory={moveHistory}
+                onReplay={handleReplay}
+                replayingId={replayingEntryId}
               />
             </div>
           )}
@@ -924,23 +808,51 @@ export default function GameRoom() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    {session.players.map((p) => (
-                      <div key={p.id} className="flex items-center gap-2">
-                        <span
-                          className="flex-shrink-0 w-2 h-2 rounded-full"
-                          style={{ background: p.status === 'away' ? '#F59E0B' : '#22C55E' }}
-                          title={p.status === 'away' ? 'Away' : 'Active'}
-                        />
-                        <span className="text-sm" style={{ color: '#D4C8A8' }}>
-                          {p.displayName}
-                        </span>
-                        {p.id === playerId && (
-                          <span className="text-xs" style={{ color: '#6A5A40' }}>
-                            you
+                    {([0, 1] as const).map((seatIndex) => {
+                      const p = session.players.find((pl) => pl.playerNumber === seatIndex);
+                      return p ? (
+                        <div key={p.id} className="flex items-center gap-2">
+                          <span
+                            className="flex-shrink-0 w-2 h-2 rounded-full"
+                            style={{ background: p.status === 'away' ? '#F59E0B' : '#22C55E' }}
+                            title={p.status === 'away' ? 'Away' : 'Active'}
+                          />
+                          <span className="text-sm" style={{ color: '#D4C8A8' }}>
+                            {p.displayName}
                           </span>
-                        )}
-                      </div>
-                    ))}
+                          {p.id === playerId && (
+                            <span className="text-xs" style={{ color: '#6A5A40' }}>you</span>
+                          )}
+                          {p.id !== playerId && !isSpectator && bootablePlayerIds.has(p.id) && (
+                            <button
+                              onClick={() => handleBootPlayer(p.id)}
+                              className="ml-auto text-xs px-2 py-0.5 rounded transition-colors"
+                              style={{
+                                background: 'rgba(239,68,68,0.15)',
+                                border: '1px solid rgba(239,68,68,0.4)',
+                                color: '#FCA5A5',
+                              }}
+                            >
+                              Boot
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div key={seatIndex} className="flex items-center gap-2">
+                          <span className="text-xs" style={{ color: '#5A4A38' }}>
+                            {seatIndex === 0 ? 'Player 1' : 'Player 2'} — Empty
+                          </span>
+                          {isSpectator && (
+                            <button
+                              onClick={handleTakeSeat}
+                              className="ml-auto btn btn-secondary text-xs py-0.5 px-2"
+                            >
+                              Take Seat
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1005,18 +917,6 @@ export default function GameRoom() {
                   Leave Room
                 </button>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'history' && (
-            <div className="tab-content-enter pt-3">
-              <MoveLog
-                entries={moveHistory}
-                gameType={session.gameType}
-                session={session}
-                onReplay={handleReplay}
-                replayingId={replayingEntryId}
-              />
             </div>
           )}
 
