@@ -24,10 +24,10 @@ export default function SenetControls({
   return (
     <div className="p-2 space-y-2">
       <div
-        className="rounded-xl px-4 py-3 border"
+        className="rounded-xl px-3 py-2 sm:px-4 sm:py-3 border"
         style={{ background: 'rgba(8,4,0,0.65)', borderColor: '#3A2810' }}
       >
-        <div className="flex flex-col items-center justify-center min-h-[120px]">
+        <div className="flex flex-col items-center justify-center min-h-[60px] sm:min-h-[120px]">
           {diceRoll === null ? (
             isMyTurn ? (
               <button

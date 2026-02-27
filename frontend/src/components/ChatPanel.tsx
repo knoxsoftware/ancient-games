@@ -386,7 +386,7 @@ function ChatPanel({
       )}
 
       {/* Quick Reactions */}
-      <div className="px-3 pt-2 pb-1 flex flex-wrap gap-1.5 border-t" style={{ borderColor: '#2A1E0E' }}>
+      <div className="px-3 pt-2 pb-1 flex flex-nowrap gap-1.5 overflow-x-auto border-t" style={{ borderColor: '#2A1E0E' }}>
         {QUICK_REACTIONS.map((reaction) => (
           <button
             key={reaction}

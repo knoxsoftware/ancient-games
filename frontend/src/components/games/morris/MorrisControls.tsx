@@ -6,9 +6,9 @@ export default function MorrisControls({ session, gameState, isMyTurn }: GameCon
     'opponent';
 
   return (
-    <div className="p-3">
+    <div className="p-2 sm:p-3">
       <div
-        className="rounded-lg p-3 text-sm text-center"
+        className="rounded-lg p-2 sm:p-3 text-sm text-center"
         style={{
           background: 'rgba(30,20,10,0.6)',
           border: '1px solid rgba(80,60,30,0.4)',

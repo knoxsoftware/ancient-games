@@ -22,10 +22,10 @@ export default function UrControls({
   return (
     <div className="p-2 space-y-2">
       <div
-        className="rounded-xl px-4 py-3 border"
+        className="rounded-xl px-3 py-2 sm:px-4 sm:py-3 border"
         style={{ background: 'rgba(5,3,0,0.7)', borderColor: '#2A1E0E' }}
       >
-        <div className="flex flex-col items-center justify-center min-h-[92px]">
+        <div className="flex flex-col items-center justify-center min-h-[60px] sm:min-h-[92px]">
           {diceRoll === null ? (
             isMyTurn ? (
               <button

@@ -650,9 +650,9 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
     <div className="h-screen overflow-hidden p-4">
       <div className="max-w-6xl mx-auto flex flex-col h-full overflow-hidden min-h-0">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 gap-2">
-          <h1 className="text-2xl font-bold flex-shrink-0">{getGameTitle(session.gameType)}</h1>
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold mb-2">{getGameTitle(session.gameType)}</h1>
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-0.5">
             {/* Rules */}
             <button
               onClick={() => setShowRules(true)}
@@ -752,21 +752,6 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           </div>
         )}
 
-        {/* Persistent game action strip — always visible regardless of active tab */}
-        {bothSeated || currentPlayer ? (
-          <GameControls
-            session={session}
-            gameState={gameState}
-            playerId={playerId!}
-            isMyTurn={isMyTurn}
-            lastMove={moveHistory[moveHistory.length - 1]}
-          />
-        ) : (
-          <div className="px-2 py-2 text-center text-xs" style={{ color: '#5A4A38' }}>
-            Waiting for both players to take their seats…
-          </div>
-        )}
-
         {/* Board */}
         <Suspense
           fallback={
@@ -793,6 +778,22 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
             })()}
           </div>
         </Suspense>
+
+        {/* Game action strip — below board */}
+        {bothSeated || currentPlayer ? (
+          <GameControls
+            session={session}
+            gameState={gameState}
+            playerId={playerId!}
+            isMyTurn={isMyTurn}
+            lastMove={moveHistory[moveHistory.length - 1]}
+          />
+        ) : (
+          <div className="px-2 py-1 text-center text-xs" style={{ color: '#5A4A38' }}>
+            Waiting for both players to take their seats…
+          </div>
+        )}
+
         {/* Chat panel — always visible */}
         <div className="flex-1 min-h-48 overflow-y-auto pb-4">
           <ChatPanel
