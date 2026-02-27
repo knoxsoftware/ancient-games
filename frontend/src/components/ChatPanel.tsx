@@ -1,5 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { Session } from '@ancient-games/shared';
+import { Session, GameState, GameType } from '@ancient-games/shared';
+import { GamePiecePreview } from './games/GamePiecePreview';
+import { getScoreInfo } from '../utils/gameScoreInfo';
 
 export interface ChatMessage {
   id: string;
@@ -17,12 +19,23 @@ export interface ChatDestination {
   label: string;
 }
 
+const QUICK_REACTIONS = [
+  'Nice move!',
+  'Oops!',
+  'Ouch!',
+  'Good game',
+  'Lucky!',
+  'Interesting…',
+];
+
 interface ChatPanelProps {
   messages: ChatMessage[];
   onSend: (text: string, destinationId?: string) => void;
   currentPlayerId: string;
   chatDestinations?: ChatDestination[];
   session?: Session;
+  gameState?: GameState | null;
+  gameType?: GameType;
 }
 
 function getSenderStatus(session: Session | undefined, playerId: string): 'active' | 'away' | null {
@@ -40,6 +53,8 @@ function ChatPanel({
   currentPlayerId,
   chatDestinations,
   session,
+  gameState,
+  gameType,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [destination, setDestination] = useState<string>('match');
@@ -56,6 +71,10 @@ function ChatPanel({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length]);
+
+  const handleQuickReaction = (text: string) => {
+    onSend(text, chatDestinations ? destination : undefined);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +104,44 @@ function ChatPanel({
         height: '100%',
       }}
     >
+      {/* Game Status Bar */}
+      {gameState && gameState.started && !gameState.finished && session && gameType && (() => {
+        const currentTurnSeat = gameState.currentTurn; // 0 or 1
+        const turnPlayer = session.players[currentTurnSeat];
+        const isMyTurn = turnPlayer?.id === currentPlayerId;
+        const score0 = getScoreInfo(gameType, gameState.board.pieces, 0);
+        const score1 = getScoreInfo(gameType, gameState.board.pieces, 1);
+        const hasScore = score0 !== null || score1 !== null;
+        return (
+          <div
+            className="px-3 py-2 border-b flex items-center gap-2 flex-wrap"
+            style={{ borderColor: '#2A1E0E', background: 'rgba(20,12,0,0.4)' }}
+          >
+            <GamePiecePreview gameType={gameType} playerNumber={currentTurnSeat as 0 | 1} size={18} />
+            <span className="text-xs font-medium" style={{ color: isMyTurn ? '#E8C870' : '#A09070' }}>
+              {isMyTurn ? 'Your turn' : `${turnPlayer?.displayName ?? 'Opponent'}'s turn`}
+            </span>
+            {hasScore && (
+              <span className="ml-auto text-xs flex items-center gap-1.5" style={{ color: '#6A5A40' }}>
+                {session.players[0] && (
+                  <>
+                    <GamePiecePreview gameType={gameType} playerNumber={0} size={12} />
+                    <span style={{ color: '#A09070' }}>{score0 ?? '—'}</span>
+                  </>
+                )}
+                <span style={{ color: '#3A2A1A' }}>·</span>
+                {session.players[1] && (
+                  <>
+                    <GamePiecePreview gameType={gameType} playerNumber={1} size={12} />
+                    <span style={{ color: '#A09070' }}>{score1 ?? '—'}</span>
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-2">
         {messages.length === 0 && (
@@ -188,6 +245,34 @@ function ChatPanel({
           </select>
         </div>
       )}
+
+      {/* Quick Reactions */}
+      <div className="px-3 pt-2 pb-1 flex flex-wrap gap-1.5 border-t" style={{ borderColor: '#2A1E0E' }}>
+        {QUICK_REACTIONS.map((reaction) => (
+          <button
+            key={reaction}
+            type="button"
+            onClick={() => handleQuickReaction(reaction)}
+            className="rounded-full px-2.5 py-0.5 text-xs transition-colors"
+            style={{
+              background: 'rgba(42,30,14,0.5)',
+              border: '1px solid rgba(42,30,14,0.9)',
+              color: '#8A7A60',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(196,160,48,0.12)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#C4A840';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(42,30,14,0.5)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#8A7A60';
+            }}
+          >
+            {reaction}
+          </button>
+        ))}
+      </div>
 
       {/* Input */}
       <form

@@ -906,6 +906,8 @@ export default function GameRoom() {
                 chatDestinations={chatDestinations}
                 onSend={handleChatSend}
                 session={session}
+                gameState={gameState}
+                gameType={session.gameType}
               />
             </div>
           )}
