@@ -233,7 +233,7 @@ function WolvesAndRavensBoard({ session, gameState, playerId, isMyTurn, boardOnl
       <svg
         viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
         width="100%"
-        style={{ maxWidth: SVG_SIZE, userSelect: 'none' }}
+        style={{ maxWidth: SVG_SIZE, maxHeight: '65vh', userSelect: 'none' }}
       >
         {/* Board background */}
         <rect x={0} y={0} width={SVG_SIZE} height={SVG_SIZE} rx={10} fill="#080E06" />

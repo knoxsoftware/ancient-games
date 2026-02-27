@@ -227,7 +227,7 @@ function StellarSiegeBoard({ session, gameState, playerId, isMyTurn, boardOnly }
       <svg
         viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
         width="100%"
-        style={{ maxWidth: SVG_SIZE, userSelect: 'none' }}
+        style={{ maxWidth: SVG_SIZE, maxHeight: '65vh', userSelect: 'none' }}
       >
         <defs>
           <radialGradient id="ssCannonGrad" cx="40%" cy="30%" r="65%">

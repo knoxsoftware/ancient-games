@@ -166,7 +166,7 @@ export default function FoxAndGeeseBoard({
       <svg
         viewBox={`0 0 ${SVG_W} ${SVG_H}`}
         width="100%"
-        style={{ maxWidth: SVG_W, background: bgColor, borderRadius: 8, border: '1px solid rgba(120,70,20,0.4)' }}
+        style={{ maxWidth: SVG_W, maxHeight: '65vh', background: bgColor, borderRadius: 8, border: '1px solid rgba(120,70,20,0.4)' }}
       >
         {/* Draw edges */}
         {edges.map(([a, b]) => {

@@ -768,7 +768,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
             </div>
           }
         >
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex justify-center" style={{ maxHeight: '65vh' }}>
             {(() => {
               const BoardComponent = boardComponents[session.gameType];
               return (
@@ -785,17 +785,22 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         </Suspense>
 
         {/* Game action strip — below board, fixed height to prevent layout shifts */}
-        <div className="flex-shrink-0 h-24 sm:h-40 overflow-hidden">
+        <div
+          className="flex-shrink-0 h-24 sm:h-40 overflow-hidden flex items-center justify-center"
+          style={{ background: 'rgba(5,3,0,0.7)', borderRadius: '0.75rem', border: '1px solid #2A1E0E', margin: '0 0.5rem' }}
+        >
           {bothSeated || currentPlayer ? (
-            <GameControls
-              session={session}
-              gameState={gameState}
-              playerId={playerId!}
-              isMyTurn={isMyTurn}
-              lastMove={moveHistory[moveHistory.length - 1]}
-            />
+            <div className="w-full">
+              <GameControls
+                session={session}
+                gameState={gameState}
+                playerId={playerId!}
+                isMyTurn={isMyTurn}
+                lastMove={moveHistory[moveHistory.length - 1]}
+              />
+            </div>
           ) : (
-            <div className="px-2 py-1 text-center text-xs" style={{ color: '#5A4A38' }}>
+            <div className="px-2 text-center text-xs" style={{ color: '#5A4A38' }}>
               Waiting for both players to take their seats…
             </div>
           )}

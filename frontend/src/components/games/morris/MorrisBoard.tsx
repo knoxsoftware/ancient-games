@@ -249,48 +249,15 @@ function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly }: Morr
     }
   };
 
-  // ── Status bar text ───────────────────────────────────────────────────────
-  const unplacedMy = pieces.filter((p) => p.playerNumber === myPN && p.position === -1).length;
-  const opponent = session.players.find((p) => p.id !== playerId);
-
-  let statusText = '';
-  if (!isMyTurn) {
-    statusText = `Waiting for ${opponent?.displayName ?? 'opponent'}…`;
-  } else if (diceRoll === null) {
-    statusText = 'Preparing…';
-  } else if (diceRoll === 2) {
-    statusText = 'Mill! Remove an opponent piece';
-  } else if (phase === 1) {
-    statusText = `Place a piece (${unplacedMy} remaining)`;
-  } else if (phase === 3) {
-    statusText = 'Your pieces can fly anywhere';
-  } else {
-    statusText = selected ? 'Click a highlighted spot to move' : 'Select a piece to move';
-  }
-
   // ── Piece counts (used by trays below the board) ──────────────────────────
 
   return (
     <div className="flex flex-col items-center gap-3">
-      {/* Status bar */}
-      {!boardOnly && (
-        <div
-          className="w-full text-center text-sm font-semibold py-2 px-4 rounded-lg"
-          style={{
-            background: diceRoll === 2 ? 'rgba(251,191,36,0.15)' : 'rgba(30,20,10,0.6)',
-            border: `1px solid ${diceRoll === 2 ? 'rgba(251,191,36,0.5)' : 'rgba(80,60,30,0.4)'}`,
-            color: diceRoll === 2 ? '#FBD024' : isMyTurn ? '#F0E6C8' : '#8A7A60',
-          }}
-        >
-          {statusText}
-        </div>
-      )}
-
       {/* SVG Board */}
       <svg
         viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
         width="100%"
-        style={{ maxWidth: SVG_SIZE, userSelect: 'none' }}
+        style={{ maxWidth: SVG_SIZE, maxHeight: '65vh', userSelect: 'none' }}
       >
         {/* Board background */}
         <rect x={0} y={0} width={SVG_SIZE} height={SVG_SIZE} rx={12} fill="rgba(18,12,4,0.85)" />
