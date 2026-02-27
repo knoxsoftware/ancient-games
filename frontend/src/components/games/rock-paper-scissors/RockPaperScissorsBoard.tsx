@@ -69,6 +69,13 @@ function RockPaperScissorsBoard({
   const myPosition = myChoicePiece?.position ?? -1;
   const opponentPosition = opponentChoicePiece?.position ?? -1;
 
+  // Clear pending choice when a new round starts (board reset both to -1)
+  useEffect(() => {
+    if (myPosition === -1) {
+      setPendingChoice(null);
+    }
+  }, [myPosition]);
+
   // Reveal opponent's choice only when both have chosen (round resolved: both in 1–3)
   const roundResolved =
     myPosition >= 1 && myPosition <= 3 && opponentPosition >= 1 && opponentPosition <= 3;
@@ -94,13 +101,27 @@ function RockPaperScissorsBoard({
     }
   }, [board.diceRoll]);
 
+  // When it becomes our turn and we already have a pending choice, trigger the roll
+  useEffect(() => {
+    if (isMyTurn && pendingChoiceRef.current !== null && board.diceRoll === null) {
+      const s = socketService.getSocket();
+      if (!s) return;
+      s.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId });
+    }
+  }, [isMyTurn]);
+
   function handleChoose(choice: number) {
-    if (!isMyTurn || board.diceRoll !== null || gameState.finished || pendingChoice !== null)
-      return;
-    const s = socketService.getSocket();
-    if (!s) return;
-    setPendingChoice(choice);
-    s.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId });
+    if (gameState.finished || pendingChoice !== null || myPosition >= 10) return;
+    if (isMyTurn && board.diceRoll === null) {
+      // It's our turn right now — roll immediately
+      const s = socketService.getSocket();
+      if (!s) return;
+      setPendingChoice(choice);
+      s.emit('game:roll-dice', { sessionCode: session.sessionCode, playerId });
+    } else if (!isMyTurn) {
+      // Store choice and wait for our turn
+      setPendingChoice(choice);
+    }
   }
 
   // Determine last round result for display
@@ -161,7 +182,7 @@ function RockPaperScissorsBoard({
             style={{ opacity: myPosition === -1 && !pendingChoice ? 0.25 : 1 }}
           >
             {pendingChoice !== null
-              ? WEAPONS.find((w) => w.value === pendingChoice)?.emoji
+              ? '🔒'
               : myPosition === -1
                 ? '❔'
                 : roundResolved
@@ -230,7 +251,7 @@ function RockPaperScissorsBoard({
       {/* Weapon selection or status */}
       {!boardOnly && !gameState.finished && !isSpectator && (
         <div className="w-full max-w-sm">
-          {isMyTurn && !pendingChoice ? (
+          {pendingChoice === null && myPosition < 10 ? (
             <div className="space-y-3">
               <div className="text-center text-sm font-semibold" style={{ color: '#E8C870' }}>
                 {roundResolved ? 'Draw — choose again:' : 'Choose your weapon:'}
@@ -265,15 +286,11 @@ function RockPaperScissorsBoard({
                 ))}
               </div>
             </div>
-          ) : isMyTurn && pendingChoice ? (
-            <div className="text-center text-sm" style={{ color: '#8A7A60' }}>
-              Locking in {WEAPONS.find((w) => w.value === pendingChoice)?.emoji}...
-            </div>
           ) : (
-            <div className="text-center text-sm" style={{ color: '#5A4A38' }}>
-              {opponentChosen && !roundResolved
-                ? `${opponent?.displayName ?? 'Opponent'} has chosen — waiting for reveal...`
-                : `Waiting for ${opponent?.displayName ?? 'opponent'} to choose...`}
+            <div className="text-center text-sm" style={{ color: '#8A7A60' }}>
+              {opponentChosen || opponentPosition >= 10
+                ? 'Both chosen — waiting for reveal...'
+                : 'Waiting for opponent to choose...'}
             </div>
           )}
         </div>
