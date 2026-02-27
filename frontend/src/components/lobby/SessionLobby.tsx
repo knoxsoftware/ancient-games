@@ -753,7 +753,7 @@ export default function SessionLobby() {
               </div>
             )}
 
-            {isHost && format === 'single' && session.players.length < 2 && (
+            {isHost && format === 'single' && session.players.length < 2 && session.gameType == "ur" && (
               <div className="mt-3">
                 {!showBotForm ? (
                   <button
