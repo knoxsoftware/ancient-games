@@ -883,8 +883,10 @@ export default function SessionLobby() {
           {/* Format display for non-hosts */}
           {!isHost && (
             <div className="mb-6 text-sm" style={{ color: '#6A5A40' }}>
-              Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'} —
-              waiting for host to start
+              Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'}
+              {' '}—{' '}
+              <span className="opacity-70">{getTournamentInfo(format, session.players.length)}</span>
+              {' '}— waiting for host to start
             </div>
           )}
 
