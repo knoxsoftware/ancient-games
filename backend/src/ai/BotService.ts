@@ -104,18 +104,18 @@ export class BotService {
       await new Promise((r) => setTimeout(r, 300));
 
       // Select move
-      const aiEngine = this.getAiEngine(fresh.gameType);
-      if (!aiEngine) return;
-
       const moves = gameEngine.getValidMoves(fresh.gameState.board, bot.playerNumber, roll);
       if (moves.length === 0) return;
 
-      const move = aiEngine.selectMove(
-        fresh.gameState.board,
-        bot.playerNumber,
-        roll,
-        bot.botDifficulty ?? 'medium',
-      );
+      const aiEngine = this.getAiEngine(fresh.gameType);
+      const move = aiEngine
+        ? aiEngine.selectMove(
+            fresh.gameState.board,
+            bot.playerNumber,
+            roll,
+            bot.botDifficulty ?? 'medium',
+          )
+        : moves[Math.floor(Math.random() * moves.length)];
 
       const wasCapture = gameEngine.isCaptureMove(fresh.gameState.board, move);
       const landedRosette = [2, 6, 13].includes(move.to);

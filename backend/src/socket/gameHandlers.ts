@@ -680,6 +680,14 @@ export function registerGameHandlers(
 
       io.to(sessionCode).emit('game:state-updated', session.gameState);
       relayGameStateToHub(io, session, session.gameState!);
+
+      // If next player is a bot, kick off their turn
+      const nextBot = session.players.find(
+        (p) => p.isBot && p.playerNumber === nextTurn,
+      );
+      if (nextBot) {
+        botService.notifyBotTurn(sessionCode, nextBot.id).catch(() => {});
+      }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
     }
@@ -707,6 +715,14 @@ export function registerGameHandlers(
       const newSession = await sessionService.restartGame(sessionCode);
       if (newSession) {
         io.to(sessionCode).emit('game:restarted', newSession);
+
+        // If first player is a bot, kick off their turn
+        const startingBot = newSession.players.find(
+          (p) => p.isBot && p.playerNumber === newSession.gameState.currentTurn,
+        );
+        if (startingBot) {
+          botService.notifyBotTurn(sessionCode, startingBot.id).catch(() => {});
+        }
       }
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });

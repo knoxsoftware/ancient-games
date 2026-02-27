@@ -5,7 +5,7 @@ metadata:
   labels:
     app: ancient-games
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -21,8 +21,8 @@ spec:
     spec:
       containers:
         - name: ancient-games
-          image: ancient-games:latest
-          imagePullPolicy: IfNotPresent
+          image: registry.digitalocean.com/prod2/games:v0.0.1
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
               name: http
@@ -38,7 +38,7 @@ spec:
                   name: ancient-games-secrets
                   key: mongodb-uri
             - name: CORS_ORIGIN
-              value: 'https://games.yourdomain.com'
+              value: 'https://games.knox.software'
             - name: OLLAMA_URL
               value: 'http://ollama-service:11434'
           resources:
