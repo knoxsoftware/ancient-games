@@ -516,6 +516,19 @@ export class SessionService {
 
     const gameEngine = GameRegistry.getGame(session.gameType);
     const initialBoard = gameEngine.initializeBoard();
+    const previousWinner = session.gameState?.winner;
+
+    // Winner of the previous game goes first. If the board's first-mover role was randomly
+    // assigned to a different playerNumber, swap piece ownership so winner gets that role.
+    if (previousWinner !== null && previousWinner !== undefined) {
+      if (initialBoard.currentTurn !== previousWinner) {
+        initialBoard.pieces = initialBoard.pieces.map((p) => ({
+          ...p,
+          playerNumber: 1 - p.playerNumber,
+        }));
+        initialBoard.currentTurn = previousWinner;
+      }
+    }
 
     session.status = 'playing';
     session.gameState = {
@@ -608,19 +621,30 @@ export class SessionService {
     player1: { id: string; displayName: string },
     player2: { id: string; displayName: string },
     gameType: GameType,
+    previousWinnerId?: string,
   ): Promise<Session> {
     const sessionCode = nanoid();
     const gameEngine = GameRegistry.getGame(gameType);
     const initialBoard = gameEngine.initializeBoard();
 
-    // Randomly assign who goes first
-    const p1GoesFirst = Math.random() < 0.5;
+    // Determine player numbers. If there's a previous winner, they get the first-mover's
+    // playerNumber (as determined by initializeBoard). Otherwise assign randomly.
+    const firstMoverPN = initialBoard.currentTurn;
+    let p1GoesFirst: boolean;
+    if (previousWinnerId) {
+      p1GoesFirst = previousWinnerId === player1.id;
+    } else {
+      p1GoesFirst = Math.random() < 0.5;
+    }
+    // Assign playerNumbers so that the "goes first" player gets firstMoverPN
+    const p1PN = p1GoesFirst ? firstMoverPN : 1 - firstMoverPN;
+    const p2PN = p1GoesFirst ? 1 - firstMoverPN : firstMoverPN;
     const p1: Player = {
       id: player1.id,
       displayName: player1.displayName,
       socketId: 'temp',
       ready: true,
-      playerNumber: p1GoesFirst ? 0 : 1,
+      playerNumber: p1PN,
       status: 'active',
     };
     const p2: Player = {
@@ -628,7 +652,7 @@ export class SessionService {
       displayName: player2.displayName,
       socketId: 'temp',
       ready: true,
-      playerNumber: p1GoesFirst ? 1 : 0,
+      playerNumber: p2PN,
       status: 'active',
     };
 
@@ -873,7 +897,7 @@ export class SessionService {
       const winnerWins = winnerId === match.player1Id ? match.player1Wins : match.player2Wins;
 
       if (winnerWins < threshold) {
-        // Series continues — create next game
+        // Series continues — create next game; winner goes first
         const p1 = ts.participants.find((p) => p.id === match.player1Id)!;
         const p2 = ts.participants.find((p) => p.id === match.player2Id)!;
         const nextGameSession = await this.createMatchSession(
@@ -882,6 +906,7 @@ export class SessionService {
           { id: p1.id, displayName: p1.displayName },
           { id: p2.id, displayName: p2.displayName },
           matchSession.gameType,
+          winnerId,
         );
         match.currentSessionCode = nextGameSession.sessionCode;
         result.seriesContinued = true;
