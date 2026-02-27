@@ -52,14 +52,13 @@ export function getTournamentInfo(format: TournamentFormat | 'single', playerCou
   const matches = playerCount - 1;
   const byes = nextPowerOf2(playerCount) - playerCount;
 
-  const maxPerMatch: Record<TournamentFormat, number> = {
+  const maxPerMatch: Record<Exclude<TournamentFormat, 'round-robin'>, number> = {
     bo1: 1,
     bo3: 3,
     bo5: 5,
     bo7: 7,
-    'round-robin': 1,
   };
-  const max = maxPerMatch[format as TournamentFormat];
+  const max = maxPerMatch[format as Exclude<TournamentFormat, 'round-robin'>];
   const min = Math.ceil(max / 2);
 
   const minGames = matches * min;
