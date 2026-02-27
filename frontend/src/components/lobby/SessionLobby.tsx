@@ -19,6 +19,61 @@ const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string; desc:
   { value: 'round-robin', label: 'Round Robin', desc: 'Everyone plays everyone' },
 ];
 
+export function nextPowerOf2(n: number): number {
+  let p = 1;
+  while (p < n) p *= 2;
+  return p;
+}
+
+/**
+ * Returns the base description for a format, enriched with game count
+ * and bye estimates when playerCount >= 2.
+ */
+export function getTournamentInfo(format: TournamentFormat | 'single', playerCount: number): string {
+  const baseDesc: Record<TournamentFormat | 'single', string> = {
+    single: '1 game, 2 players only',
+    bo1: 'Elimination, 1 game per match',
+    bo3: 'Elimination, first to 2 wins',
+    bo5: 'Elimination, first to 3 wins',
+    bo7: 'Elimination, first to 4 wins',
+    'round-robin': 'Everyone plays everyone',
+  };
+
+  const base = baseDesc[format];
+
+  if (playerCount < 2 || format === 'single') return base;
+
+  if (format === 'round-robin') {
+    const games = (playerCount * (playerCount - 1)) / 2;
+    return `${base} · ${games} game${games !== 1 ? 's' : ''}`;
+  }
+
+  // Bracket formats
+  const matches = playerCount - 1;
+  const byes = nextPowerOf2(playerCount) - playerCount;
+
+  const maxPerMatch: Record<TournamentFormat, number> = {
+    bo1: 1,
+    bo3: 3,
+    bo5: 5,
+    bo7: 7,
+    'round-robin': 1,
+  };
+  const max = maxPerMatch[format as TournamentFormat];
+  const min = Math.ceil(max / 2);
+
+  const minGames = matches * min;
+  const maxGames = matches * max;
+  const gameStr =
+    minGames === maxGames
+      ? `${minGames} game${minGames !== 1 ? 's' : ''}`
+      : `~${minGames}–${maxGames} games`;
+
+  const byeStr = byes > 0 ? ` · ${byes} bye${byes !== 1 ? 's' : ''}` : '';
+
+  return `${base} · ${gameStr}${byeStr}`;
+}
+
 export default function SessionLobby() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
   const navigate = useNavigate();
