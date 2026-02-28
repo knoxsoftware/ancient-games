@@ -24,6 +24,7 @@ const boardComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   'stellar-siege': lazy(() => import('./games/stellar-siege/StellarSiegeBoard')),
   'fox-and-geese': lazy(() => import('./games/fox-and-geese/FoxAndGeeseBoard')),
   mancala: lazy(() => import('./games/mancala/MancalaBoard')),
+  go: lazy(() => import('./games/go/GoBoard')),
 };
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import {

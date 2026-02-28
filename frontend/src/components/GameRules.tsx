@@ -21,6 +21,7 @@ const rulesComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   'stellar-siege': lazy(() => import('./games/stellar-siege/StellarSiegeRules')),
   'fox-and-geese': lazy(() => import('./games/fox-and-geese/FoxAndGeeseRules')),
   mancala: lazy(() => import('./games/mancala/MancalaRules')),
+  go: lazy(() => import('./games/go/GoRules')),
 };
 
 export default function GameRules({ gameType }: { gameType: GameType }) {
