@@ -7,7 +7,8 @@ export type GameType =
   | 'stellar-siege'
   | 'fox-and-geese'
   | 'mancala'
-  | 'go';
+  | 'go'
+  | 'ur-roguelike';
 
 export interface GameManifest {
   type: GameType;
@@ -97,6 +98,14 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     playerColors: ['#1A1A1A', '#F5F5F0'],
     supportsHistory: true,
   },
+  'ur-roguelike': {
+    type: 'ur-roguelike',
+    title: 'Ur: Cursed Paths',
+    emoji: '🎲',
+    description: '2 players · roguelike',
+    playerColors: ['#2F6BAD', '#7A4A22'],
+    supportsAnimation: true,
+  },
 };
 
 export function getGameTitle(gameType: GameType): string {
@@ -172,11 +181,27 @@ export interface Move {
   diceRoll?: number;
 }
 
+export interface Modifier {
+  id: string;
+  owner: number | 'global';
+  remainingUses: number | null; // null = permanent for the game
+  params?: Record<string, unknown>;
+}
+
 export interface BoardState {
   pieces: PiecePosition[];
   currentTurn: number;
   diceRoll: number | null;
   lastMove: Move | null;
+  // Roguelike extensions (only present for ur-roguelike)
+  modifiers?: Modifier[];
+  eventSquares?: number[];
+  draftPhase?: boolean;
+  draftOffers?: { player: number; options: string[] }[];
+  pendingEventResult?: { eventId: string; description: string; affectedPieceIndices?: number[] } | null;
+  skipNextTurn?: number | null; // playerNumber whose next turn is skipped
+  barrierSquares?: { position: number; turnsRemaining: number }[];
+  extraTurnFor?: number | null; // playerNumber who gets an extra turn
 }
 
 export interface PiecePosition {
