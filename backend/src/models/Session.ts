@@ -54,7 +54,7 @@ const SessionSchema = new Schema<SessionDocument>({
   sessionCode: { type: String, required: true, unique: true, index: true },
   gameType: {
     type: String,
-    enum: ['ur', 'senet', 'morris', 'wolves-and-ravens', 'rock-paper-scissors', 'stellar-siege', 'fox-and-geese', 'mancala'],
+    enum: ['ur', 'senet', 'morris', 'wolves-and-ravens', 'rock-paper-scissors', 'stellar-siege', 'fox-and-geese', 'mancala', 'go'],
     required: true,
   },
   status: { type: String, enum: ['lobby', 'playing', 'finished'], default: 'lobby' },

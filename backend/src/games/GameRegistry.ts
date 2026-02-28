@@ -7,6 +7,7 @@ import { RockPaperScissorsGame } from './rock-paper-scissors/RockPaperScissorsGa
 import { StellarSiegeGame } from './stellar-siege/StellarSiegeGame';
 import { FoxAndGeeseGame } from './fox-and-geese/FoxAndGeeseGame';
 import { MancalaGame } from './mancala/MancalaGame';
+import { GoGame } from './go/GoGame';
 import { GameType } from '@ancient-games/shared';
 
 export class GameRegistry {
@@ -19,6 +20,7 @@ export class GameRegistry {
     ['stellar-siege', new StellarSiegeGame() as GameEngine],
     ['fox-and-geese', new FoxAndGeeseGame() as GameEngine],
     ['mancala', new MancalaGame() as GameEngine],
+    ['go', new GoGame() as GameEngine],
   ]);
 
   static getGame(gameType: GameType): GameEngine {

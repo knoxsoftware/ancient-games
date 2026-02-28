@@ -6,7 +6,8 @@ export type GameType =
   | 'rock-paper-scissors'
   | 'stellar-siege'
   | 'fox-and-geese'
-  | 'mancala';
+  | 'mancala'
+  | 'go';
 
 export interface GameManifest {
   type: GameType;
@@ -86,6 +87,14 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     emoji: '\u{1FAB7}',
     description: '2 players',
     playerColors: ['#C0622A', '#4A7A9B'],
+    supportsHistory: true,
+  },
+  go: {
+    type: 'go',
+    title: 'Go',
+    emoji: '\u26AB',
+    description: '2 players · 9×9',
+    playerColors: ['#1A1A1A', '#F5F5F0'],
     supportsHistory: true,
   },
 };
