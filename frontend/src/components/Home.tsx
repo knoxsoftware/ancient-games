@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { GameType, GAME_MANIFESTS, GameManifest } from '@ancient-games/shared';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { sessionHistory } from '../services/sessionHistory';
+import ActiveGames from './ActiveGames';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -92,6 +93,8 @@ export default function Home() {
           </h1>
           <p className="text-gray-400 text-lg">Play ancient board games online with friends</p>
         </div>
+
+        <ActiveGames />
 
         {!mode ? (
           <div className="grid md:grid-cols-2 gap-4">
