@@ -166,7 +166,10 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
       if (updatedSession.sessionCode === sessionRef.current?.tournamentHubCode) {
         setHubSession(updatedSession);
       } else if (updatedSession.sessionCode === sessionCode) {
-        setJoiningSession(false);
+        const playerIsPresent =
+          updatedSession.players.some((p) => p.id === playerId) ||
+          updatedSession.spectators.some((s) => s.id === playerId);
+        if (playerIsPresent) setJoiningSession(false);
         setSession(updatedSession);
       }
       // Don't update gameState here — game state comes from game:state-updated,
