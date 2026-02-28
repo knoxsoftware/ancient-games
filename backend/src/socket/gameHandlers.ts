@@ -17,6 +17,24 @@ import {
 
 const socketToSession = new Map<string, { sessionCode: string; playerId: string }>();
 
+// Per-session draft pick locks — prevents concurrent picks corrupting the draft phase
+const draftPickLocks = new Map<string, Promise<void>>();
+
+async function withDraftLock(sessionCode: string, fn: () => Promise<void>): Promise<void> {
+  const prev = draftPickLocks.get(sessionCode) ?? Promise.resolve();
+  let release!: () => void;
+  const lock = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  draftPickLocks.set(sessionCode, prev.then(() => lock));
+  await prev;
+  try {
+    await fn();
+  } finally {
+    release();
+  }
+}
+
 function getRoundLabel(format: string, roundIndex: number, totalRounds: number): string {
   if (format === 'round-robin') return `Round ${roundIndex + 1}`;
   const remaining = totalRounds - roundIndex;
@@ -416,21 +434,42 @@ export function registerGameHandlers(
       }
 
       const gameEngine = GameRegistry.getGame(session.gameType);
-      const roll = gameEngine.rollDice();
+      let roll = gameEngine.rollDice();
+
+      // ur-roguelike: apply dice_curse_active modifier (halves the roll)
+      if (session.gameType === 'ur-roguelike') {
+        const modifiers = [...(session.gameState.board.modifiers ?? [])];
+        const curseIdx = modifiers.findIndex(
+          (m) => m.id === 'dice_curse_active' && m.owner === player.playerNumber && (m.remainingUses ?? 0) > 0,
+        );
+        if (curseIdx !== -1) {
+          roll = Math.max(1, Math.floor(roll / 2));
+          modifiers[curseIdx] = { ...modifiers[curseIdx], remainingUses: 0 };
+          session.gameState.board.modifiers = modifiers;
+        }
+      }
 
       session.gameState.board.diceRoll = roll;
       await sessionService.updateGameState(sessionCode, session.gameState);
 
       const canMove = gameEngine.canMove(session.gameState.board, player.playerNumber, roll);
 
+      // ur-roguelike: if player has reroll available, don't auto-skip — let them decide
+      const hasReroll =
+        session.gameType === 'ur-roguelike' &&
+        (session.gameState.board.modifiers ?? []).some(
+          (m) => m.id === 'reroll' && m.owner === player.playerNumber && (m.remainingUses ?? 0) > 0,
+        );
+
       io.to(sessionCode).emit('game:dice-rolled', {
         playerNumber: player.playerNumber,
         roll,
         canMove,
+        ...(hasReroll && !canMove ? { canReroll: true } : {}),
       });
       relayGameStateToHub(io, session, session.gameState!);
 
-      if (!canMove) {
+      if (!canMove && !hasReroll) {
         const nextTurn = (session.gameState.currentTurn + 1) % 2;
         session.gameState.board.diceRoll = null;
         session.gameState.board.currentTurn = nextTurn;
@@ -500,7 +539,21 @@ export function registerGameHandlers(
 
       const wasCapture = gameEngine.isCaptureMove(session.gameState.board, move);
 
+      // ur-roguelike: save dice roll before applyMove clears it (for extra_move)
+      const prevDiceRoll = session.gameState.board.diceRoll;
+      const hasExtraMovePending =
+        session.gameType === 'ur-roguelike' &&
+        session.gameState.board.extraMovePendingFor === player.playerNumber;
+
       const newBoard = gameEngine.applyMove(session.gameState.board, move);
+
+      // ur-roguelike: if extra_move was pending, restore dice roll and keep current turn
+      if (hasExtraMovePending) {
+        newBoard.diceRoll = prevDiceRoll;
+        newBoard.currentTurn = player.playerNumber;
+        newBoard.extraMovePendingFor = null;
+      }
+
       session.gameState.board = newBoard;
       session.gameState.currentTurn = newBoard.currentTurn;
 
@@ -807,26 +860,35 @@ export function registerGameHandlers(
   // Draft pick (ur-roguelike)
   socket.on('game:draft-pick', async ({ sessionCode, playerId, powerId }) => {
     try {
-      const session = await sessionService.getSession(sessionCode);
-      if (!session) return;
+      await withDraftLock(sessionCode, async () => {
+        const session = await sessionService.getSession(sessionCode);
+        if (!session) return;
 
-      const player = session.players.find((p: Player) => p.id === playerId);
-      if (!player) return;
+        const player = session.players.find((p: Player) => p.id === playerId);
+        if (!player) return;
 
-      const engine = GameRegistry.getGame(session.gameType);
-      if (typeof (engine as UrRoguelikeGame).applyDraftPick !== 'function') return;
+        const engine = GameRegistry.getGame(session.gameType);
+        if (typeof (engine as UrRoguelikeGame).applyDraftPick !== 'function') return;
 
-      const gameState = session.gameState as GameState;
-      const newBoard = (engine as UrRoguelikeGame).applyDraftPick(
-        gameState.board,
-        player.playerNumber,
-        powerId,
-      );
+        const gameState = session.gameState as GameState;
 
-      session.gameState = { ...gameState, board: newBoard };
-      await sessionService.updateGameState(sessionCode, session.gameState);
+        // Idempotency guard: ignore if player already picked
+        if (!(gameState.board.draftOffers ?? []).some((o) => o.player === player.playerNumber)) {
+          return;
+        }
 
-      io.to(sessionCode).emit('game:state-updated', session.gameState);
+        const newBoard = (engine as UrRoguelikeGame).applyDraftPick(
+          gameState.board,
+          player.playerNumber,
+          powerId,
+        );
+
+        // Mutate board directly — avoids spread losing Mongoose fields (e.g. winner: null → undefined)
+        gameState.board = newBoard;
+        await sessionService.updateGameState(sessionCode, gameState);
+
+        io.to(sessionCode).emit('game:state-updated', gameState);
+      });
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });
     }
@@ -847,6 +909,55 @@ export function registerGameHandlers(
 
       if (powerId === 'slow_curse' && typeof engine.applySlowCurse === 'function') {
         newBoard = engine.applySlowCurse(newBoard, player.playerNumber);
+      } else if (powerId === 'reroll' && typeof engine.consumeReroll === 'function') {
+        // Reroll: only valid after dice has been rolled
+        if (newBoard.diceRoll === null) return;
+        newBoard = engine.consumeReroll(newBoard, player.playerNumber);
+        let newRoll = engine.rollDice();
+        // Apply dice_curse_active if present
+        const modifiers = [...(newBoard.modifiers ?? [])];
+        const curseIdx = modifiers.findIndex(
+          (m) => m.id === 'dice_curse_active' && m.owner === player.playerNumber && (m.remainingUses ?? 0) > 0,
+        );
+        if (curseIdx !== -1) {
+          newRoll = Math.max(1, Math.floor(newRoll / 2));
+          modifiers[curseIdx] = { ...modifiers[curseIdx], remainingUses: 0 };
+          newBoard = { ...newBoard, modifiers };
+        }
+        newBoard = { ...newBoard, diceRoll: newRoll };
+        gameState.board = newBoard;
+        await sessionService.updateGameState(sessionCode, gameState);
+        const canMove = engine.canMove(newBoard, player.playerNumber, newRoll);
+        io.to(sessionCode).emit('game:dice-rolled', { playerNumber: player.playerNumber, roll: newRoll, canMove });
+        io.to(sessionCode).emit('game:state-updated', gameState);
+        // If still no moves after reroll, auto-skip
+        if (!canMove) {
+          const nextTurn = (gameState.currentTurn + 1) % 2;
+          gameState.board.diceRoll = null;
+          gameState.board.currentTurn = nextTurn;
+          gameState.currentTurn = nextTurn;
+          await sessionService.updateGameState(sessionCode, gameState);
+          io.to(sessionCode).emit('game:turn-changed', { currentTurn: nextTurn });
+          io.to(sessionCode).emit('game:state-updated', gameState);
+        }
+        return;
+      } else if (powerId === 'double_roll') {
+        // double_roll: only valid before dice has been rolled
+        if (newBoard.diceRoll !== null) return;
+        const rawRoll = engine.rollDice();
+        const { roll: bestRoll, board: boardAfterDouble } = engine.applyDoubleRoll(newBoard, player.playerNumber, rawRoll);
+        newBoard = { ...boardAfterDouble, diceRoll: bestRoll };
+        gameState.board = newBoard;
+        await sessionService.updateGameState(sessionCode, gameState);
+        const canMove = engine.canMove(newBoard, player.playerNumber, bestRoll);
+        io.to(sessionCode).emit('game:dice-rolled', { playerNumber: player.playerNumber, roll: bestRoll, canMove });
+        io.to(sessionCode).emit('game:state-updated', gameState);
+        return;
+      } else if (powerId === 'extra_move' && typeof engine.consumeExtraMove === 'function') {
+        // extra_move: only valid before rolling (sets pending flag for next move)
+        if (newBoard.diceRoll !== null) return;
+        newBoard = engine.consumeExtraMove(newBoard, player.playerNumber);
+        newBoard = { ...newBoard, extraMovePendingFor: player.playerNumber };
       }
 
       session.gameState = { ...gameState, board: newBoard };

@@ -202,6 +202,8 @@ export interface BoardState {
   skipNextTurn?: number | null; // playerNumber whose next turn is skipped
   barrierSquares?: { position: number; turnsRemaining: number }[];
   extraTurnFor?: number | null; // playerNumber who gets an extra turn
+  extraMovePendingFor?: number | null; // playerNumber who gets an extra move (Surge power)
+  extraRosettes?: number[]; // additional rosette positions added by rosette_shift event
 }
 
 export interface PiecePosition {

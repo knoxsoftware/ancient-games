@@ -193,8 +193,8 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
       setGameState(updatedGameState);
     });
 
-    socket.on('game:dice-rolled', ({ playerNumber, roll, canMove }) => {
-      if (!canMove) {
+    socket.on('game:dice-rolled', ({ playerNumber, roll, canMove, canReroll }) => {
+      if (!canMove && !canReroll) {
         const currentSession = sessionRef.current;
         const skipPlayer = currentSession?.players.find((p) => p.playerNumber === playerNumber);
         const playerName = skipPlayer?.displayName ?? `Player ${playerNumber + 1}`;

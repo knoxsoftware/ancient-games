@@ -57,7 +57,7 @@ export interface ServerToClientEvents {
   'session:error': (error: { message: string }) => void;
   'game:started': (session: Session) => void;
   'game:state-updated': (gameState: GameState) => void;
-  'game:dice-rolled': (data: { playerNumber: number; roll: number; canMove: boolean }) => void;
+  'game:dice-rolled': (data: { playerNumber: number; roll: number; canMove: boolean; canReroll?: boolean }) => void;
   'game:move-made': (data: { move: Move; gameState: GameState; wasCapture: boolean }) => void;
   'game:turn-changed': (data: { currentTurn: number }) => void;
   'game:ended': (data: { winner: number; gameState: GameState }) => void;

@@ -115,6 +115,12 @@ export class UrRoguelikeGame extends UrGame {
     };
   }
 
+  // ── getRosettes: include extraRosettes from board state ───────────────
+
+  protected override getRosettes(board: BoardState): number[] {
+    return [...this.BASE_ROSETTE_POSITIONS, ...(board.extraRosettes ?? [])];
+  }
+
   // ── Dice roll (respects double_roll modifier) ──────────────────────────
 
   rollDice(): number {
@@ -262,8 +268,8 @@ export class UrRoguelikeGame extends UrGame {
         const candidates = [4, 5, 7, 8, 9, 10, 11].filter((p) => !ROSETTES.has(p) && !eventSquares.has(p));
         if (candidates.length === 0) return { board };
         const newRosette = candidates[Math.floor(Math.random() * candidates.length)];
-        const extraRosettes = [...((board as unknown as { extraRosettes?: number[] }).extraRosettes ?? []), newRosette];
-        return { board: { ...board, extraRosettes } as BoardState };
+        const extraRosettes = [...(board.extraRosettes ?? []), newRosette];
+        return { board: { ...board, extraRosettes } };
       }
 
       case 'dice_curse':

@@ -16,6 +16,7 @@ export interface GameControlsProps {
 
 const controlsComponents: Partial<Record<GameType, React.ComponentType<GameControlsProps>>> = {
   ur: UrControls,
+  'ur-roguelike': UrControls,
   senet: SenetControls,
   morris: MorrisControls,
   'wolves-and-ravens': WolvesAndRavensControls,

@@ -29,9 +29,15 @@ export class UrGame extends GameEngine {
 
   private readonly PIECES_PER_PLAYER = 7;
   private readonly PATH_LENGTH = 14; // 4 private + 8 shared + 2 private
-  private readonly ROSETTE_POSITIONS = [2, 6, 13]; // Positions with rosettes
+  protected readonly BASE_ROSETTE_POSITIONS = [2, 6, 13]; // Positions with rosettes
+  private readonly ROSETTE_POSITIONS = this.BASE_ROSETTE_POSITIONS;
   private readonly SHARED_START = 4;
   private readonly SHARED_END = 11;
+
+  /** Override in subclasses to extend rosette positions dynamically from board state */
+  protected getRosettes(board: BoardState): number[] {
+    return this.BASE_ROSETTE_POSITIONS;
+  }
 
   initializeBoard(): BoardState {
     const pieces: PiecePosition[] = [];
@@ -111,7 +117,7 @@ export class UrGame extends GameEngine {
     const { to } = move;
 
     // Check if capturing an opponent piece (only in shared section, not on rosette)
-    if (to !== 99 && this.isSharedPosition(to) && !this.ROSETTE_POSITIONS.includes(to)) {
+    if (to !== 99 && this.isSharedPosition(to) && !this.getRosettes(board).includes(to)) {
       const capturedPieceIndex = newPieces.findIndex(
         (p) => p.playerNumber !== board.currentTurn && p.position === to,
       );
@@ -135,7 +141,7 @@ export class UrGame extends GameEngine {
     };
 
     // Check if landed on rosette (extra turn)
-    const isRosette = to !== 99 && this.ROSETTE_POSITIONS.includes(to);
+    const isRosette = to !== 99 && this.getRosettes(board).includes(to);
 
     return {
       ...board,
@@ -237,7 +243,7 @@ export class UrGame extends GameEngine {
       );
 
       // Rosettes are safe from capture
-      if (opponentPiece && this.ROSETTE_POSITIONS.includes(position)) {
+      if (opponentPiece && this.getRosettes(board).includes(position)) {
         return false;
       }
 
