@@ -73,7 +73,9 @@ function ChatPanel({
 }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [destination, setDestination] = useState<string>('match');
+  const [showReactions, setShowReactions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const reactionsRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (chatDestinations && chatDestinations.length > 0) {
@@ -87,8 +89,20 @@ function ChatPanel({
     }
   }, [messages.length, moveHistory?.length]);
 
+  useEffect(() => {
+    if (!showReactions) return;
+    const handler = (e: MouseEvent) => {
+      if (reactionsRef.current && !reactionsRef.current.contains(e.target as Node)) {
+        setShowReactions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showReactions]);
+
   const handleQuickReaction = (text: string) => {
     onSend(text, chatDestinations ? destination : undefined);
+    setShowReactions(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -385,40 +399,64 @@ function ChatPanel({
         </div>
       )}
 
-      {/* Quick Reactions */}
-      <div className="px-3 pt-2 pb-1 flex flex-nowrap gap-1.5 overflow-x-auto border-t" style={{ borderColor: '#2A1E0E' }}>
-        {QUICK_REACTIONS.map((reaction) => (
-          <button
-            key={reaction}
-            type="button"
-            onClick={() => handleQuickReaction(reaction)}
-            className="rounded-full px-2.5 py-0.5 text-xs transition-colors"
-            style={{
-              background: 'rgba(42,30,14,0.5)',
-              border: '1px solid rgba(42,30,14,0.9)',
-              color: '#8A7A60',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(196,160,48,0.12)';
-              (e.currentTarget as HTMLButtonElement).style.color = '#C4A840';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(42,30,14,0.5)';
-              (e.currentTarget as HTMLButtonElement).style.color = '#8A7A60';
-            }}
-          >
-            {reaction}
-          </button>
-        ))}
-      </div>
-
       {/* Input */}
       <form
         onSubmit={handleSubmit}
-        className="flex gap-2 px-3 py-2 border-t"
+        ref={reactionsRef}
+        className="relative flex gap-2 px-3 py-2 border-t"
         style={{ borderColor: '#2A1E0E' }}
       >
+        {/* Quick reactions popover */}
+        {showReactions && (
+          <div
+            className="absolute bottom-full left-3 mb-1 rounded-xl p-2 flex flex-col gap-1 z-10"
+            style={{
+              background: 'rgba(18,12,4,0.97)',
+              border: '1px solid #3A2810',
+              boxShadow: '0 -4px 16px rgba(0,0,0,0.5)',
+              minWidth: '10rem',
+            }}
+          >
+            {QUICK_REACTIONS.map((reaction) => (
+              <button
+                key={reaction}
+                type="button"
+                onClick={() => handleQuickReaction(reaction)}
+                className="text-left rounded-lg px-3 py-1.5 text-sm transition-colors"
+                style={{ color: '#C4B890' }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(196,160,48,0.12)';
+                  (e.currentTarget as HTMLButtonElement).style.color = '#E8C870';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = '';
+                  (e.currentTarget as HTMLButtonElement).style.color = '#C4B890';
+                }}
+              >
+                {reaction}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Reactions toggle button */}
+        <button
+          type="button"
+          aria-label="Quick reactions"
+          onClick={() => setShowReactions((v) => !v)}
+          className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+          style={{
+            background: showReactions ? 'rgba(196,160,48,0.18)' : 'rgba(42,30,14,0.5)',
+            border: `1px solid ${showReactions ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)'}`,
+            color: showReactions ? '#E8C870' : '#6A5A40',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
+            <circle cx="5.5" cy="6.5" r="0.9" fill="currentColor"/>
+            <circle cx="10.5" cy="6.5" r="0.9" fill="currentColor"/>
+            <path d="M5 9.5c.5 1.5 5.5 1.5 6 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+        </button>
         <input
           type="text"
           value={draft}

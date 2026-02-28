@@ -25,23 +25,14 @@ export default function StellarSiegeControls({
 
   if (!isMyTurn || gameState.finished) {
     return (
-      <div className="p-2 sm:p-3">
-        <div
-          className="rounded-lg p-2 sm:p-3 text-sm text-center"
-          style={{
-            background: 'rgba(0,10,25,0.7)',
-            border: '1px solid rgba(0,50,100,0.4)',
-            color: '#2A5070',
-          }}
-        >
-          Waiting for {currentTurnName}…
-        </div>
+      <div className="flex items-center justify-center px-4 py-2 text-sm" style={{ color: '#2A5070' }}>
+        Waiting for {currentTurnName}…
       </div>
     );
   }
 
   return (
-    <div className="flex gap-3 items-center justify-center p-2 sm:p-4">
+    <div className="flex gap-3 items-center justify-center px-4 py-2">
       {diceRoll === null && (
         <button
           onClick={handleRollDice}

@@ -6,17 +6,11 @@ export default function MorrisControls({ session, gameState, isMyTurn }: GameCon
     'opponent';
 
   return (
-    <div className="p-2 sm:p-3">
-      <div
-        className="rounded-lg p-2 sm:p-3 text-sm text-center"
-        style={{
-          background: 'rgba(30,20,10,0.6)',
-          border: '1px solid rgba(80,60,30,0.4)',
-          color: isMyTurn ? '#F0E6C8' : '#8A7A60',
-        }}
-      >
-        {isMyTurn ? 'Your turn — make your move on the board' : `Waiting for ${currentTurnName}…`}
-      </div>
+    <div
+      className="flex items-center justify-center px-4 py-2 text-sm text-center"
+      style={{ color: isMyTurn ? '#F0E6C8' : '#8A7A60' }}
+    >
+      {isMyTurn ? 'Your turn — make your move on the board' : `Waiting for ${currentTurnName}…`}
     </div>
   );
 }

@@ -22,50 +22,45 @@ export default function SenetControls({
   const extraTurn = [1, 4, 5].includes(diceRoll ?? -1);
 
   return (
-    <div className="p-2 space-y-2">
-      <div
-        className="rounded-xl px-3 py-2 sm:px-4 sm:py-3 border"
-        style={{ background: 'rgba(8,4,0,0.65)', borderColor: '#3A2810' }}
-      >
-        <div className="flex flex-col items-center justify-center min-h-[60px] sm:min-h-[120px]">
-          {diceRoll === null ? (
-            isMyTurn ? (
-              <button
-                onClick={handleRollDice}
-                disabled={gameState.finished}
-                className="w-full py-3 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: 'linear-gradient(135deg, #C4860A 0%, #7A5000 100%)',
-                  color: '#F5EDD5',
-                  border: '2px solid #C4860A',
-                  fontSize: '1rem',
-                  letterSpacing: '0.02em',
-                }}
-              >
-                Throw the Sticks
-              </button>
-            ) : (
-              <div className="text-center text-sm" style={{ color: '#A09070' }}>
-                Waiting for <span style={{ color: '#F5EDD5' }}>{currentTurnName}</span> to throw…
-              </div>
-            )
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <ThrowingSticks result={diceRoll} />
-              <div className="text-2xl font-bold mt-1" style={{ color: '#F5EDD5' }}>
-                {diceRoll}
-              </div>
-              <div className="text-xs" style={{ color: '#A09070' }}>
-                {extraTurn
-                  ? 'Extra turn — select a piece.'
-                  : !isMyTurn
-                    ? `Waiting for ${currentTurnName} to move…`
-                    : 'Select a piece to move.'}
-              </div>
+    <div className="flex flex-col items-center justify-center px-4 py-2 gap-1">
+      {diceRoll === null ? (
+        isMyTurn ? (
+          <button
+            onClick={handleRollDice}
+            disabled={gameState.finished}
+            className="w-full py-2 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: 'linear-gradient(135deg, #C4860A 0%, #7A5000 100%)',
+              color: '#F5EDD5',
+              border: '2px solid #C4860A',
+              fontSize: '1rem',
+              letterSpacing: '0.02em',
+            }}
+          >
+            Throw the Sticks
+          </button>
+        ) : (
+          <div className="text-center text-sm" style={{ color: '#A09070' }}>
+            Waiting for <span style={{ color: '#F5EDD5' }}>{currentTurnName}</span> to throw…
+          </div>
+        )
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <ThrowingSticks result={diceRoll} />
+            <div className="text-2xl font-bold" style={{ color: '#F5EDD5' }}>
+              {diceRoll}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+          <div className="text-xs" style={{ color: '#A09070' }}>
+            {extraTurn
+              ? 'Extra turn — select a piece.'
+              : !isMyTurn
+                ? `Waiting for ${currentTurnName} to move…`
+                : 'Select a piece to move.'}
+          </div>
+        </>
+      )}
     </div>
   );
 }
