@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { GameType, GAME_MANIFESTS, GameManifest } from '@ancient-games/shared';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
+import { sessionHistory } from '../services/sessionHistory';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -26,6 +27,13 @@ export default function Home() {
       const result = await api.createSession({ gameType, displayName: displayName.trim() });
       localStorage.setItem(PLAYER_ID_KEY, result.playerId);
       localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
+      sessionHistory.addSession({
+        sessionCode: result.session.sessionCode,
+        gameType,
+        playerName: displayName.trim(),
+        lobbyFormat: result.session.lobbyFormat ?? 'single',
+        joinedAt: Date.now(),
+      });
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       setError((err as Error).message);
@@ -56,6 +64,13 @@ export default function Home() {
       });
       localStorage.setItem(PLAYER_ID_KEY, result.playerId);
       localStorage.setItem(PLAYER_NAME_KEY, displayName.trim());
+      sessionHistory.addSession({
+        sessionCode: result.session.sessionCode,
+        gameType: result.session.gameType,
+        playerName: displayName.trim(),
+        lobbyFormat: result.session.lobbyFormat ?? 'single',
+        joinedAt: Date.now(),
+      });
       navigate(`/session/${result.session.sessionCode}`);
     } catch (err) {
       if ((err as Error).message === 'Session has already started') {
