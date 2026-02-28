@@ -5,7 +5,8 @@ export type GameType =
   | 'wolves-and-ravens'
   | 'rock-paper-scissors'
   | 'stellar-siege'
-  | 'fox-and-geese';
+  | 'fox-and-geese'
+  | 'mancala';
 
 export interface GameManifest {
   type: GameType;
@@ -77,6 +78,14 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     emoji: '\u{1F98A}',
     description: 'Asymmetric hunt',
     playerColors: ['#9CA3AF', '#F59E0B'],
+    supportsHistory: true,
+  },
+  mancala: {
+    type: 'mancala',
+    title: 'Mancala',
+    emoji: '\u{1FAB7}',
+    description: '2 players',
+    playerColors: ['#C0622A', '#4A7A9B'],
     supportsHistory: true,
   },
 };
