@@ -45,6 +45,8 @@ export interface ClientToServerEvents {
     playerId: string;
     targetPlayerId: string;
   }) => void;
+  'game:draft-pick': (data: { sessionCode: string; playerId: string; powerId: string }) => void;
+  'game:use-power': (data: { sessionCode: string; playerId: string; powerId: string }) => void;
 }
 
 // Server to Client events
@@ -80,5 +82,16 @@ export interface ServerToClientEvents {
     matchId: string;
     gameState: GameState;
     sessionCode: string;
+  }) => void;
+  'game:draft-offer': (data: {
+    sessionCode: string;
+    playerNumber: number;
+    options: string[];
+  }) => void;
+  'game:event-triggered': (data: {
+    sessionCode: string;
+    eventId: string;
+    description: string;
+    affectedPieceIndices?: number[];
   }) => void;
 }
