@@ -13,12 +13,12 @@ export default function DraftModal({ session, gameState, playerId }: DraftModalP
   const player = session.players.find((p) => p.id === playerId);
   if (!player) return null;
 
-  const myOffer = board.draftOffers?.find((o) => o.player === player.playerNumber);
+  const myOffer = board.draftOffers?.find((o) => o.player === player?.playerNumber);
   const iWaiting = !myOffer;
 
   const pick = (powerId: string) => {
-    socketService.getSocket().emit('game:draft-pick', {
-      sessionCode: session.code,
+    socketService.getSocket()?.emit('game:draft-pick', {
+      sessionCode: session.sessionCode,
       playerId,
       powerId,
     });

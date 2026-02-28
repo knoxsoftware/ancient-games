@@ -22,6 +22,7 @@ const rulesComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   'fox-and-geese': lazy(() => import('./games/fox-and-geese/FoxAndGeeseRules')),
   mancala: lazy(() => import('./games/mancala/MancalaRules')),
   go: lazy(() => import('./games/go/GoRules')),
+  'ur-roguelike': lazy(() => import('./games/ur-roguelike/UrRoguelikeRules')),
 };
 
 export default function GameRules({ gameType }: { gameType: GameType }) {

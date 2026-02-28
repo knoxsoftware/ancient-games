@@ -17,6 +17,7 @@ const registry: Partial<
   'wolves-and-ravens': wolvesScore,
   'fox-and-geese': foxAndGeeseScore,
   mancala: mancalaScore,
+  'ur-roguelike': urScore,
 };
 
 export function getScoreInfo(
