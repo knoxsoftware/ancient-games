@@ -3,6 +3,7 @@ import { GameType } from '@ancient-games/shared';
 import { UrPiece } from './ur/UrBoard';
 import { ConePiece, SpoolPiece } from './senet/SenetBoard';
 import { FoxAndGeesePiecePreview } from './fox-and-geese/FoxAndGeeseBoard';
+import { MancalaPiecePreview } from './mancala/MancalaBoard';
 
 interface GamePiecePreviewProps {
   gameType: GameType;
@@ -175,6 +176,8 @@ export function GamePiecePreview({ gameType, playerNumber, size = 20 }: GamePiec
       return <StellarSiegePiecePreview playerNumber={playerNumber} size={size} />;
     case 'fox-and-geese':
       return <FoxAndGeesePiecePreview playerNumber={playerNumber} size={size} />;
+    case 'mancala':
+      return <MancalaPiecePreview playerNumber={playerNumber} size={size} />;
     case 'rock-paper-scissors':
       return null;
     default:

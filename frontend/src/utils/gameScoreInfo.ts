@@ -5,6 +5,7 @@ import { getScoreInfo as morrisScore } from '../components/games/morris/morrisSc
 import { getScoreInfo as stellarScore } from '../components/games/stellar-siege/stellarSiegeScoreInfo';
 import { getScoreInfo as wolvesScore } from '../components/games/wolves-and-ravens/wolvesAndRavensScoreInfo';
 import { getScoreInfo as foxAndGeeseScore } from '../components/games/fox-and-geese/foxAndGeeseScoreInfo';
+import { getScoreInfo as mancalaScore } from '../components/games/mancala/mancalaScoreInfo';
 
 const registry: Partial<
   Record<GameType, (pieces: PiecePosition[], seatIndex: number) => string | null>
@@ -15,6 +16,7 @@ const registry: Partial<
   'stellar-siege': stellarScore,
   'wolves-and-ravens': wolvesScore,
   'fox-and-geese': foxAndGeeseScore,
+  mancala: mancalaScore,
 };
 
 export function getScoreInfo(
