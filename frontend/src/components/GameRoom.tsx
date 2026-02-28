@@ -11,6 +11,7 @@ import {
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
+import { sessionHistory } from '../services/sessionHistory';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
 import FeedbackModal from './FeedbackModal';
 
@@ -169,7 +170,16 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         const playerIsPresent =
           updatedSession.players.some((p) => p.id === playerId) ||
           updatedSession.spectators.some((s) => s.id === playerId);
-        if (playerIsPresent) setJoiningSession(false);
+        if (playerIsPresent) {
+          setJoiningSession(false);
+          sessionHistory.addSession({
+            sessionCode: updatedSession.sessionCode,
+            gameType: updatedSession.gameType,
+            playerName: localStorage.getItem(PLAYER_NAME_KEY) ?? '',
+            lobbyFormat: updatedSession.lobbyFormat ?? 'single',
+            joinedAt: Date.now(),
+          });
+        }
         setSession(updatedSession);
       }
       // Don't update gameState here — game state comes from game:state-updated,
