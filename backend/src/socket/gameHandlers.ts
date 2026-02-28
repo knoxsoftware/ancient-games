@@ -4,6 +4,7 @@ import { SessionService } from '../services/SessionService';
 import { PushService } from '../services/PushService';
 import { BotService } from '../ai/BotService';
 import { GameRegistry } from '../games/GameRegistry';
+import { UrRoguelikeGame } from '../games/ur-roguelike/UrRoguelikeGame';
 import {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -11,6 +12,7 @@ import {
   Session,
   HistoricalMove,
   getGameTitle,
+  Player,
 } from '@ancient-games/shared';
 
 const socketToSession = new Map<string, { sessionCode: string; playerId: string }>();
@@ -525,6 +527,15 @@ export function registerGameHandlers(
       });
       relayGameStateToHub(io, session, session.gameState!);
 
+      if (newBoard.pendingEventResult) {
+        io.to(sessionCode).emit('game:event-triggered', {
+          sessionCode,
+          eventId: newBoard.pendingEventResult.eventId,
+          description: newBoard.pendingEventResult.description,
+          affectedPieceIndices: newBoard.pendingEventResult.affectedPieceIndices,
+        });
+      }
+
       if (winner !== null) {
         io.to(sessionCode).emit('game:ended', {
           winner,
@@ -790,6 +801,59 @@ export function registerGameHandlers(
       }
     } catch (error) {
       socket.emit('session:error', { message: (error as Error).message });
+    }
+  });
+
+  // Draft pick (ur-roguelike)
+  socket.on('game:draft-pick', async ({ sessionCode, playerId, powerId }) => {
+    try {
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) return;
+
+      const player = session.players.find((p: Player) => p.id === playerId);
+      if (!player) return;
+
+      const engine = GameRegistry.getGame(session.gameType);
+      if (typeof (engine as UrRoguelikeGame).applyDraftPick !== 'function') return;
+
+      const gameState = session.gameState as GameState;
+      const newBoard = (engine as UrRoguelikeGame).applyDraftPick(
+        gameState.board,
+        player.playerNumber,
+        powerId,
+      );
+
+      session.gameState = { ...gameState, board: newBoard };
+      await sessionService.updateGameState(sessionCode, session.gameState);
+
+      io.to(sessionCode).emit('game:state-updated', session.gameState);
+    } catch (error) {
+      socket.emit('game:error', { message: (error as Error).message });
+    }
+  });
+
+  // Use power (ur-roguelike: slow_curse)
+  socket.on('game:use-power', async ({ sessionCode, playerId, powerId }) => {
+    try {
+      const session = await sessionService.getSession(sessionCode);
+      if (!session) return;
+
+      const player = session.players.find((p: Player) => p.id === playerId);
+      if (!player) return;
+
+      const engine = GameRegistry.getGame(session.gameType) as UrRoguelikeGame;
+      const gameState = session.gameState as GameState;
+      let newBoard = gameState.board;
+
+      if (powerId === 'slow_curse' && typeof engine.applySlowCurse === 'function') {
+        newBoard = engine.applySlowCurse(newBoard, player.playerNumber);
+      }
+
+      session.gameState = { ...gameState, board: newBoard };
+      await sessionService.updateGameState(sessionCode, session.gameState);
+      io.to(sessionCode).emit('game:state-updated', session.gameState);
+    } catch (error) {
+      socket.emit('game:error', { message: (error as Error).message });
     }
   });
 
