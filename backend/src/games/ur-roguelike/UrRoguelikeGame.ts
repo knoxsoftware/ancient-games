@@ -47,7 +47,7 @@ function pickN<T>(arr: T[], n: number): T[] {
 }
 
 export class UrRoguelikeGame extends UrGame {
-  gameType = 'ur-roguelike' as const;
+  override gameType = 'ur-roguelike' as unknown as 'ur';
 
   // ── Board initialization ───────────────────────────────────────────────
 

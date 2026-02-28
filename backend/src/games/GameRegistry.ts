@@ -8,6 +8,7 @@ import { StellarSiegeGame } from './stellar-siege/StellarSiegeGame';
 import { FoxAndGeeseGame } from './fox-and-geese/FoxAndGeeseGame';
 import { MancalaGame } from './mancala/MancalaGame';
 import { GoGame } from './go/GoGame';
+import { UrRoguelikeGame } from './ur-roguelike/UrRoguelikeGame';
 import { GameType } from '@ancient-games/shared';
 
 export class GameRegistry {
@@ -21,6 +22,7 @@ export class GameRegistry {
     ['fox-and-geese', new FoxAndGeeseGame() as GameEngine],
     ['mancala', new MancalaGame() as GameEngine],
     ['go', new GoGame() as GameEngine],
+    ['ur-roguelike', new UrRoguelikeGame() as GameEngine],
   ]);
 
   static getGame(gameType: GameType): GameEngine {
