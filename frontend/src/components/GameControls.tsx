@@ -13,7 +13,7 @@ export interface GameControlsProps {
   lastMove?: HistoryEntry;
 }
 
-const controlsComponents: Partial<Record<GameType, React.ComponentType<GameControlsProps>>> = {
+export const controlsComponents: Partial<Record<GameType, React.ComponentType<GameControlsProps>>> = {
   ur: UrControls,
   'ur-roguelike': UrControls,
   senet: SenetControls,
