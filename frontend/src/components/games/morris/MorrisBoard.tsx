@@ -133,11 +133,12 @@ interface MorrisBoardProps {
   playerId: string;
   isMyTurn: boolean;
   boardOnly?: boolean;
+  animatingPiece?: { playerNumber: number; pieceIndex: number } | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly }: MorrisBoardProps) {
+function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly, animatingPiece }: MorrisBoardProps) {
   const [selected, setSelected] = useState<{ pieceIndex: number; from: number } | null>(null);
 
   const myPlayer = session.players.find((p) => p.id === playerId);
@@ -291,6 +292,7 @@ function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly }: Morr
           return (
             <g
               key={pos}
+              data-cell={`morris-pos-${pos}`}
               onClick={() => handleClick(pos)}
               style={{ cursor: isMyTurn ? 'pointer' : 'default' }}
             >
@@ -372,7 +374,14 @@ function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly }: Morr
                   fill={PLAYER_COLOR[piece.playerNumber]}
                   stroke={isSelected ? '#FFD700' : inMill ? '#F59E0B' : 'rgba(255,255,255,0.25)'}
                   strokeWidth={isSelected ? 2.5 : 1.5}
-                  style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))' }}
+                  style={{
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))',
+                    opacity:
+                      animatingPiece?.playerNumber === piece.playerNumber &&
+                      animatingPiece?.pieceIndex === piece.pieceIndex
+                        ? 0
+                        : 1,
+                  }}
                 />
               ) : (
                 /* Empty intersection dot */
