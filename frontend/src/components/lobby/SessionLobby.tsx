@@ -560,6 +560,7 @@ export default function SessionLobby() {
                       color: '#C4A030',
                     }}
                     title={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
+                    aria-label={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
                   >
                     {theme === 'egyptian' ? '◈' : '☽'}
                   </button>
@@ -688,6 +689,7 @@ export default function SessionLobby() {
                   color: '#C4A030',
                 }}
                 title={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
+                aria-label={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
               >
                 {theme === 'egyptian' ? '◈' : '☽'}
               </button>
