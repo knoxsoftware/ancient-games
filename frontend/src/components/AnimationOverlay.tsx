@@ -29,7 +29,10 @@ function getExitRect(anim: AnimationState): DOMRect | null {
 function getCellRect(anim: AnimationState, position: number): DOMRect | null {
   const { gameType, playerNumber } = anim;
   let selector: string;
-  if (gameType === 'ur') {
+  if (gameType === 'morris') {
+    if (position === 99 || position < 0) return getExitRect(anim);
+    selector = `[data-cell="morris-pos-${position}"]`;
+  } else if (gameType === 'ur') {
     if (position === -1) selector = `[data-cell="ur-offboard-${playerNumber}"]`;
     else if (position === 99) return getExitRect(anim);
     else if (position >= 4 && position <= 11) selector = `[data-cell="ur-shared-${position}"]`;
@@ -46,6 +49,11 @@ function getCellRect(anim: AnimationState, position: number): DOMRect | null {
 // Returns the ordered list of board positions the piece travels through,
 // not including `from`, including `to` (and the virtual exit pos 99 if exiting).
 function getPathPositions(gameType: GameType, from: number, to: number): number[] {
+  if (gameType === 'morris') {
+    // Pieces jump directly — no intermediate steps.
+    // from === -1 means placement; to === 99 means removal.
+    return [to];
+  }
   // Entering from off-board: animate directly to destination in one step
   if (from === -1) return [to];
   const maxBoard = gameType === 'ur' ? 13 : 29;
@@ -68,7 +76,7 @@ export function AnimationOverlay({
 
   useEffect(() => {
     const { move, gameType } = animation;
-    const PIECE_SIZE = gameType === 'ur' ? 28 : 24;
+    const PIECE_SIZE = gameType === 'ur' ? 28 : gameType === 'morris' ? 26 : 24;
 
     const base: React.CSSProperties = {
       position: 'fixed',
@@ -189,7 +197,7 @@ export function AnimationOverlay({
 
   const piece = animation.renderPiece(
     animation.playerNumber,
-    animation.gameType === 'ur' ? 28 : 24,
+    animation.gameType === 'ur' ? 28 : animation.gameType === 'morris' ? 26 : 24,
   );
 
   return createPortal(
