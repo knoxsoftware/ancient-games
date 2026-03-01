@@ -107,6 +107,7 @@ export default function GameRoom() {
   const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
   const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 const [showGameEndModal, setShowGameEndModal] = useState(false);
+  const [gameEndDismissed, setGameEndDismissed] = useState(false);
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
   const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [matchGameStates, setMatchGameStates] = useState<Record<string, GameState>>({});
@@ -327,6 +328,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
       setReplayAnimation(null);
       setReplayingEntryId(null);
       setShowGameEndModal(false);
+      setGameEndDismissed(false);
       setMessage('');
     });
 
@@ -704,78 +706,152 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         <div className="flex items-center justify-between mb-4 gap-2 flex-nowrap">
           <h1 className="text-2xl font-bold flex-shrink-0">{getGameTitle(session.gameType)}</h1>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {/* Rules */}
-            <button
-              onClick={() => setShowRules(true)}
-              aria-label="Rules"
-              className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-              style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
-            >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M8 11V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="8" cy="5.5" r="0.75" fill="currentColor"/>
-              </svg>
-              <span className="hidden sm:inline">Rules</span>
-            </button>
-            {/* Theme toggle */}
-            <button
-              onClick={() => toggleTheme()}
-              aria-label={eg ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
-              className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-              style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
-            >
-              <span>{eg ? '◈' : '☽'}</span>
-              <span className="hidden sm:inline">{eg ? 'Classic' : 'Egyptian'}</span>
-            </button>
-            {/* Bracket — tournament matches only */}
-            {isTournamentMatch && (
-              <button
-                onClick={() => setShowBracket(true)}
-                aria-label="Bracket"
-                className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-                style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
-              >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <rect x="1" y="2" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
-                  <rect x="1" y="11" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
-                  <rect x="11" y="6.5" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M5 3.5H8V8H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M5 12.5H8V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M8 8H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-                <span className="hidden sm:inline">Bracket</span>
-              </button>
+            {gameState.finished && gameEndDismissed ? (
+              /* Post-game action buttons — mirror GameEndModal button logic */
+              (() => {
+                const btnPrimary: React.CSSProperties = { background: '#C4A030', color: '#1A1008' };
+                const btnSecondary: React.CSSProperties = { background: th.btnBg, border: th.btnBorder, color: th.btnColor };
+                const cls = 'btn px-3 py-1 text-xs font-bold';
+                const clsSec = 'flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium transition-colors';
+
+                if (isSpectator) {
+                  return (
+                    <button onClick={handleLeave} className={clsSec} style={btnSecondary}>Leave</button>
+                  );
+                }
+
+                if (!isTournamentMatch) {
+                  return (
+                    <>
+                      <button onClick={() => { setGameEndDismissed(false); handleRematch(); }} className={cls} style={btnPrimary}>Play Again</button>
+                      <button onClick={handleLeave} className={clsSec} style={btnSecondary}>Leave</button>
+                    </>
+                  );
+                }
+
+                const ts = hubSession?.tournamentState;
+                const tournamentOver = !!ts?.winnerId;
+                let seriesOver = false;
+                if (ts && ts.format !== 'round-robin') {
+                  const winsNeeded = ts.format === 'bo3' ? 2 : ts.format === 'bo5' ? 3 : ts.format === 'bo7' ? 4 : 1;
+                  for (const round of ts.rounds) {
+                    for (const match of round) {
+                      if (match.currentSessionCode === session.sessionCode) {
+                        seriesOver = match.player1Wins >= winsNeeded || match.player2Wins >= winsNeeded || match.status === 'finished';
+                      }
+                    }
+                  }
+                } else if (ts) {
+                  for (const round of ts.rounds) {
+                    for (const match of round) {
+                      if (match.currentSessionCode === session.sessionCode) {
+                        seriesOver = match.status === 'finished';
+                      }
+                    }
+                  }
+                }
+
+                if (tournamentOver) {
+                  return (
+                    <>
+                      <button onClick={handleReturnToBracket} className={cls} style={btnPrimary}>Return to Bracket</button>
+                      <button onClick={handleLeave} className={clsSec} style={btnSecondary}>Leave Tournament</button>
+                    </>
+                  );
+                }
+
+                if (!seriesOver) {
+                  return (
+                    <>
+                      <button onClick={() => { setGameEndDismissed(false); handleRematch(); }} className={cls} style={btnPrimary}>Next Game</button>
+                      <button onClick={handleReturnToBracket} className={clsSec} style={btnSecondary}>Return to Bracket</button>
+                    </>
+                  );
+                }
+
+                return (
+                  <>
+                    <button onClick={handleReturnToBracket} className={cls} style={btnPrimary}>Return to Bracket</button>
+                    <button onClick={handleLeave} className={clsSec} style={btnSecondary}>Leave Tournament</button>
+                  </>
+                );
+              })()
+            ) : (
+              <>
+                {/* Rules */}
+                <button
+                  onClick={() => setShowRules(true)}
+                  aria-label="Rules"
+                  className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
+                  style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M8 11V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="8" cy="5.5" r="0.75" fill="currentColor"/>
+                  </svg>
+                  <span className="hidden sm:inline">Rules</span>
+                </button>
+                {/* Theme toggle */}
+                <button
+                  onClick={() => toggleTheme()}
+                  aria-label={eg ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
+                  className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
+                  style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
+                >
+                  <span>{eg ? '◈' : '☽'}</span>
+                  <span className="hidden sm:inline">{eg ? 'Classic' : 'Egyptian'}</span>
+                </button>
+                {/* Bracket — tournament matches only */}
+                {isTournamentMatch && (
+                  <button
+                    onClick={() => setShowBracket(true)}
+                    aria-label="Bracket"
+                    className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
+                    style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <rect x="1" y="2" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
+                      <rect x="1" y="11" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
+                      <rect x="11" y="6.5" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M5 3.5H8V8H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M5 12.5H8V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M8 8H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                    <span className="hidden sm:inline">Bracket</span>
+                  </button>
+                )}
+                {/* Stand Up — seated players only */}
+                {!isSpectator && (
+                  <button
+                    onClick={handleStandUp}
+                    aria-label="Stand Up"
+                    className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
+                    style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M8 5.5V10M5 8l3-2.5L11 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M6 13l2-3 2 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span className="hidden sm:inline">Stand Up</span>
+                  </button>
+                )}
+                {/* Leave */}
+                <button
+                  onClick={handleLeave}
+                  aria-label="Leave"
+                  className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
+                  style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M6 3H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="hidden sm:inline">Leave</span>
+                </button>
+              </>
             )}
-            {/* Stand Up — seated players only */}
-            {!isSpectator && (
-              <button
-                onClick={handleStandUp}
-                aria-label="Stand Up"
-                className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-                style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
-              >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <circle cx="8" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M8 5.5V10M5 8l3-2.5L11 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M6 13l2-3 2 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span className="hidden sm:inline">Stand Up</span>
-              </button>
-            )}
-            {/* Leave */}
-            <button
-              onClick={handleLeave}
-              aria-label="Leave"
-              className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-              style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
-            >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M6 3H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="hidden sm:inline">Leave</span>
-            </button>
           </div>
         </div>
 
@@ -1041,7 +1117,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           }}
           onReturnToBracket={handleReturnToBracket}
           onLeave={handleLeave}
-          onDismiss={() => setShowGameEndModal(false)}
+          onDismiss={() => { setShowGameEndModal(false); setGameEndDismissed(true); }}
         />
       )}
     </div>
