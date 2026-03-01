@@ -259,6 +259,19 @@
 }
 [data-theme="egyptian"] .btn-secondary:hover { background-color: #004540; }
 
+/* App shell gradient → warm parchment in day mode */
+[data-theme="egyptian"] .from-gray-900 {
+  --tw-gradient-from: #FAF6EE var(--tw-gradient-from-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(250,246,238,0));
+}
+[data-theme="egyptian"] .via-gray-800 {
+  --tw-gradient-via: #F5EFE0 var(--tw-gradient-via-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to, rgba(245,239,224,0));
+}
+[data-theme="egyptian"] .to-gray-900 {
+  --tw-gradient-to: #FAF6EE var(--tw-gradient-to-position);
+}
+
 /* my-turn-pulse: green → dark gold */
 [data-theme="egyptian"] .my-turn-pulse {
   animation: my-turn-pulse-gold 2s ease-in-out infinite;

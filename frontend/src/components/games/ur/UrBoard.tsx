@@ -273,7 +273,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
 
   // Shared highlight styling helper
   const landingStyle = (isLanding: boolean, baseBg: string, baseBorder: string) => ({
-    background: isLanding ? (baseBg === '#3A2400' ? '#4A3010' : '#2A2010') : baseBg,
+    background: isLanding ? (eg ? '#C8B880' : baseBg === '#3A2400' ? '#4A3010' : '#2A2010') : baseBg,
     border: `2px solid ${isLanding ? '#FFD060' : baseBorder}`,
     boxShadow: isLanding
       ? '0 0 0 2px #FFD060, 0 0 10px rgba(255,208,60,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
@@ -317,8 +317,12 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
       selectedLanding.player === player &&
       (position < 4 || position >= 12); // must be in private zone
 
-    const baseBg = isRosette ? '#3A2400' : player === 0 ? '#0C1A2E' : '#2E0C0C';
-    const baseBorder = isRosette ? '#C4860A' : player === 0 ? '#1E3A5A' : '#5A1E1E';
+    const baseBg = eg
+      ? isRosette ? '#D4C4A0' : player === 0 ? '#DDE4EE' : '#EEDDDD'
+      : isRosette ? '#3A2400' : player === 0 ? '#0C1A2E' : '#2E0C0C';
+    const baseBorder = eg
+      ? isRosette ? '#C0A060' : player === 0 ? '#8099B8' : '#B88090'
+      : isRosette ? '#C4860A' : player === 0 ? '#1E3A5A' : '#5A1E1E';
 
     return (
       <div
@@ -364,8 +368,12 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
       position >= 4 &&
       position <= 11;
 
-    const baseBg = isRosette ? '#3A2400' : '#1A1208';
-    const baseBorder = isRosette ? '#C4860A' : '#3A2E1C';
+    const baseBg = eg
+      ? isRosette ? '#D4C4A0' : '#E8DCC8'
+      : isRosette ? '#3A2400' : '#1A1208';
+    const baseBorder = eg
+      ? isRosette ? '#C0A060' : '#C0A870'
+      : isRosette ? '#C4860A' : '#3A2E1C';
 
     return (
       <div
@@ -404,7 +412,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
     <div
       key={key}
       className="aspect-square rounded-sm"
-      style={{ background: 'rgba(0,0,0,0.25)', border: '2px solid transparent' }}
+      style={{ background: eg ? 'rgba(180,160,120,0.12)' : 'rgba(0,0,0,0.25)', border: '2px solid transparent' }}
     />
   );
 
@@ -428,7 +436,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
           <div
             data-cell={`ur-offboard-${topPlayer}`}
             className="flex items-center gap-1.5 flex-wrap mb-2 pb-2 border-b min-h-[32px]"
-            style={{ borderColor: '#2A1E0E' }}
+            style={{ borderColor: eg ? '#C0A870' : '#2A1E0E' }}
           >
             {offBoardPieces(topPlayer).map((piece) => (
               <div
@@ -475,7 +483,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
           <div
             data-cell={`ur-offboard-${bottomPlayer}`}
             className="flex items-center gap-1.5 flex-wrap mt-2 pt-2 border-t min-h-[32px]"
-            style={{ borderColor: '#2A1E0E' }}
+            style={{ borderColor: eg ? '#C0A870' : '#2A1E0E' }}
           >
             {offBoardPieces(bottomPlayer).map((piece) => {
               const canClick = isMyTurn && piece.playerNumber === playerNumber;
@@ -507,7 +515,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
         {!boardOnly && (
           <div
             className="mt-3 pt-2.5 border-t flex flex-wrap gap-x-4 gap-y-1"
-            style={{ borderColor: '#2A1E0E' }}
+            style={{ borderColor: eg ? '#C0A870' : '#2A1E0E' }}
           >
             <div className="flex items-center gap-1.5">
               <div
