@@ -334,13 +334,13 @@ function ChatPanel({
                       fontSize: '10px',
                       background:
                         msg.chatScope === 'tournament'
-                          ? 'rgba(196,160,48,0.15)'
-                          : 'rgba(80,60,120,0.25)',
-                      color: msg.chatScope === 'tournament' ? '#C8A840' : '#A080D0',
+                          ? 'var(--chat-badge-tournament-bg)'
+                          : 'var(--chat-badge-dm-bg)',
+                      color: msg.chatScope === 'tournament' ? 'var(--chat-badge-tournament-text)' : 'var(--chat-badge-dm-text)',
                       border: `1px solid ${
                         msg.chatScope === 'tournament'
-                          ? 'rgba(196,160,48,0.3)'
-                          : 'rgba(120,80,180,0.3)'
+                          ? 'var(--chat-badge-tournament-border)'
+                          : 'var(--chat-badge-dm-border)'
                       }`,
                     }}
                   >

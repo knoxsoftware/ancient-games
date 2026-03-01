@@ -366,6 +366,14 @@
   --chat-boot-bg: rgba(239, 68, 68, 0.15);
   --chat-boot-border: rgba(239, 68, 68, 0.4);
   --chat-boot-text: #FCA5A5;
+
+  /* Scope badge (tournament / DM) */
+  --chat-badge-tournament-bg: rgba(196, 160, 48, 0.15);
+  --chat-badge-tournament-border: rgba(196, 160, 48, 0.3);
+  --chat-badge-tournament-text: #C8A840;
+  --chat-badge-dm-bg: rgba(80, 60, 120, 0.25);
+  --chat-badge-dm-border: rgba(120, 80, 180, 0.3);
+  --chat-badge-dm-text: #A080D0;
 }
 
 /* ── Egyptian overrides for ChatPanel ───────────────────────────────── */
@@ -460,4 +468,12 @@
   --chat-boot-bg: rgba(180, 40, 40, 0.12);
   --chat-boot-border: rgba(180, 40, 40, 0.35);
   --chat-boot-text: #B02020;
+
+  /* Scope badge (tournament / DM) */
+  --chat-badge-tournament-bg: rgba(138, 106, 0, 0.15);
+  --chat-badge-tournament-border: rgba(138, 106, 0, 0.35);
+  --chat-badge-tournament-text: #6A5000;
+  --chat-badge-dm-bg: rgba(80, 60, 120, 0.12);
+  --chat-badge-dm-border: rgba(120, 80, 180, 0.25);
+  --chat-badge-dm-text: #6040A0;
 }
