@@ -13,7 +13,7 @@ function applyTheme(theme: Theme) {
 
 export function getTheme(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === EGYPTIAN ? EGYPTIAN : 'classic';
+  return stored === 'classic' ? 'classic' : EGYPTIAN;
 }
 
 export function toggleTheme(): Theme {
