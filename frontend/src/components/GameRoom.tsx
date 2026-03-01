@@ -36,6 +36,10 @@ import {
   renderPiece as senetRenderPiece,
   getExitSelector as senetGetExitSelector,
 } from './games/senet/senetAnimationHelpers';
+import {
+  renderPiece as morrisRenderPiece,
+  getExitSelector as morrisGetExitSelector,
+} from './games/morris/morrisAnimationHelpers';
 import { HistoryEntry } from './MoveLog';
 import GameRules from './GameRules';
 import GameControls from './GameControls';
@@ -233,9 +237,11 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
       if (GAME_MANIFESTS[gt].supportsAnimation) {
         animIdRef.current += 1;
         const animHelpers =
-          gt === 'ur'
+          gt === 'ur' || gt === 'ur-roguelike'
             ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
-            : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
+            : gt === 'morris'
+              ? { renderPiece: morrisRenderPiece, getExitSelector: morrisGetExitSelector }
+              : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
         setPendingAnimation({
           move,
           playerNumber: playerNum,
@@ -519,9 +525,11 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
     if (!gt || !GAME_MANIFESTS[gt].supportsAnimation) return;
     replayIdRef.current += 1;
     const animHelpers =
-      gt === 'ur'
+      gt === 'ur' || gt === 'ur-roguelike'
         ? { renderPiece: urRenderPiece, getExitSelector: urGetExitSelector }
-        : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
+        : gt === 'morris'
+          ? { renderPiece: morrisRenderPiece, getExitSelector: morrisGetExitSelector }
+          : { renderPiece: senetRenderPiece, getExitSelector: senetGetExitSelector };
     setReplayAnimation({
       move: entry.move,
       playerNumber: entry.playerNumber,

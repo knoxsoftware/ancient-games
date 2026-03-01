@@ -47,6 +47,7 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     emoji: '\u2B21',
     description: '2 players',
     playerColors: ['#3B82F6', '#EF4444'],
+    supportsAnimation: true,
     supportsHistory: true,
   },
   'wolves-and-ravens': {
