@@ -413,7 +413,7 @@ function ChatPanel({
             style={{
               background: 'var(--chat-popover-bg)',
               border: '1px solid var(--chat-popover-border)',
-              boxShadow: '0 -4px 16px rgba(0,0,0,0.3)',
+              boxShadow: '0 -4px 16px var(--chat-popover-shadow)',
               minWidth: '10rem',
             }}
           >

@@ -354,6 +354,7 @@
   --chat-popover-item-text: #C4B890;
   --chat-popover-item-hover-bg: rgba(196, 160, 48, 0.12);
   --chat-popover-item-hover-text: #E8C870;
+  --chat-popover-shadow: rgba(0, 0, 0, 0.5);
 
   /* Send button */
   --chat-send-active-bg: rgba(196, 160, 48, 0.25);
@@ -457,6 +458,7 @@
   --chat-popover-item-text: #4A3010;
   --chat-popover-item-hover-bg: rgba(138, 106, 0, 0.12);
   --chat-popover-item-hover-text: #2A1800;
+  --chat-popover-shadow: rgba(0, 0, 0, 0.18);
 
   /* Send button */
   --chat-send-active-bg: rgba(138, 106, 0, 0.2);
