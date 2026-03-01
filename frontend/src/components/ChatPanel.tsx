@@ -155,8 +155,8 @@ function ChatPanel({
     <div
       className="rounded-xl border flex flex-col"
       style={{
-        background: 'rgba(8,5,0,0.6)',
-        borderColor: '#2A1E0E',
+        background: 'var(--chat-bg)',
+        borderColor: 'var(--chat-border)',
         height: '100%',
       }}
     >
@@ -164,7 +164,7 @@ function ChatPanel({
       {session && gameType && (
         <div
           className="px-3 py-2 border-b flex items-center gap-2"
-          style={{ borderColor: '#2A1E0E', background: 'rgba(20,12,0,0.4)' }}
+          style={{ borderColor: 'var(--chat-border)', background: 'var(--chat-header-bg)' }}
         >
           {([0, 1] as const).map((seatIndex) => {
             const player = session.players.find((p) => p.playerNumber === seatIndex);
@@ -183,15 +183,15 @@ function ChatPanel({
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium flex-1 min-w-0${isActiveMe ? ' my-turn-pulse' : ''}`}
                 style={{
                   background: isActiveMe
-                    ? 'rgba(34,197,94,0.06)'
+                    ? 'var(--chat-seat-me-bg)'
                     : isActiveOther
-                      ? 'rgba(196,160,48,0.08)'
-                      : 'rgba(8,5,0,0.4)',
+                      ? 'var(--chat-seat-other-bg)'
+                      : 'var(--chat-seat-empty-bg)',
                   borderColor: isActiveOther
-                    ? 'rgba(196,160,48,0.45)'
+                    ? 'var(--chat-seat-active-other-border)'
                     : isActiveMe
                       ? undefined
-                      : 'rgba(42,30,14,0.6)',
+                      : 'var(--chat-seat-empty-border)',
                 }}
               >
                 <GamePiecePreview gameType={gameType} playerNumber={seatIndex} size={14} />
@@ -203,14 +203,14 @@ function ChatPanel({
                       style={{ background: player.status === 'away' ? '#F59E0B' : '#22C55E' }}
                       title={player.status === 'away' ? 'Away' : 'Active'}
                     />
-                    <span className="truncate" style={{ color: isActiveMe ? '#A8D8A0' : isActiveOther ? '#C8A850' : '#6A5A40' }}>
+                    <span className="truncate" style={{ color: isActiveMe ? 'var(--chat-name-me)' : isActiveOther ? 'var(--chat-name-other)' : 'var(--chat-name-idle)' }}>
                       {player.displayName}
                       {isMe && (
-                        <span style={{ color: isActiveMe ? '#6A9A60' : '#4A3A28' }}> (you)</span>
+                        <span style={{ color: isActiveMe ? 'var(--chat-name-me-suffix)' : 'var(--chat-name-idle-suffix)' }}> (you)</span>
                       )}
                     </span>
                     {score !== null && (
-                      <span className="ml-auto flex-shrink-0" style={{ color: isActiveMe ? '#6A9A60' : isActiveOther ? '#9A7A30' : '#4A3A28' }}>
+                      <span className="ml-auto flex-shrink-0" style={{ color: isActiveMe ? 'var(--chat-score-me)' : isActiveOther ? 'var(--chat-score-other)' : 'var(--chat-score-idle)' }}>
                         {score}
                       </span>
                     )}
@@ -219,9 +219,9 @@ function ChatPanel({
                         onClick={() => onBootPlayer?.(player.id)}
                         className="ml-auto flex-shrink-0 px-1.5 py-0.5 rounded text-xs transition-colors"
                         style={{
-                          background: 'rgba(239,68,68,0.15)',
-                          border: '1px solid rgba(239,68,68,0.4)',
-                          color: '#FCA5A5',
+                          background: 'var(--chat-boot-bg)',
+                          border: '1px solid var(--chat-boot-border)',
+                          color: 'var(--chat-boot-text)',
                         }}
                       >
                         Boot
@@ -232,12 +232,12 @@ function ChatPanel({
                   <button
                     onClick={onTakeSeat}
                     className="flex-1 text-left transition-colors truncate"
-                    style={{ color: '#6A9A60' }}
+                    style={{ color: 'var(--chat-name-me)' }}
                   >
                     Take Seat
                   </button>
                 ) : (
-                  <span className="truncate" style={{ color: '#3A2A1A' }}>Empty</span>
+                  <span className="truncate" style={{ color: 'var(--chat-seat-empty-text)' }}>Empty</span>
                 )}
               </div>
             );
@@ -249,7 +249,7 @@ function ChatPanel({
       {session && session.spectators.length > 0 && (
         <div
           className="px-3 py-1.5 border-b flex items-center gap-2 overflow-hidden"
-          style={{ borderColor: '#2A1E0E', background: 'rgba(20,12,0,0.3)' }}
+          style={{ borderColor: 'var(--chat-border)', background: 'var(--chat-spectator-bg)' }}
         >
           <span className="flex-shrink-0 text-sm">👁</span>
           <div className="flex items-center gap-1.5 overflow-hidden flex-nowrap min-w-0">
@@ -258,9 +258,9 @@ function ChatPanel({
                 key={s.id}
                 className="flex-shrink-0 px-1.5 py-0.5 rounded text-xs truncate max-w-[100px]"
                 style={{
-                  background: 'rgba(42,30,14,0.5)',
-                  border: '1px solid rgba(42,30,14,0.8)',
-                  color: s.id === currentPlayerId ? '#A09070' : '#6A5A40',
+                  background: 'var(--chat-spectator-badge-bg)',
+                  border: '1px solid var(--chat-spectator-badge-border)',
+                  color: s.id === currentPlayerId ? 'var(--chat-spectator-me-text)' : 'var(--chat-spectator-badge-text)',
                 }}
                 title={s.displayName}
               >
@@ -274,7 +274,7 @@ function ChatPanel({
       {/* Merged feed: move history + chat, sorted by timestamp */}
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1">
         {feed.length === 0 && (
-          <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
+          <div className="text-xs text-center py-8" style={{ color: 'var(--chat-no-messages)' }}>
             No messages yet
           </div>
         )}
@@ -289,15 +289,15 @@ function ChatPanel({
                 onClick={() => onReplay?.(entry)}
                 className="w-full text-left flex items-center gap-2 px-2 py-1 rounded transition-colors"
                 style={{
-                  background: isReplaying ? 'rgba(196,168,107,0.12)' : 'transparent',
+                  background: isReplaying ? 'var(--chat-move-replay-bg)' : 'transparent',
                   fontSize: '11px',
-                  color: isReplaying ? '#F0E6C8' : '#6A5A40',
+                  color: isReplaying ? 'var(--chat-move-replay-text)' : 'var(--chat-move-text)',
                 }}
                 title="Replay this move"
               >
                 <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: playerColor }} />
                 <span className="flex-1 truncate font-mono">{describeMove(entry, session!)}</span>
-                <span style={{ color: '#3A2A1A', fontSize: '10px' }}>&#8634;</span>
+                <span style={{ color: 'var(--chat-move-icon)', fontSize: '10px' }}>&#8634;</span>
               </button>
             );
           }
@@ -318,12 +318,12 @@ function ChatPanel({
                 )}
                 <span
                   className="text-xs font-semibold"
-                  style={{ color: isMe ? '#E8C870' : '#A09070' }}
+                  style={{ color: isMe ? 'var(--chat-sender-me)' : 'var(--chat-sender-other)' }}
                 >
                   {msg.displayName}
                 </span>
                 {msg.isSpectator && (
-                  <span className="text-xs" style={{ color: '#5A4A38', fontSize: '10px' }}>
+                  <span className="text-xs" style={{ color: 'var(--chat-spectator-label)', fontSize: '10px' }}>
                     spectating
                   </span>
                 )}
@@ -347,7 +347,7 @@ function ChatPanel({
                     {badge}
                   </span>
                 )}
-                <span className="text-xs" style={{ color: '#5A4A38', fontSize: '10px' }}>
+                <span className="text-xs" style={{ color: 'var(--chat-timestamp)', fontSize: '10px' }}>
                   {formatTime(msg.timestamp)}
                 </span>
               </div>
@@ -356,18 +356,18 @@ function ChatPanel({
                 style={{
                   background:
                     msg.chatScope === 'dm'
-                      ? 'rgba(80,60,120,0.2)'
+                      ? 'var(--chat-bubble-dm-bg)'
                       : isMe
-                        ? 'rgba(196,160,48,0.15)'
-                        : 'rgba(42,30,14,0.6)',
+                        ? 'var(--chat-bubble-me-bg)'
+                        : 'var(--chat-bubble-other-bg)',
                   border: `1px solid ${
                     msg.chatScope === 'dm'
-                      ? 'rgba(120,80,180,0.3)'
+                      ? 'var(--chat-bubble-dm-border)'
                       : isMe
-                        ? 'rgba(196,160,48,0.3)'
-                        : 'rgba(42,30,14,0.8)'
+                        ? 'var(--chat-bubble-me-border)'
+                        : 'var(--chat-bubble-other-border)'
                   }`,
-                  color: '#D4C8A8',
+                  color: 'var(--chat-bubble-text)',
                 }}
               >
                 {msg.text}
@@ -379,15 +379,15 @@ function ChatPanel({
 
       {/* Destination selector */}
       {chatDestinations && chatDestinations.length > 1 && (
-        <div className="px-3 pt-2 pb-1 border-t" style={{ borderColor: '#2A1E0E' }}>
+        <div className="px-3 pt-2 pb-1 border-t" style={{ borderColor: 'var(--chat-border)' }}>
           <select
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
             className="w-full rounded-lg px-2 py-1 text-xs outline-none"
             style={{
-              background: 'rgba(42,30,14,0.5)',
-              border: '1px solid rgba(42,30,14,0.8)',
-              color: '#A09070',
+              background: 'var(--chat-select-bg)',
+              border: '1px solid var(--chat-select-border)',
+              color: 'var(--chat-select-text)',
             }}
           >
             {chatDestinations.map((d) => (
@@ -404,16 +404,16 @@ function ChatPanel({
         onSubmit={handleSubmit}
         ref={reactionsRef}
         className="relative flex gap-2 px-3 py-2 border-t"
-        style={{ borderColor: '#2A1E0E' }}
+        style={{ borderColor: 'var(--chat-border)' }}
       >
         {/* Quick reactions popover */}
         {showReactions && (
           <div
             className="absolute bottom-full left-3 mb-1 rounded-xl p-2 flex flex-col gap-1 z-10"
             style={{
-              background: 'rgba(18,12,4,0.97)',
-              border: '1px solid #3A2810',
-              boxShadow: '0 -4px 16px rgba(0,0,0,0.5)',
+              background: 'var(--chat-popover-bg)',
+              border: '1px solid var(--chat-popover-border)',
+              boxShadow: '0 -4px 16px rgba(0,0,0,0.3)',
               minWidth: '10rem',
             }}
           >
@@ -423,14 +423,14 @@ function ChatPanel({
                 type="button"
                 onClick={() => handleQuickReaction(reaction)}
                 className="text-left rounded-lg px-3 py-1.5 text-sm transition-colors"
-                style={{ color: '#C4B890' }}
+                style={{ color: 'var(--chat-popover-item-text)' }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(196,160,48,0.12)';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#E8C870';
+                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--chat-popover-item-hover-bg)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--chat-popover-item-hover-text)';
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.background = '';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#C4B890';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--chat-popover-item-text)';
                 }}
               >
                 {reaction}
@@ -445,9 +445,9 @@ function ChatPanel({
           onClick={() => setShowReactions((v) => !v)}
           className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
           style={{
-            background: showReactions ? 'rgba(196,160,48,0.18)' : 'rgba(42,30,14,0.5)',
-            border: `1px solid ${showReactions ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)'}`,
-            color: showReactions ? '#E8C870' : '#6A5A40',
+            background: showReactions ? 'var(--chat-reactions-btn-active-bg)' : 'var(--chat-reactions-btn-bg)',
+            border: `1px solid ${showReactions ? 'var(--chat-reactions-btn-active-border)' : 'var(--chat-reactions-btn-border)'}`,
+            color: showReactions ? 'var(--chat-reactions-btn-active-text)' : 'var(--chat-reactions-btn-text)',
           }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -465,9 +465,9 @@ function ChatPanel({
           maxLength={500}
           className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
           style={{
-            background: 'rgba(42,30,14,0.5)',
-            border: '1px solid rgba(42,30,14,0.8)',
-            color: '#D4C8A8',
+            background: 'var(--chat-input-bg)',
+            border: '1px solid var(--chat-input-border)',
+            color: 'var(--chat-input-text)',
           }}
         />
         <button
@@ -475,9 +475,9 @@ function ChatPanel({
           disabled={!draft.trim()}
           className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
           style={{
-            background: draft.trim() ? 'rgba(196,160,48,0.25)' : 'rgba(42,30,14,0.4)',
-            border: '1px solid rgba(196,160,48,0.3)',
-            color: draft.trim() ? '#E8C870' : '#5A4A38',
+            background: draft.trim() ? 'var(--chat-send-active-bg)' : 'var(--chat-send-idle-bg)',
+            border: '1px solid var(--chat-send-active-border)',
+            color: draft.trim() ? 'var(--chat-send-active-text)' : 'var(--chat-send-idle-text)',
             cursor: draft.trim() ? 'pointer' : 'default',
           }}
         >
