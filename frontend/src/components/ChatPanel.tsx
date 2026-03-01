@@ -476,7 +476,7 @@ function ChatPanel({
           className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
           style={{
             background: draft.trim() ? 'var(--chat-send-active-bg)' : 'var(--chat-send-idle-bg)',
-            border: '1px solid var(--chat-send-active-border)',
+            border: `1px solid ${draft.trim() ? 'var(--chat-send-active-border)' : 'var(--chat-send-idle-border)'}`,
             color: draft.trim() ? 'var(--chat-send-active-text)' : 'var(--chat-send-idle-text)',
             cursor: draft.trim() ? 'pointer' : 'default',
           }}
