@@ -9,6 +9,7 @@ import TournamentBracket from '../tournament/TournamentBracket';
 import ChatPanel, { ChatMessage } from '../ChatPanel';
 import MatchSpectatorModal from '../tournament/MatchSpectatorModal';
 import FeedbackModal from '../FeedbackModal';
+import { getTheme, toggleTheme, type Theme } from '../../services/theme';
 
 const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string }[] = [
   { value: 'single', label: 'Single Match' },
@@ -94,6 +95,7 @@ export default function SessionLobby() {
 
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem(PLAYER_ID_KEY));
   const [showFeedback, setShowFeedback] = useState(false);
+  const [theme, setTheme] = useState<Theme>(getTheme);
 
   const [displayName, setDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
   const [joinLoading, setJoinLoading] = useState(false);
@@ -402,6 +404,10 @@ export default function SessionLobby() {
     }
   };
 
+  const handleThemeToggle = () => {
+    setTheme(toggleTheme());
+  };
+
   const handleLeave = () => {
     if (!sessionCode || !playerId) return;
     const socket = socketService.getSocket();
@@ -546,6 +552,18 @@ export default function SessionLobby() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={handleThemeToggle}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+                    style={{
+                      background: 'rgba(196,160,48,0.12)',
+                      border: '1.5px solid rgba(196,160,48,0.35)',
+                      color: '#C4A030',
+                    }}
+                    title={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
+                  >
+                    {theme === 'egyptian' ? '◈' : '☽'}
+                  </button>
+                  <button
                     onClick={() => setShowFeedback(true)}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
                     style={{
@@ -662,6 +680,18 @@ export default function SessionLobby() {
             </div>
             <div className="flex items-center gap-2">
               <button
+                onClick={handleThemeToggle}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+                style={{
+                  background: 'rgba(196,160,48,0.12)',
+                  border: '1.5px solid rgba(196,160,48,0.35)',
+                  color: '#C4A030',
+                }}
+                title={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
+              >
+                {theme === 'egyptian' ? '◈' : '☽'}
+              </button>
+              <button
                 onClick={() => setShowFeedback(true)}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
                 style={{
@@ -753,7 +783,7 @@ export default function SessionLobby() {
               </div>
             )}
 
-            {isHost && format === 'single' && session.players.length < 2 && session.gameType == "ur" && (
+            {isHost && format === 'single' && session.players.length < 2 && (session.gameType == "ur" || session.gameType == "ur-roguelike" || session.gameType == "morris" ) && (
               <div className="mt-3">
                 {!showBotForm ? (
                   <button
