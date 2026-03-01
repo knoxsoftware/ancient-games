@@ -12,7 +12,8 @@ function applyTheme(theme: Theme) {
 }
 
 export function getTheme(): Theme {
-  return (localStorage.getItem(STORAGE_KEY) as Theme) ?? 'classic';
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored === EGYPTIAN ? EGYPTIAN : 'classic';
 }
 
 export function toggleTheme(): Theme {
