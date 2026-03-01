@@ -9,6 +9,7 @@ interface GameEndModalProps {
   onPlayAgain: () => void;
   onReturnToBracket: () => void;
   onLeave: () => void;
+  onDismiss: () => void;
 }
 
 function getWinsNeeded(format: TournamentFormat): number {
@@ -52,6 +53,7 @@ export default function GameEndModal({
   onPlayAgain,
   onReturnToBracket,
   onLeave,
+  onDismiss,
 }: GameEndModalProps) {
   const winner = gameState.winner;
   if (winner === null) return null;
@@ -212,6 +214,17 @@ export default function GameEndModal({
         className="relative w-full max-w-sm rounded-xl p-6 text-center"
         style={{ background: '#1A1008', border: '1px solid rgba(196,160,48,0.3)' }}
       >
+        <button
+          onClick={onDismiss}
+          aria-label="View board"
+          className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full text-sm transition-colors"
+          style={{ color: '#8A7A60', background: 'rgba(255,255,255,0.05)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+          title="View final board"
+        >
+          ✕
+        </button>
         <div
           className="text-3xl font-bold mb-2"
           style={{ color: isWinner ? '#E8C870' : '#E8D8B0' }}

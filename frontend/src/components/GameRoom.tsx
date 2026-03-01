@@ -528,7 +528,11 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
     } else if (!isSeatedPlayer) {
       localStorage.removeItem(PLAYER_ID_KEY);
     }
-    navigate('/');
+    if (session?.tournamentHubCode) {
+      navigate(`/session/${session.tournamentHubCode}`);
+    } else {
+      navigate('/');
+    }
   };
 
   const handleRematch = () => {
@@ -1036,7 +1040,8 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
             handleRematch();
           }}
           onReturnToBracket={handleReturnToBracket}
-          onLeave={() => navigate('/')}
+          onLeave={handleLeave}
+          onDismiss={() => setShowGameEndModal(false)}
         />
       )}
     </div>
