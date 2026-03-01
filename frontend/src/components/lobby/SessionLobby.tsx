@@ -452,6 +452,21 @@ export default function SessionLobby() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="card max-w-md w-full">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleThemeToggle}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors"
+              style={{
+                background: 'rgba(196,160,48,0.12)',
+                border: '1.5px solid rgba(196,160,48,0.35)',
+                color: '#C4A030',
+              }}
+              title={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
+              aria-label={theme === 'egyptian' ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
+            >
+              {theme === 'egyptian' ? '◈' : '☽'}
+            </button>
+          </div>
           <div className="text-center mb-6">
             <div className="text-4xl mb-3">🎲</div>
             <h1 className="text-2xl font-bold mb-1">You've been invited!</h1>
