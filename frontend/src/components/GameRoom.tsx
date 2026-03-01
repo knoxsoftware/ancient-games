@@ -13,7 +13,8 @@ import { api } from '../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../services/storage';
 import { sessionHistory } from '../services/sessionHistory';
 import { initPushNotifications, isPushSubscribed } from '../services/pushNotifications';
-import FeedbackModal from './FeedbackModal';
+import { toggleTheme } from '../services/theme';
+import { useTheme } from '../hooks/useTheme';
 
 const boardComponents: Record<GameType, React.LazyExoticComponent<React.ComponentType<any>>> = {
   ur: lazy(() => import('./games/ur/UrBoard')),
@@ -65,6 +66,29 @@ async function showNotification(title: string, body: string) {
 export default function GameRoom() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const eg = theme === 'egyptian';
+  const th = {
+    btnBg: eg ? 'rgba(138,106,0,0.12)' : 'rgba(196,160,48,0.12)',
+    btnBorder: eg ? '1.5px solid rgba(138,106,0,0.35)' : '1.5px solid rgba(196,160,48,0.35)',
+    btnColor: eg ? '#8A6A00' : '#C4A030',
+    toastBg: eg ? 'rgba(250,246,238,0.97)' : 'rgba(20,12,0,0.92)',
+    toastBorder: eg ? '1px solid rgba(138,106,0,0.4)' : '1px solid rgba(196,168,107,0.5)',
+    toastColor: eg ? '#1A0C04' : '#F0E6C8',
+    toastHighlight: eg ? '#6E5200' : '#E8C870',
+    toastShadow: eg ? '0 4px 24px rgba(0,0,0,0.15)' : '0 4px 24px rgba(0,0,0,0.6)',
+    controlBg: eg ? 'rgba(240,232,208,0.9)' : 'rgba(5,3,0,0.7)',
+    controlBorder: eg ? '#C0A070' : '#2A1E0E',
+    controlText: eg ? '#7A6040' : '#5A4A38',
+    modalBg: eg ? '#F0E8D0' : '#1A1008',
+    modalBorder: eg ? 'rgba(138,106,0,0.3)' : 'rgba(196,160,48,0.3)',
+    closeBg: eg ? 'rgba(160,136,80,0.2)' : 'rgba(80,60,30,0.5)',
+    closeColor: eg ? '#6E5200' : '#E8C870',
+    closeBorder: eg ? '1px solid rgba(138,106,0,0.25)' : '1px solid rgba(196,160,48,0.25)',
+    skipBg: eg ? 'rgba(240,232,208,0.97)' : 'rgba(40,22,0,0.93)',
+    skipBorder: eg ? '1px solid rgba(138,106,0,0.5)' : '1px solid rgba(220,140,20,0.7)',
+    skipColor: eg ? '#6E5200' : '#FFD060',
+  };
   const [session, setSession] = useState<Session | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [hubSession, setHubSession] = useState<Session | null>(null);
@@ -78,7 +102,6 @@ export default function GameRoom() {
   const [spectateError, setSpectateError] = useState('');
   const [skipNotice, setSkipNotice] = useState<{ playerName: string; roll: number } | null>(null);
   const [showRules, setShowRules] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showBracket, setShowBracket] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatToast, setChatToast] = useState<{ displayName: string; text: string } | null>(null);
@@ -682,11 +705,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
               onClick={() => setShowRules(true)}
               aria-label="Rules"
               className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-              style={{
-                background: 'rgba(196,160,48,0.12)',
-                border: '1.5px solid rgba(196,160,48,0.35)',
-                color: '#C4A030',
-              }}
+              style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
             >
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
@@ -695,22 +714,15 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
               </svg>
               <span className="hidden sm:inline">Rules</span>
             </button>
-            {/* Feedback */}
+            {/* Theme toggle */}
             <button
-              onClick={() => setShowFeedback(true)}
-              aria-label="Feedback"
+              onClick={() => toggleTheme()}
+              aria-label={eg ? 'Switch to Classic theme' : 'Switch to Egyptian theme'}
               className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-              style={{
-                background: 'rgba(196,160,48,0.12)',
-                border: '1.5px solid rgba(196,160,48,0.35)',
-                color: '#C4A030',
-              }}
+              style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
             >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M1.5 5L8 9.5L14.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <span className="hidden sm:inline">Feedback</span>
+              <span>{eg ? '◈' : '☽'}</span>
+              <span className="hidden sm:inline">{eg ? 'Classic' : 'Egyptian'}</span>
             </button>
             {/* Bracket — tournament matches only */}
             {isTournamentMatch && (
@@ -718,11 +730,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 onClick={() => setShowBracket(true)}
                 aria-label="Bracket"
                 className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-                style={{
-                  background: 'rgba(196,160,48,0.12)',
-                  border: '1.5px solid rgba(196,160,48,0.35)',
-                  color: '#C4A030',
-                }}
+                style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
               >
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <rect x="1" y="2" width="4" height="3" rx="0.75" stroke="currentColor" strokeWidth="1.3"/>
@@ -741,11 +749,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 onClick={handleStandUp}
                 aria-label="Stand Up"
                 className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-                style={{
-                  background: 'rgba(196,160,48,0.12)',
-                  border: '1.5px solid rgba(196,160,48,0.35)',
-                  color: '#C4A030',
-                }}
+                style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
               >
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <circle cx="8" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
@@ -760,11 +764,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
               onClick={handleLeave}
               aria-label="Leave"
               className="flex items-center justify-center gap-1.5 w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 rounded-full text-xs font-medium transition-colors"
-              style={{
-                background: 'rgba(196,160,48,0.12)',
-                border: '1.5px solid rgba(196,160,48,0.35)',
-                color: '#C4A030',
-              }}
+              style={{ background: th.btnBg, border: th.btnBorder, color: th.btnColor }}
             >
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M6 3H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -786,7 +786,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           fallback={
             <div
               className="flex items-center justify-center py-16 text-sm"
-              style={{ color: 'rgba(196,168,107,0.5)' }}
+              style={{ color: th.btnColor, opacity: 0.5 }}
             >
               Loading…
             </div>
@@ -812,7 +812,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         {controlsComponents[session.gameType] && (
           <div
             className="flex-shrink-0 h-24 sm:h-40 overflow-hidden flex items-center justify-center"
-            style={{ background: 'rgba(5,3,0,0.7)', borderRadius: '0.75rem', border: '1px solid #2A1E0E', margin: '0 0.5rem' }}
+            style={{ background: th.controlBg, borderRadius: '0.75rem', border: `1px solid ${th.controlBorder}`, margin: '0 0.5rem' }}
           >
             {bothSeated || currentPlayer ? (
               <div className="w-full">
@@ -825,7 +825,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 />
               </div>
             ) : (
-              <div className="px-2 text-center text-xs" style={{ color: '#5A4A38' }}>
+              <div className="px-2 text-center text-xs" style={{ color: th.controlText }}>
                 Waiting for both players to take their seats…
               </div>
             )}
@@ -860,12 +860,12 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           key={message}
           className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
           style={{
-            background: 'rgba(20,12,0,0.92)',
-            border: '1px solid rgba(196,168,107,0.5)',
-            color: '#F0E6C8',
+            background: th.toastBg,
+            border: th.toastBorder,
+            color: th.toastColor,
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+            boxShadow: th.toastShadow,
             transform: 'translateX(-50%)',
           }}
         >
@@ -878,16 +878,16 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           key={chatToast.displayName + chatToast.text}
           className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
           style={{
-            background: 'rgba(20,12,0,0.92)',
-            border: '1px solid rgba(196,168,107,0.5)',
-            color: '#F0E6C8',
+            background: th.toastBg,
+            border: th.toastBorder,
+            color: th.toastColor,
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,168,107,0.15)',
+            boxShadow: th.toastShadow,
             transform: 'translateX(-50%)',
           }}
         >
-          <span style={{ color: '#E8C870' }}>{chatToast.displayName}:</span>{' '}
+          <span style={{ color: th.toastHighlight }}>{chatToast.displayName}:</span>{' '}
           {chatToast.text.length > 60 ? chatToast.text.slice(0, 60) + '…' : chatToast.text}
         </div>
       )}
@@ -897,12 +897,12 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           key={tournamentToast}
           className="toast-animate fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
           style={{
-            background: 'rgba(10,20,10,0.95)',
-            border: '1px solid rgba(100,180,100,0.5)',
-            color: '#C0E8C0',
+            background: th.toastBg,
+            border: th.toastBorder,
+            color: th.toastColor,
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
+            boxShadow: th.toastShadow,
             transform: 'translateX(-50%)',
           }}
         >
@@ -915,16 +915,16 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
           key={skipNotice.playerName}
           className="dice-shake fixed top-5 left-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold shadow-2xl pointer-events-none select-none"
           style={{
-            background: 'rgba(40,22,0,0.93)',
-            border: '1px solid rgba(220,140,20,0.7)',
-            color: '#FFD060',
+            background: th.skipBg,
+            border: th.skipBorder,
+            color: th.skipColor,
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(220,140,20,0.2)',
+            boxShadow: th.toastShadow,
             transform: 'translateX(-50%)',
           }}
         >
-	{skipNotice.playerName} rolled a {skipNotice.roll} — No valid moves. Pass.
+          {skipNotice.playerName} rolled a {skipNotice.roll} — No valid moves. Pass.
         </div>
       )}
 
@@ -952,17 +952,13 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         >
           <div
             className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-xl p-6"
-            style={{ background: '#1A1008', border: '1px solid rgba(196,160,48,0.3)' }}
+            style={{ background: th.modalBg, border: th.modalBorder }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setShowBracket(false)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
-              style={{
-                background: 'rgba(80,60,30,0.5)',
-                color: '#E8C870',
-                border: '1px solid rgba(196,160,48,0.25)',
-              }}
+              style={{ background: th.closeBg, color: th.closeColor, border: th.closeBorder }}
             >
               ✕
             </button>
@@ -977,7 +973,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 onMatchClick={(matchId) => { setSelectedMatchId(matchId); setShowBracket(false); }}
               />
             ) : (
-              <div className="text-xs text-center py-8" style={{ color: '#5A4A38' }}>
+              <div className="text-xs text-center py-8" style={{ color: th.controlText }}>
                 Loading bracket…
               </div>
             )}
@@ -993,17 +989,13 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         >
           <div
             className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-xl p-6"
-            style={{ background: '#1A1008', border: '1px solid rgba(196,160,48,0.3)' }}
+            style={{ background: th.modalBg, border: th.modalBorder }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setShowRules(false)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
-              style={{
-                background: 'rgba(80,60,30,0.5)',
-                color: '#E8C870',
-                border: '1px solid rgba(196,160,48,0.25)',
-              }}
+              style={{ background: th.closeBg, color: th.closeColor, border: th.closeBorder }}
               title="Close"
             >
               ✕
@@ -1011,18 +1003,6 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
             <GameRules gameType={session.gameType} />
           </div>
         </div>
-      )}
-
-      {showFeedback && (
-        <FeedbackModal
-          gameType={session.gameType}
-          sessionCode={sessionCode}
-          playerName={
-            session.players.find((p) => p.id === playerId)?.displayName ??
-            session.spectators.find((s) => s.id === playerId)?.displayName
-          }
-          onClose={() => setShowFeedback(false)}
-        />
       )}
 
       {selectedMatchId && (() => {

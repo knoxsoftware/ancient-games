@@ -10,6 +10,7 @@ import ChatPanel, { ChatMessage } from '../ChatPanel';
 import MatchSpectatorModal from '../tournament/MatchSpectatorModal';
 import FeedbackModal from '../FeedbackModal';
 import { getTheme, toggleTheme, type Theme } from '../../services/theme';
+import { useTheme } from '../../hooks/useTheme';
 
 const FORMAT_OPTIONS: { value: TournamentFormat | 'single'; label: string }[] = [
   { value: 'single', label: 'Single Match' },
@@ -95,6 +96,8 @@ export default function SessionLobby() {
 
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem(PLAYER_ID_KEY));
   const [showFeedback, setShowFeedback] = useState(false);
+  const uiTheme = useTheme();
+  const eg = uiTheme === 'egyptian';
   const [theme, setTheme] = useState<Theme>(getTheme);
 
   const [displayName, setDisplayName] = useState(localStorage.getItem(PLAYER_NAME_KEY) ?? '');
@@ -905,11 +908,15 @@ export default function SessionLobby() {
                     onClick={() => handleFormatChange(opt.value)}
                     className="rounded-lg p-2.5 text-left transition-all border"
                     style={{
-                      background:
-                        format === opt.value ? 'rgba(196,160,48,0.12)' : 'rgba(8,5,0,0.5)',
-                      borderColor:
-                        format === opt.value ? 'rgba(196,160,48,0.5)' : 'rgba(42,30,14,0.8)',
-                      color: format === opt.value ? '#E8C870' : '#8A7A60',
+                      background: format === opt.value
+                        ? (eg ? 'rgba(138,106,0,0.12)' : 'rgba(196,160,48,0.12)')
+                        : (eg ? 'rgba(240,232,208,0.6)' : 'rgba(8,5,0,0.5)'),
+                      borderColor: format === opt.value
+                        ? (eg ? 'rgba(138,106,0,0.6)' : 'rgba(196,160,48,0.5)')
+                        : (eg ? 'rgba(192,160,112,0.5)' : 'rgba(42,30,14,0.8)'),
+                      color: format === opt.value
+                        ? (eg ? '#6E5200' : '#E8C870')
+                        : (eg ? '#7A6040' : '#8A7A60'),
                     }}
                   >
                     <div className="text-sm font-semibold">{opt.label}</div>
@@ -920,7 +927,7 @@ export default function SessionLobby() {
                 ))}
               </div>
               {format === 'single' && session.players.length > 2 && (
-                <div className="text-xs mt-2" style={{ color: '#E8A030' }}>
+                <div className="text-xs mt-2" style={{ color: eg ? '#8A6A00' : '#E8A030' }}>
                   Single Match requires exactly 2 players seated.
                 </div>
               )}
@@ -929,7 +936,7 @@ export default function SessionLobby() {
 
           {/* Format display for non-hosts */}
           {!isHost && (
-            <div className="mb-6 text-sm" style={{ color: '#6A5A40' }}>
+            <div className="mb-6 text-sm" style={{ color: eg ? '#7A6040' : '#6A5A40' }}>
               Format: {FORMAT_OPTIONS.find((o) => o.value === format)?.label ?? 'Single Match'}
               {' '}—{' '}
               <span className="opacity-70">{getTournamentInfo(format, session.players.length)}</span>

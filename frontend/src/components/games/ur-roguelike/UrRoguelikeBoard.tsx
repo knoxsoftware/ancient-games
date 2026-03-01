@@ -3,6 +3,7 @@ import { Session, GameState } from '@ancient-games/shared';
 import DraftModal from './DraftModal';
 import { EVENT_DISPLAY, POWER_UP_DISPLAY } from './roguelikeConstants';
 import { socketService } from '../../../services/socket';
+import { useTheme } from '../../../hooks/useTheme';
 
 const UrBoard = lazy(() => import('../ur/UrBoard'));
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function UrRoguelikeBoard({ session, gameState, playerId, isMyTurn }: Props) {
+  const eg = useTheme() === 'egyptian';
   const board = gameState.board;
   const player = session.players.find((p) => p.id === playerId);
   const [eventToast, setEventToast] = useState<{ name: string; description: string; emoji: string } | null>(null);
@@ -94,7 +96,7 @@ export default function UrRoguelikeBoard({ session, gameState, playerId, isMyTur
       {eventToast && (
         <div
           className="absolute top-2 left-1/2 -translate-x-1/2 z-40 rounded-lg px-4 py-2 text-sm font-semibold shadow-lg"
-          style={{ background: '#3A1A00', border: '1px solid #C47A20', color: '#E8C870', whiteSpace: 'nowrap' }}
+          style={{ background: eg ? '#F0E8D0' : '#3A1A00', border: eg ? '1px solid #C0A070' : '1px solid #C47A20', color: eg ? '#6E5200' : '#E8C870', whiteSpace: 'nowrap' }}
         >
           {eventToast.emoji} {eventToast.name}: {eventToast.description}
         </div>

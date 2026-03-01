@@ -20,6 +20,7 @@ export function toggleTheme(): Theme {
   const next: Theme = getTheme() === EGYPTIAN ? 'classic' : EGYPTIAN;
   localStorage.setItem(STORAGE_KEY, next);
   applyTheme(next);
+  window.dispatchEvent(new CustomEvent('themechange', { detail: next }));
   return next;
 }
 

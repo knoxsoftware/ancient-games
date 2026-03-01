@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
+import { useTheme } from '../../../hooks/useTheme';
 
 interface SenetBoardProps {
   session: Session;
@@ -188,6 +189,7 @@ function SpecialIcon({ type, color }: { type: SpecialSquare['iconType']; color: 
 }
 
 function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece, boardOnly }: SenetBoardProps) {
+  const eg = useTheme() === 'egyptian';
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
 
@@ -394,9 +396,13 @@ function SenetBoard({ session, gameState, playerId, isMyTurn, animatingPiece, bo
       <div
         className="rounded-xl p-3 border-2"
         style={{
-          background: 'linear-gradient(160deg, #7A5628 0%, #9A7040 50%, #7A5628 100%)',
-          borderColor: '#4A3010',
-          boxShadow: '0 6px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,215,100,0.08)',
+          background: eg
+            ? 'linear-gradient(160deg, #EDE4CC 0%, #F0E8D0 50%, #EDE4CC 100%)'
+            : 'linear-gradient(160deg, #7A5628 0%, #9A7040 50%, #7A5628 100%)',
+          borderColor: eg ? '#C0A070' : '#4A3010',
+          boxShadow: eg
+            ? '0 6px 24px rgba(0,0,0,0.15), inset 0 1px 0 rgba(138,106,0,0.1)'
+            : '0 6px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,215,100,0.08)',
         }}
       >
         {/* Row 0: positions 0–9, left to right */}

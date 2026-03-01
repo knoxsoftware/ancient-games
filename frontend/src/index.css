@@ -163,6 +163,15 @@
   }
 }
 
+/* ── Egyptian gradient utility overrides (for bg-clip-text gradients) ── */
+[data-theme="egyptian"] .from-primary-400 {
+  --tw-gradient-from: #8A6A00 var(--tw-gradient-from-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(138,106,0,0));
+}
+[data-theme="egyptian"] .to-secondary-400 {
+  --tw-gradient-to: #005A55 var(--tw-gradient-to-position);
+}
+
 /* ── Egyptian (Parchment & Dark Gold) theme overrides ────────────────── */
 [data-theme="egyptian"] body {
   background-color: #FAF6EE;

@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
+import { useTheme } from '../../../hooks/useTheme';
 
 // ── Board geometry ────────────────────────────────────────────────────────────
 // 24 positions mapped to a 7×7 virtual grid (col, row), each cell = CELL px.
@@ -139,6 +140,7 @@ interface MorrisBoardProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly, animatingPiece }: MorrisBoardProps) {
+  const eg = useTheme() === 'egyptian';
   const [selected, setSelected] = useState<{ pieceIndex: number; from: number } | null>(null);
 
   const myPlayer = session.players.find((p) => p.id === playerId);
@@ -261,7 +263,7 @@ function MorrisBoard({ session, gameState, playerId, isMyTurn, boardOnly, animat
         style={{ maxWidth: SVG_SIZE, maxHeight: '65vh', userSelect: 'none' }}
       >
         {/* Board background */}
-        <rect x={0} y={0} width={SVG_SIZE} height={SVG_SIZE} rx={12} fill="rgba(18,12,4,0.85)" />
+        <rect x={0} y={0} width={SVG_SIZE} height={SVG_SIZE} rx={12} fill={eg ? 'rgba(240,232,208,0.92)' : 'rgba(18,12,4,0.85)'} />
 
         {/* Board lines */}
         {EDGES.map(([a, b]) => {

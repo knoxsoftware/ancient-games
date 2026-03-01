@@ -1,6 +1,7 @@
 import { memo, useEffect, useId, useRef, useState } from 'react';
 import { Session, GameState, Move, PiecePosition } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
+import { useTheme } from '../../../hooks/useTheme';
 
 interface UrBoardProps {
   session: Session;
@@ -154,6 +155,7 @@ export function TetraDice({ result }: { result: number }) {
 }
 
 function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, boardOnly }: UrBoardProps) {
+  const eg = useTheme() === 'egyptian';
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const playerNumber = currentPlayer?.playerNumber ?? 0;
   // topPlayer = opponent's row (far side); bottomPlayer = my row (near side)
@@ -412,9 +414,13 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
       <div
         className="rounded-xl p-3 border-2"
         style={{
-          background: 'linear-gradient(160deg, #140C04 0%, #1E1408 50%, #140C04 100%)',
-          borderColor: '#2A1E0E',
-          boxShadow: '0 6px 28px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,200,60,0.06)',
+          background: eg
+            ? 'linear-gradient(160deg, #EDE4CC 0%, #F0E8D0 50%, #EDE4CC 100%)'
+            : 'linear-gradient(160deg, #140C04 0%, #1E1408 50%, #140C04 100%)',
+          borderColor: eg ? '#C0A070' : '#2A1E0E',
+          boxShadow: eg
+            ? '0 6px 28px rgba(0,0,0,0.15), inset 0 1px 0 rgba(138,106,0,0.1)'
+            : '0 6px 28px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,200,60,0.06)',
         }}
       >
         {/* Opponent's waiting pieces — above the board */}
