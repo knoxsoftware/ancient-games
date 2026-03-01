@@ -163,102 +163,104 @@
   }
 }
 
-/* ── Egyptian (Lapis & Gold) theme overrides ─────────────────────────── */
+/* ── Egyptian (Parchment & Dark Gold) theme overrides ────────────────── */
 [data-theme="egyptian"] body {
-  background-color: #030710;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12 2L22 12L12 22L2 12Z' fill='none' stroke='%23C9A030' stroke-width='0.35' stroke-opacity='0.18'/%3E%3C/svg%3E");
+  background-color: #FAF6EE;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12 2L22 12L12 22L2 12Z' fill='none' stroke='%23A07800' stroke-width='0.35' stroke-opacity='0.15'/%3E%3C/svg%3E");
   background-size: 24px 24px;
+  color: #1A0C04;
 }
 
-/* Gray → lapis blue-black */
-[data-theme="egyptian"] .bg-gray-50  { background-color: #eef1f7; }
-[data-theme="egyptian"] .bg-gray-100 { background-color: #d4dbe9; }
-[data-theme="egyptian"] .bg-gray-200 { background-color: #b0bdd1; }
-[data-theme="egyptian"] .bg-gray-300 { background-color: #8a9bb8; }
-[data-theme="egyptian"] .bg-gray-400 { background-color: #6a7fa0; }
-[data-theme="egyptian"] .bg-gray-500 { background-color: #4e6285; }
-[data-theme="egyptian"] .bg-gray-600 { background-color: #354d6e; }
-[data-theme="egyptian"] .bg-gray-700 { background-color: #1e3354; }
-[data-theme="egyptian"] .bg-gray-800 { background-color: #0e1f3a; }
-[data-theme="egyptian"] .bg-gray-900 { background-color: #060e1f; }
-[data-theme="egyptian"] .bg-gray-950 { background-color: #030710; }
+/* Gray → warm parchment tones (light backgrounds, dark text) */
+[data-theme="egyptian"] .bg-gray-50  { background-color: #FAF6EE; }
+[data-theme="egyptian"] .bg-gray-100 { background-color: #F5EFE0; }
+[data-theme="egyptian"] .bg-gray-200 { background-color: #EDE4CC; }
+[data-theme="egyptian"] .bg-gray-300 { background-color: #E0D4B8; }
+[data-theme="egyptian"] .bg-gray-400 { background-color: #D4C4A0; }
+[data-theme="egyptian"] .bg-gray-500 { background-color: #C0A870; }
+[data-theme="egyptian"] .bg-gray-600 { background-color: #A08850; }
+[data-theme="egyptian"] .bg-gray-700 { background-color: #7A6040; }
+[data-theme="egyptian"] .bg-gray-800 { background-color: #3A2010; }
+[data-theme="egyptian"] .bg-gray-900 { background-color: #241408; }
+[data-theme="egyptian"] .bg-gray-950 { background-color: #1A0C04; }
 
-[data-theme="egyptian"] .text-gray-300 { color: #8a9bb8; }
-[data-theme="egyptian"] .text-gray-400 { color: #6a7fa0; }
-[data-theme="egyptian"] .text-gray-500 { color: #4e6285; }
+[data-theme="egyptian"] .text-gray-100 { color: #FAF6EE; }
+[data-theme="egyptian"] .text-gray-300 { color: #3A2010; }
+[data-theme="egyptian"] .text-gray-400 { color: #7A6040; }
+[data-theme="egyptian"] .text-gray-500 { color: #A08850; }
 
-[data-theme="egyptian"] .border-gray-600 { border-color: #354d6e; }
-[data-theme="egyptian"] .border-gray-700 { border-color: #1e3354; }
+[data-theme="egyptian"] .border-gray-600 { border-color: #C0A070; }
+[data-theme="egyptian"] .border-gray-700 { border-color: #D4B896; }
 
 /* Utility opacity variants used in the lobby */
-[data-theme="egyptian"] .bg-gray-700\/50 { background-color: rgba(30,51,84,0.5); }
-[data-theme="egyptian"] .bg-gray-700\/30 { background-color: rgba(30,51,84,0.3); }
-[data-theme="egyptian"] .bg-gray-700\/20 { background-color: rgba(30,51,84,0.2); }
-[data-theme="egyptian"] .bg-gray-700\/40 { background-color: rgba(30,51,84,0.4); }
+[data-theme="egyptian"] .bg-gray-700\/50 { background-color: rgba(122,96,64,0.15); }
+[data-theme="egyptian"] .bg-gray-700\/30 { background-color: rgba(122,96,64,0.10); }
+[data-theme="egyptian"] .bg-gray-700\/20 { background-color: rgba(122,96,64,0.07); }
+[data-theme="egyptian"] .bg-gray-700\/40 { background-color: rgba(122,96,64,0.12); }
 
-/* Primary → gold */
-[data-theme="egyptian"] .bg-primary-600 { background-color: #B8960C; }
-[data-theme="egyptian"] .bg-primary-700 { background-color: #9A7D0A; }
-[data-theme="egyptian"] .hover\:bg-primary-700:hover { background-color: #9A7D0A; }
-[data-theme="egyptian"] .hover\:bg-primary-500:hover { background-color: #D4AF37; }
-[data-theme="egyptian"] .text-primary-400 { color: #f9d76b; }
-[data-theme="egyptian"] .text-primary-600 { color: #B8960C; }
-[data-theme="egyptian"] .border-primary-600 { border-color: #B8960C; }
-[data-theme="egyptian"] .hover\:bg-primary-600:hover { background-color: #B8960C; }
-[data-theme="egyptian"] .focus\:ring-primary-500:focus { --tw-ring-color: #D4AF37; }
+/* Primary → dark gold (readable on light bg) */
+[data-theme="egyptian"] .bg-primary-600 { background-color: #8A6A00; }
+[data-theme="egyptian"] .bg-primary-700 { background-color: #6E5200; }
+[data-theme="egyptian"] .hover\:bg-primary-700:hover { background-color: #6E5200; }
+[data-theme="egyptian"] .hover\:bg-primary-500:hover { background-color: #A07800; }
+[data-theme="egyptian"] .text-primary-300 { color: #6E5200; }
+[data-theme="egyptian"] .text-primary-400 { color: #8A6A00; }
+[data-theme="egyptian"] .text-primary-600 { color: #8A6A00; }
+[data-theme="egyptian"] .border-primary-600 { border-color: #8A6A00; }
+[data-theme="egyptian"] .hover\:bg-primary-600:hover { background-color: #8A6A00; }
+[data-theme="egyptian"] .hover\:text-primary-300:hover { color: #6E5200; }
+[data-theme="egyptian"] .focus\:ring-primary-500:focus { --tw-ring-color: #8A6A00; }
 
-/* Secondary → Egyptian turquoise */
-[data-theme="egyptian"] .bg-secondary-600 { background-color: #00A89C; }
-[data-theme="egyptian"] .bg-secondary-700 { background-color: #008F85; }
-[data-theme="egyptian"] .hover\:bg-secondary-700:hover { background-color: #008F85; }
+/* Secondary → deep teal (readable on light bg) */
+[data-theme="egyptian"] .bg-secondary-600 { background-color: #005A55; }
+[data-theme="egyptian"] .bg-secondary-700 { background-color: #004540; }
+[data-theme="egyptian"] .hover\:bg-secondary-700:hover { background-color: #004540; }
 
 /* Component class overrides */
 [data-theme="egyptian"] .card {
-  background-color: #0e1f3a;
-  border-color: #1e3354;
+  background-color: #F0E8D0;
+  border-color: #D4B896;
 }
 
 [data-theme="egyptian"] .input {
-  background-color: #0e1f3a;
-  border-color: #354d6e;
-  color: #eef1f7;
+  background-color: #EDE4CC;
+  border-color: #C0A070;
+  color: #1A0C04;
 }
-[data-theme="egyptian"] .input::placeholder { color: #4e6285; }
+[data-theme="egyptian"] .input::placeholder { color: #A08850; }
 
 [data-theme="egyptian"] .btn-primary {
-  background-color: #B8960C;
-  color: #030710;
+  background-color: #8A6A00;
+  color: #FAF6EE;
 }
-[data-theme="egyptian"] .btn-primary:hover { background-color: #D4AF37; }
+[data-theme="egyptian"] .btn-primary:hover { background-color: #6E5200; }
 
 [data-theme="egyptian"] .btn-outline {
-  border-color: #D4AF37;
-  color: #f9d76b;
+  border-color: #8A6A00;
+  color: #8A6A00;
 }
 [data-theme="egyptian"] .btn-outline:hover {
-  background-color: #B8960C;
-  color: #030710;
+  background-color: #8A6A00;
+  color: #FAF6EE;
 }
 
 [data-theme="egyptian"] .btn-secondary {
-  background-color: #00A89C;
+  background-color: #005A55;
+  color: #FAF6EE;
 }
-[data-theme="egyptian"] .btn-secondary:hover { background-color: #008F85; }
+[data-theme="egyptian"] .btn-secondary:hover { background-color: #004540; }
 
-[data-theme="egyptian"] .text-primary-300 { color: #fce99a; }
-[data-theme="egyptian"] .hover\:text-primary-300:hover { color: #fce99a; }
-
-/* my-turn-pulse: green → gold */
+/* my-turn-pulse: green → dark gold */
 [data-theme="egyptian"] .my-turn-pulse {
   animation: my-turn-pulse-gold 2s ease-in-out infinite;
 }
 @keyframes my-turn-pulse-gold {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(212,175,55,0.25), inset 0 0 8px rgba(212,175,55,0.06);
-    border-color: rgba(212,175,55,0.35);
+    box-shadow: 0 0 8px rgba(138,106,0,0.3), inset 0 0 8px rgba(138,106,0,0.08);
+    border-color: rgba(138,106,0,0.4);
   }
   50% {
-    box-shadow: 0 0 20px rgba(212,175,55,0.55), inset 0 0 14px rgba(212,175,55,0.14);
-    border-color: rgba(212,175,55,0.7);
+    box-shadow: 0 0 20px rgba(138,106,0,0.6), inset 0 0 14px rgba(138,106,0,0.18);
+    border-color: rgba(138,106,0,0.8);
   }
 }
