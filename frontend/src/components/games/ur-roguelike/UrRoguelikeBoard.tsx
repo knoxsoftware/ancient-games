@@ -166,13 +166,6 @@ export default function UrRoguelikeBoard({ session, gameState, playerId, isMyTur
         </div>
       )}
 
-      {/* Event square legend */}
-      {(board.eventSquares ?? []).length > 0 && (
-        <div className="text-xs mb-2" style={{ color: '#7A6A50' }}>
-          ⚗️ Event squares: positions {(board.eventSquares ?? []).sort((a, b) => a - b).join(', ')}
-        </div>
-      )}
-
       {/* Base Ur board */}
       <Suspense fallback={<div className="text-center p-4">Loading…</div>}>
         <UrBoard

@@ -211,7 +211,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
     if (from + roll === 14) return true; // exact exit
 
     const to = from + roll;
-    // Barrier squares are impassable
+    // Barrier squares are impassable (event squares are intentionally landable — they trigger effects)
     if ((gameState.board.barrierSquares ?? []).some((b) => b.position === to)) return false;
     // Own piece blocks
     if (gameState.board.pieces.some((p) => p.playerNumber === playerNumber && p.position === to)) {
@@ -368,6 +368,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
     const isRosette = allRosettes.includes(position);
     const barrier = (gameState.board.barrierSquares ?? []).find((b) => b.position === position);
     const isBarrier = !!barrier;
+    const isEventSquare = (gameState.board.eventSquares ?? []).includes(position);
     const piecesP0 = getPiecesAt(position, 0);
     const piecesP1 = getPiecesAt(position, 1);
     const allPieces = [...piecesP0, ...piecesP1];
@@ -379,14 +380,18 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
 
     const baseBg = isBarrier
       ? (eg ? '#3A0A0A' : '#2A0808')
-      : eg
-        ? isRosette ? '#D4C4A0' : '#E8DCC8'
-        : isRosette ? '#3A2400' : '#1A1208';
+      : isEventSquare
+        ? (eg ? '#D8E8EC' : '#0A1E22')
+        : eg
+          ? isRosette ? '#D4C4A0' : '#E8DCC8'
+          : isRosette ? '#3A2400' : '#1A1208';
     const baseBorder = isBarrier
       ? '#8B0000'
-      : eg
-        ? isRosette ? '#C0A060' : '#C0A870'
-        : isRosette ? '#C4860A' : '#3A2E1C';
+      : isEventSquare
+        ? (eg ? '#5A7A8A' : '#2A6A7A')
+        : eg
+          ? isRosette ? '#C0A060' : '#C0A870'
+          : isRosette ? '#C4860A' : '#3A2E1C';
 
     return (
       <div
@@ -395,15 +400,22 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
         className="aspect-square flex items-center justify-center relative rounded-sm overflow-hidden"
         style={landingStyle(isLanding, baseBg, baseBorder)}
       >
-        {isRosette && <RosettePattern />}
+        {isRosette && !isBarrier && !isEventSquare && <RosettePattern />}
         {isBarrier && (
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10"
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20"
           >
             <span style={{ fontSize: '14px', lineHeight: 1 }}>🚧</span>
             <span style={{ fontSize: '8px', color: '#FF6060', fontWeight: 700, lineHeight: 1 }}>
               {barrier!.turnsRemaining}
             </span>
+          </div>
+        )}
+        {isEventSquare && !isBarrier && (
+          <div
+            className="absolute bottom-0.5 right-0.5 pointer-events-none z-20"
+          >
+            <span style={{ fontSize: '9px', lineHeight: 1, opacity: 0.85 }}>⚗️</span>
           </div>
         )}
         <div className="relative z-10 flex gap-0.5 items-center justify-center">
@@ -558,6 +570,17 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
               />
               <span style={{ fontSize: '9px', color: '#908070' }}>Shared path — can capture</span>
             </div>
+            {(gameState.board.eventSquares ?? []).length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="w-5 h-5 rounded flex items-center justify-center"
+                  style={{ background: eg ? '#D8E8EC' : '#0A1E22', border: `1px solid ${eg ? '#5A7A8A' : '#2A6A7A'}` }}
+                >
+                  <span style={{ fontSize: '9px' }}>⚗️</span>
+                </div>
+                <span style={{ fontSize: '9px', color: '#908070' }}>Event square — triggers a random effect</span>
+              </div>
+            )}
           </div>
         )}
       </div>
