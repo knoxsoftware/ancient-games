@@ -184,6 +184,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
     const roll = gameState.board.diceRoll;
     if (from !== -1 && from + roll >= 14) return null; // exits board
     const to = from === -1 ? roll - 1 : from + roll;
+    if ((gameState.board.barrierSquares ?? []).some((b) => b.position === to)) return null;
     return { pos: to, player: selectedPiece.playerNumber };
   })();
 
@@ -198,6 +199,8 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
     if (from === -1) {
       // Entering: target is roll-1
       const to = roll - 1;
+      // Barrier squares are impassable
+      if ((gameState.board.barrierSquares ?? []).some((b) => b.position === to)) return false;
       return !gameState.board.pieces.some(
         (p) => p.playerNumber === playerNumber && p.position === to,
       );
@@ -208,6 +211,8 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
     if (from + roll === 14) return true; // exact exit
 
     const to = from + roll;
+    // Barrier squares are impassable
+    if ((gameState.board.barrierSquares ?? []).some((b) => b.position === to)) return false;
     // Own piece blocks
     if (gameState.board.pieces.some((p) => p.playerNumber === playerNumber && p.position === to)) {
       return false;
@@ -361,6 +366,8 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
     const position = sharedIndex + 4;
     const allRosettes = [...ROSETTE_POSITIONS, ...(gameState.board.extraRosettes ?? [])];
     const isRosette = allRosettes.includes(position);
+    const barrier = (gameState.board.barrierSquares ?? []).find((b) => b.position === position);
+    const isBarrier = !!barrier;
     const piecesP0 = getPiecesAt(position, 0);
     const piecesP1 = getPiecesAt(position, 1);
     const allPieces = [...piecesP0, ...piecesP1];
@@ -370,12 +377,16 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
       position >= 4 &&
       position <= 11;
 
-    const baseBg = eg
-      ? isRosette ? '#D4C4A0' : '#E8DCC8'
-      : isRosette ? '#3A2400' : '#1A1208';
-    const baseBorder = eg
-      ? isRosette ? '#C0A060' : '#C0A870'
-      : isRosette ? '#C4860A' : '#3A2E1C';
+    const baseBg = isBarrier
+      ? (eg ? '#3A0A0A' : '#2A0808')
+      : eg
+        ? isRosette ? '#D4C4A0' : '#E8DCC8'
+        : isRosette ? '#3A2400' : '#1A1208';
+    const baseBorder = isBarrier
+      ? '#8B0000'
+      : eg
+        ? isRosette ? '#C0A060' : '#C0A870'
+        : isRosette ? '#C4860A' : '#3A2E1C';
 
     return (
       <div
@@ -385,6 +396,16 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
         style={landingStyle(isLanding, baseBg, baseBorder)}
       >
         {isRosette && <RosettePattern />}
+        {isBarrier && (
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10"
+          >
+            <span style={{ fontSize: '14px', lineHeight: 1 }}>🚧</span>
+            <span style={{ fontSize: '8px', color: '#FF6060', fontWeight: 700, lineHeight: 1 }}>
+              {barrier!.turnsRemaining}
+            </span>
+          </div>
+        )}
         <div className="relative z-10 flex gap-0.5 items-center justify-center">
           {allPieces.map((piece) => {
             const canClick = isMyTurn && piece.playerNumber === playerNumber;
