@@ -9,8 +9,10 @@ import {
 import { SessionService } from '../services/SessionService';
 import { GameRegistry } from '../games/GameRegistry';
 import { ExpectiminiMaxEngine } from './ExpectiminiMaxEngine';
+import { MorrisAiEngine } from './MorrisAiEngine';
 import { OllamaService } from './OllamaService';
 import { UrGame } from '../games/ur/UrGame';
+import { MorrisGame } from '../games/morris/MorrisGame';
 
 const THINKING_MIN = 500;
 const THINKING_MAX = 1500;
@@ -38,6 +40,51 @@ export class BotService {
     this.ollama.warmUp().catch(() => {});
   }
 
+  async notifyBotDraftPick(sessionCode: string, botPlayerId: string): Promise<void> {
+    try {
+      const session = await this.sessionService.getSession(sessionCode);
+      if (!session?.gameState) return;
+
+      const bot = session.players.find((p) => p.id === botPlayerId && p.isBot);
+      if (!bot) return;
+
+      const board = session.gameState.board;
+      if (!board.draftPhase) return;
+
+      const offer = (board.draftOffers ?? []).find((o: { player: number; options: string[] }) => o.player === bot.playerNumber);
+      if (!offer) return;
+
+      await thinkingDelay();
+
+      // Pick a random power from the bot's offer
+      const powerId = offer.options[Math.floor(Math.random() * offer.options.length)];
+
+      // Emit draft-pick as if the bot sent it via socket
+      // Re-fetch fresh state before applying
+      const fresh = await this.sessionService.getSession(sessionCode);
+      if (!fresh?.gameState) return;
+      const freshOffer = (fresh.gameState.board.draftOffers ?? []).find(
+        (o: { player: number; options: string[] }) => o.player === bot.playerNumber,
+      );
+      if (!freshOffer) return; // already picked
+
+      // Use a minimal inline application of applyDraftPick via the engine
+      const { UrRoguelikeGame } = await import('../games/ur-roguelike/UrRoguelikeGame');
+      const engine = new UrRoguelikeGame();
+      const newBoard = engine.applyDraftPick(fresh.gameState.board, bot.playerNumber, powerId);
+      fresh.gameState.board = newBoard;
+      await this.sessionService.updateGameState(sessionCode, fresh.gameState);
+      this.io.to(sessionCode).emit('game:state-updated', fresh.gameState);
+
+      // If draft is now complete and it's this bot's turn, kick off their turn
+      if (!newBoard.draftPhase && fresh.gameState.currentTurn === bot.playerNumber) {
+        setTimeout(() => this.notifyBotTurn(sessionCode, botPlayerId), 500);
+      }
+    } catch (err) {
+      console.error('[BotService] notifyBotDraftPick error:', err);
+    }
+  }
+
   async notifyBotTurn(sessionCode: string, botPlayerId: string): Promise<void> {
     try {
       const session = await this.sessionService.getSession(sessionCode);
@@ -46,6 +93,17 @@ export class BotService {
       const bot = session.players.find((p) => p.id === botPlayerId && p.isBot);
       if (!bot) return;
 
+      // Handle draft phase for ur-roguelike
+      if (session.gameState.board.draftPhase) {
+        const hasBotOffer = (session.gameState.board.draftOffers ?? []).some(
+          (o: { player: number }) => o.player === bot.playerNumber,
+        );
+        if (hasBotOffer) {
+          await this.notifyBotDraftPick(sessionCode, botPlayerId);
+        }
+        return;
+      }
+
       if (session.gameState.currentTurn !== bot.playerNumber) return;
 
       await thinkingDelay();
@@ -53,21 +111,32 @@ export class BotService {
       // Re-fetch session after delay (state may have changed)
       const fresh = await this.sessionService.getSession(sessionCode);
       if (!fresh?.gameState || fresh.gameState.currentTurn !== bot.playerNumber) return;
-      if (fresh.gameState.board.diceRoll !== null) return;
 
       const gameEngine = GameRegistry.getGame(fresh.gameType);
-      const roll = gameEngine.rollDice();
 
-      fresh.gameState.board.diceRoll = roll;
-      await this.sessionService.updateGameState(sessionCode, fresh.gameState);
+      // diceRoll === 2 means a mill was just formed and the bot must remove a piece —
+      // skip rolling and go straight to move selection.
+      const pendingRemoval = fresh.gameState.board.diceRoll === 2;
+      if (fresh.gameState.board.diceRoll !== null && !pendingRemoval) return;
+
+      let roll: number;
+      if (pendingRemoval) {
+        roll = 2;
+      } else {
+        roll = gameEngine.rollDice();
+        fresh.gameState.board.diceRoll = roll;
+        await this.sessionService.updateGameState(sessionCode, fresh.gameState);
+      }
 
       const canMove = gameEngine.canMove(fresh.gameState.board, bot.playerNumber, roll);
 
-      this.io.to(sessionCode).emit('game:dice-rolled', {
-        playerNumber: bot.playerNumber,
-        roll,
-        canMove,
-      });
+      if (!pendingRemoval) {
+        this.io.to(sessionCode).emit('game:dice-rolled', {
+          playerNumber: bot.playerNumber,
+          roll,
+          canMove,
+        });
+      }
 
       if (!canMove) {
         const nextTurn = (fresh.gameState.currentTurn + 1) % 2;
@@ -258,6 +327,7 @@ export class BotService {
 
   private getAiEngine(gameType: string) {
     if (gameType === 'ur') return new ExpectiminiMaxEngine(new UrGame());
+    if (gameType === 'morris') return new MorrisAiEngine(new MorrisGame());
     return null;
   }
 

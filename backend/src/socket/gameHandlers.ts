@@ -389,12 +389,19 @@ export function registerGameHandlers(
           io.to(sessionCode).emit('game:started', session);
           relayGameStateToHub(io, session, session.gameState!);
 
-          // If first player is a bot, kick off their turn
-          const startingBot = session.players.find(
-            (p) => p.isBot && p.playerNumber === session.gameState.currentTurn,
-          );
-          if (startingBot) {
-            botService.notifyBotTurn(sessionCode, startingBot.id).catch(() => {});
+          // If in draft phase (ur-roguelike), trigger bot draft picks for any bot players
+          if (session.gameState.board.draftPhase) {
+            for (const botPlayer of session.players.filter((p) => p.isBot)) {
+              botService.notifyBotDraftPick(sessionCode, botPlayer.id).catch(() => {});
+            }
+          } else {
+            // If first player is a bot, kick off their turn
+            const startingBot = session.players.find(
+              (p) => p.isBot && p.playerNumber === session.gameState.currentTurn,
+            );
+            if (startingBot) {
+              botService.notifyBotTurn(sessionCode, startingBot.id).catch(() => {});
+            }
           }
 
           const hasBotPersona = session.players.some((p) => p.isBot && p.botPersona);
@@ -888,6 +895,21 @@ export function registerGameHandlers(
         await sessionService.updateGameState(sessionCode, gameState);
 
         io.to(sessionCode).emit('game:state-updated', gameState);
+
+        // If draft phase is still active and remaining offers belong to a bot, auto-pick for them
+        if (newBoard.draftPhase) {
+          const session2 = await sessionService.getSession(sessionCode);
+          if (session2) {
+            for (const offer of newBoard.draftOffers ?? []) {
+              const botPlayer = session2.players.find(
+                (p: Player) => p.isBot && p.playerNumber === offer.player,
+              );
+              if (botPlayer) {
+                botService.notifyBotDraftPick(sessionCode, botPlayer.id).catch(() => {});
+              }
+            }
+          }
+        }
       });
     } catch (error) {
       socket.emit('game:error', { message: (error as Error).message });

@@ -194,7 +194,9 @@ export class UrRoguelikeGame extends UrGame {
     }
 
     // ── Handle extraTurnFor ──
-    let extraTurnFor = board.extraTurnFor ?? null;
+    // Read from newBoard (not board) so that extra_turn events fired in this same
+    // applyMove call are correctly detected and applied.
+    let extraTurnFor = newBoard.extraTurnFor ?? null;
     if (extraTurnFor !== null && extraTurnFor === currentPlayer) {
       newBoard = { ...newBoard, currentTurn: currentPlayer };
       extraTurnFor = null;
