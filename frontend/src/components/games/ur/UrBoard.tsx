@@ -213,10 +213,11 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
       return false;
     }
     // Opponent on rosette in shared lane blocks
+    const allRosettes = [...ROSETTE_POSITIONS, ...(gameState.board.extraRosettes ?? [])];
     if (
       to >= SHARED_START &&
       to <= SHARED_END &&
-      ROSETTE_POSITIONS.includes(to) &&
+      allRosettes.includes(to) &&
       gameState.board.pieces.some((p) => p.playerNumber !== playerNumber && p.position === to)
     ) {
       return false;
@@ -358,7 +359,8 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
   // Shared-lane square (both players' pieces may coexist or fight)
   const renderShared = (sharedIndex: number) => {
     const position = sharedIndex + 4;
-    const isRosette = ROSETTE_POSITIONS.includes(position);
+    const allRosettes = [...ROSETTE_POSITIONS, ...(gameState.board.extraRosettes ?? [])];
+    const isRosette = allRosettes.includes(position);
     const piecesP0 = getPiecesAt(position, 0);
     const piecesP1 = getPiecesAt(position, 1);
     const allPieces = [...piecesP0, ...piecesP1];
