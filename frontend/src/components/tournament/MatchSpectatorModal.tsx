@@ -8,6 +8,31 @@ import type {
   TournamentFormat,
 } from '@ancient-games/shared';
 import { getScoreInfo } from '../../utils/gameScoreInfo';
+import { GamePiecePreview } from '../games/GamePiecePreview';
+import { TetraDice } from '../games/ur/UrBoard';
+import { ThrowingSticks } from '../games/senet/SenetBoard';
+
+function GameDiceDisplay({ gameType, diceRoll }: { gameType: GameType; diceRoll: number }) {
+  if (gameType === 'ur' || gameType === 'ur-roguelike') {
+    return (
+      <div style={{ transform: 'scale(0.65)', transformOrigin: 'left center', height: '22px' }}>
+        <TetraDice result={diceRoll} />
+      </div>
+    );
+  }
+  if (gameType === 'senet') {
+    return (
+      <div style={{ transform: 'scale(0.45)', transformOrigin: 'left center', height: '26px' }}>
+        <ThrowingSticks result={diceRoll} />
+      </div>
+    );
+  }
+  return (
+    <span className="text-xs font-bold" style={{ color: '#E8C870' }}>
+      🎲 {diceRoll}
+    </span>
+  );
+}
 
 const boardComponents: Record<GameType, React.LazyExoticComponent<React.ComponentType<any>>> = {
   ur: lazy(() => import('../games/ur/UrBoard')),
@@ -20,6 +45,7 @@ const boardComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   mancala: lazy(() => import('../games/mancala/MancalaBoard')),
   go: lazy(() => import('../games/go/GoBoard')),
   'ur-roguelike': lazy(() => import('../games/ur-roguelike/UrRoguelikeBoard')),
+  bombermage: lazy(() => import('../games/bombermage/BombermageBoard')),
 };
 
 interface MatchSpectatorModalProps {
@@ -28,6 +54,7 @@ interface MatchSpectatorModalProps {
   format: TournamentFormat;
   gameType: GameType;
   gameState: GameState;
+  matchPlayers: Array<{ id: string; playerNumber: number }>;
   session: Session;
   onClose: () => void;
 }
@@ -45,6 +72,7 @@ export default function MatchSpectatorModal({
   format,
   gameType,
   gameState,
+  matchPlayers,
   session,
   onClose,
 }: MatchSpectatorModalProps) {
@@ -56,6 +84,12 @@ export default function MatchSpectatorModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
       onClick={onClose}
     >
+      <style>{`
+        @keyframes spectator-glow {
+          0%, 100% { box-shadow: 0 0 8px rgba(196,160,48,0.15); }
+          50% { box-shadow: 0 0 16px rgba(196,160,48,0.35); }
+        }
+      `}</style>
       <div
         className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-amber-900/30 bg-stone-900 p-4"
         onClick={(e) => e.stopPropagation()}
@@ -76,21 +110,27 @@ export default function MatchSpectatorModal({
 
         {/* Player info panels */}
         <div className="grid grid-cols-2 gap-2 mb-4">
-          {([0, 1] as const).map((seatIndex) => {
-            const playerId = seatIndex === 0 ? match.player1Id : match.player2Id;
+          {([match.player1Id, match.player2Id] as const).map((playerId, colIndex) => {
             const player = session.players.find((p) => p.id === playerId);
-            const isActive = player !== undefined && gameState.currentTurn === seatIndex;
+            // Resolve actual playerNumber from match session; fall back to column position
+            const playerNumber = matchPlayers.find((p) => p.id === playerId)?.playerNumber ?? colIndex;
+            const isActive = player !== undefined && gameState.currentTurn === playerNumber;
             const scoreInfo = player
-              ? getScoreInfo(gameType, gameState.board.pieces, seatIndex)
+              ? getScoreInfo(gameType, gameState.board.pieces, playerNumber)
               : null;
 
+            const seriesWins = colIndex === 0 ? match.player1Wins : match.player2Wins;
+            const diceRoll: number | null | undefined = gameState.board.diceRoll;
+            const hasDice = isActive && diceRoll !== null && diceRoll !== undefined;
             return (
               <div
-                key={seatIndex}
-                className="rounded-lg p-2.5 border transition-all"
+                key={playerId ?? colIndex}
+                className={`rounded-lg p-2.5 border transition-all${isActive ? ' animate-pulse-border' : ''}`}
                 style={{
                   background: isActive ? 'rgba(196,160,48,0.08)' : 'rgba(8,5,0,0.5)',
                   borderColor: isActive ? 'rgba(196,160,48,0.45)' : 'rgba(42,30,14,0.8)',
+                  boxShadow: isActive ? '0 0 10px rgba(196,160,48,0.18)' : 'none',
+                  animation: isActive ? 'spectator-glow 2s ease-in-out infinite' : 'none',
                 }}
               >
                 {player ? (
@@ -103,6 +143,13 @@ export default function MatchSpectatorModal({
                         }}
                         title={player.status === 'away' ? 'Away' : 'Active'}
                       />
+                      <span className="flex-shrink-0">
+                        <GamePiecePreview
+                          gameType={gameType}
+                          playerNumber={playerNumber as 0 | 1}
+                          size={22}
+                        />
+                      </span>
                       <span
                         className="text-sm font-semibold truncate"
                         style={{ color: '#E8D8B0' }}
@@ -123,7 +170,7 @@ export default function MatchSpectatorModal({
                             className="text-xs font-bold"
                             style={{ color: '#8A7A60' }}
                           >
-                            {seatIndex === 0 ? match.player1Wins : match.player2Wins}W
+                            {seriesWins}W
                           </span>
                         )}
                       </div>
@@ -133,10 +180,15 @@ export default function MatchSpectatorModal({
                         {scoreInfo}
                       </div>
                     )}
+                    {hasDice && (
+                      <div className="mt-1">
+                        <GameDiceDisplay gameType={gameType} diceRoll={diceRoll as number} />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <span className="text-xs" style={{ color: '#5A4A38' }}>
-                    {seatIndex === 0 ? 'Player 1' : 'Player 2'}
+                    {colIndex === 0 ? 'Player 1' : 'Player 2'}
                   </span>
                 )}
               </div>

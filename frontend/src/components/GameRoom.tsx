@@ -27,6 +27,7 @@ const boardComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   mancala: lazy(() => import('./games/mancala/MancalaBoard')),
   go: lazy(() => import('./games/go/GoBoard')),
   'ur-roguelike': lazy(() => import('./games/ur-roguelike/UrRoguelikeBoard')),
+  bombermage: lazy(() => import('./games/bombermage/BombermageBoard')),
 };
 import { AnimationOverlay, AnimationState } from './AnimationOverlay';
 import {
@@ -111,6 +112,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
   const [tournamentToast, setTournamentToast] = useState<string | null>(null);
   const tournamentToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [matchGameStates, setMatchGameStates] = useState<Record<string, GameState>>({});
+  const [matchPlayers, setMatchPlayers] = useState<Record<string, Array<{ id: string; playerNumber: number }>>>({});
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   // Synchronous ref updates — always reflects latest value without needing an effect
@@ -343,6 +345,8 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
         setChatToast({ displayName: msg.displayName, text: msg.text });
         chatToastTimerRef.current = setTimeout(() => setChatToast(null), 3000);
+      }
+      if (document.hidden || !document.hasFocus()) {
         showNotification(msg.displayName, msg.text);
       }
     });
@@ -369,6 +373,9 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
 
     socket.on('tournament:match-game-state', (data) => {
       setMatchGameStates((prev) => ({ ...prev, [data.matchId]: data.gameState }));
+      if (data.players) {
+        setMatchPlayers((prev) => ({ ...prev, [data.matchId]: data.players }));
+      }
     });
 
     socket.on('tournament:match-ready', ({ matchSessionCode, opponentName, roundLabel }) => {
@@ -1048,6 +1055,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
                 participants={hubSession.tournamentState.participants}
                 currentPlayerId={playerId!}
                 matchGameStates={matchGameStates}
+                matchPlayers={matchPlayers}
                 gameType={hubSession.gameType}
                 session={hubSession}
                 onMatchClick={(matchId) => { setSelectedMatchId(matchId); setShowBracket(false); }}
@@ -1098,6 +1106,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
             format={hubSession.tournamentState!.format}
             gameType={hubSession.gameType}
             gameState={matchGameState}
+            matchPlayers={matchPlayers[selectedMatchId] ?? []}
             session={hubSession}
             onClose={() => setSelectedMatchId(null)}
           />

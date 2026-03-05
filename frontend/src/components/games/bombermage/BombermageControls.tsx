@@ -14,10 +14,11 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
 
   function handleEndTurn() {
     const socket = socketService.getSocket();
+    if (!socket) return;
     socket.emit('game:move', {
       sessionCode: session.sessionCode,
       playerId,
-      move: { playerId, pieceIndex: 0, from: 0, to: 0, extra: { type: 'end-turn' } },
+      move: Object.assign({ playerId, pieceIndex: 0, from: 0, to: 0 }, { extra: { type: 'end-turn' } }),
     });
   }
 

@@ -4,6 +4,7 @@ import UrControls from './games/ur/UrControls';
 import SenetControls from './games/senet/SenetControls';
 import WolvesAndRavensControls from './games/wolves-and-ravens/WolvesAndRavensControls';
 import StellarSiegeControls from './games/stellar-siege/StellarSiegeControls';
+import BombermageControls from './games/bombermage/BombermageControls';
 
 export interface GameControlsProps {
   session: Session;
@@ -19,6 +20,7 @@ export const controlsComponents: Partial<Record<GameType, React.ComponentType<Ga
   senet: SenetControls,
   'wolves-and-ravens': WolvesAndRavensControls,
   'stellar-siege': StellarSiegeControls,
+  bombermage: BombermageControls,
 };
 
 export default function GameControls(props: GameControlsProps) {

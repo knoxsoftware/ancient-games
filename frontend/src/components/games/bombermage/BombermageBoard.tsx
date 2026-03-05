@@ -41,7 +41,6 @@ export default function BombermageBoard({ session, gameState, playerId, isMyTurn
   const myPlayer = session.players.find((p) => p.id === playerId);
   const myPlayerNumber = myPlayer?.playerNumber ?? -1;
 
-  const rows = terrain.length;
   const cols = terrain[0]?.length ?? 0;
 
   function cellHasExplosion(r: number, c: number) {
@@ -67,30 +66,19 @@ export default function BombermageBoard({ session, gameState, playerId, isMyTurn
       (Math.abs(c - me.position.col) === 1 && r === me.position.row);
 
     const socket = socketService.getSocket();
+    if (!socket) return;
 
     if (r === me.position.row && c === me.position.col && ap >= 2) {
       socket.emit('game:move', {
         sessionCode: session.sessionCode,
         playerId,
-        move: {
-          playerId,
-          pieceIndex: 0,
-          from: 0,
-          to: 0,
-          extra: { type: 'place-bomb', dest: { row: r, col: c } },
-        },
+        move: Object.assign({ playerId, pieceIndex: 0, from: 0, to: 0 }, { extra: { type: 'place-bomb', dest: { row: r, col: c } } }),
       });
     } else if (isAdjacent && terrain[r]?.[c] === 'empty' && ap >= 1) {
       socket.emit('game:move', {
         sessionCode: session.sessionCode,
         playerId,
-        move: {
-          playerId,
-          pieceIndex: 0,
-          from: 0,
-          to: 0,
-          extra: { type: 'move', dest: { row: r, col: c } },
-        },
+        move: Object.assign({ playerId, pieceIndex: 0, from: 0, to: 0 }, { extra: { type: 'move', dest: { row: r, col: c } } }),
       });
     }
   }

@@ -90,6 +90,20 @@ function ChatPanel({
   }, [messages.length, moveHistory?.length]);
 
   useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const handleResize = () => {
+      // When the on-screen keyboard closes, the viewport height grows back.
+      // Scroll the page to the top so the UI isn't stuck scrolled down.
+      if (viewport.height > window.innerHeight * 0.75) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    viewport.addEventListener('resize', handleResize);
+    return () => viewport.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     if (!showReactions) return;
     const handler = (e: MouseEvent) => {
       if (reactionsRef.current && !reactionsRef.current.contains(e.target as Node)) {

@@ -105,6 +105,7 @@ export default function SessionLobby() {
   const [joinError, setJoinError] = useState('');
   const [spectateLoading, setSpectateLoading] = useState(false);
   const [matchGameStates, setMatchGameStates] = useState<Record<string, GameState>>({});
+  const [matchPlayers, setMatchPlayers] = useState<Record<string, Array<{ id: string; playerNumber: number }>>>({});
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
@@ -220,6 +221,9 @@ export default function SessionLobby() {
 
     socket.on('tournament:match-game-state', (data) => {
       setMatchGameStates((prev) => ({ ...prev, [data.matchId]: data.gameState }));
+      if (data.players) {
+        setMatchPlayers((prev) => ({ ...prev, [data.matchId]: data.players }));
+      }
     });
 
     socket.on('chat:message', (msg) => {
@@ -605,6 +609,7 @@ export default function SessionLobby() {
                 participants={session.tournamentState.participants}
                 currentPlayerId={playerId!}
                 matchGameStates={matchGameStates}
+                matchPlayers={matchPlayers}
                 gameType={session.gameType}
                 session={session}
                 onMatchClick={handleMatchClick}
@@ -661,6 +666,7 @@ export default function SessionLobby() {
             format={session.tournamentState.format}
             gameType={session.gameType}
             gameState={selectedGameState}
+            matchPlayers={matchPlayers[selectedMatchId!] ?? []}
             session={session}
             onClose={() => setSelectedMatchId(null)}
           />

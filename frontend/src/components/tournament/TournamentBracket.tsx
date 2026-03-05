@@ -16,6 +16,7 @@ interface Props {
   participants: TournamentParticipant[];
   currentPlayerId: string;
   matchGameStates?: Record<string, GameState>;
+  matchPlayers?: Record<string, Array<{ id: string; playerNumber: number }>>;
   gameType?: GameType;
   session?: Session;
   onMatchClick?: (matchId: string) => void;
@@ -43,6 +44,7 @@ function EliminationBracket({
   participants,
   currentPlayerId,
   matchGameStates,
+  matchPlayers,
   gameType,
   session,
   onMatchClick,
@@ -170,6 +172,7 @@ function EliminationBracket({
                     participants={participants}
                     currentPlayerId={currentPlayerId}
                     gameState={matchGameStates?.[match.matchId]}
+                    matchPlayerList={matchPlayers?.[match.matchId]}
                     gameType={gameType}
                     session={session}
                     onMatchClick={onMatchClick}
@@ -270,6 +273,7 @@ function MatchCard({
   participants,
   currentPlayerId,
   gameState,
+  matchPlayerList,
   gameType,
   session,
   onMatchClick,
@@ -279,6 +283,7 @@ function MatchCard({
   participants: TournamentParticipant[];
   currentPlayerId: string;
   gameState?: GameState;
+  matchPlayerList?: Array<{ id: string; playerNumber: number }>;
   gameType?: GameType;
   session?: Session;
   onMatchClick?: (matchId: string) => void;
@@ -291,10 +296,9 @@ function MatchCard({
   const isFinished = match.status === 'finished';
   const showSeriesWins = format !== 'bo1' && format !== 'round-robin';
 
-  // Use logical match positions (0=player1, 1=player2) for seat indexes.
-  // The hub session playerNumber reflects hub join order, not game seat assignment.
-  const p1SeatIndex = 0;
-  const p2SeatIndex = 1;
+  // Resolve actual playerNumbers from match session data; fall back to positional 0/1
+  const p1SeatIndex = matchPlayerList?.find((p) => p.id === match.player1Id)?.playerNumber ?? 0;
+  const p2SeatIndex = matchPlayerList?.find((p) => p.id === match.player2Id)?.playerNumber ?? 1;
   const pieces = gameState?.board.pieces;
   const p1Score = pieces && gameType ? getScoreInfo(gameType, pieces, p1SeatIndex) : null;
   const p2Score = pieces && gameType ? getScoreInfo(gameType, pieces, p2SeatIndex) : null;
@@ -396,6 +400,7 @@ function RoundRobinView({
   participants,
   currentPlayerId,
   matchGameStates,
+  matchPlayers: _matchPlayers,
   onMatchClick,
 }: Props) {
   const standings = tournament.standings ?? [];
@@ -608,6 +613,7 @@ function TournamentBracket({
   participants,
   currentPlayerId,
   matchGameStates,
+  matchPlayers,
   gameType,
   session,
   onMatchClick,
@@ -653,6 +659,7 @@ function TournamentBracket({
           participants={participants}
           currentPlayerId={currentPlayerId}
           matchGameStates={matchGameStates}
+          matchPlayers={matchPlayers}
           gameType={gameType}
           session={session}
           onMatchClick={onMatchClick}
@@ -663,6 +670,7 @@ function TournamentBracket({
           participants={participants}
           currentPlayerId={currentPlayerId}
           matchGameStates={matchGameStates}
+          matchPlayers={matchPlayers}
           gameType={gameType}
           session={session}
           onMatchClick={onMatchClick}

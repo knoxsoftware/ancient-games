@@ -54,6 +54,7 @@ function relayGameStateToHub(
       matchId: session.tournamentMatchId,
       gameState,
       sessionCode: session.sessionCode,
+      players: session.players.map((p) => ({ id: p.id, playerNumber: p.playerNumber })),
     });
   }
 }

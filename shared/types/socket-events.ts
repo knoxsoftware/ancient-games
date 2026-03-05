@@ -82,6 +82,7 @@ export interface ServerToClientEvents {
     matchId: string;
     gameState: GameState;
     sessionCode: string;
+    players: Array<{ id: string; playerNumber: number }>;
   }) => void;
   'game:draft-offer': (data: {
     sessionCode: string;
