@@ -1,5 +1,25 @@
 import { GameType, GameState, Player, Spectator, TournamentState, TournamentFormat } from './game';
 
+export type BombermageGridSize = '9x9' | '11x11' | '13x11';
+export type BombermageBarrierDensity = 'sparse' | 'normal' | 'dense';
+export type BombermagePowerupFrequency = 'rare' | 'normal' | 'common';
+export type BombermageFuseLength = 2 | 3 | 4;
+export type BombermagePowerupType =
+  | 'blast-radius'
+  | 'extra-bomb'
+  | 'kick-bomb'
+  | 'manual-detonation'
+  | 'speed-boost'
+  | 'shield';
+
+export interface BombermageConfig {
+  gridSize: BombermageGridSize;
+  barrierDensity: BombermageBarrierDensity;
+  powerupFrequency: 'rare' | 'normal' | 'common';
+  enabledPowerups: BombermagePowerupType[];
+  fuseLength: BombermageFuseLength;
+}
+
 export type SessionStatus = 'lobby' | 'playing' | 'finished';
 
 export interface ChatMessage {
@@ -33,6 +53,7 @@ export interface Session {
     ollamaEnabled: boolean;
     ollamaModel?: string;
   };
+  gameOptions?: BombermageConfig;
 }
 
 export interface CreateSessionRequest {

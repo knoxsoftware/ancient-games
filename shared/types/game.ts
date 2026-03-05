@@ -8,7 +8,8 @@ export type GameType =
   | 'fox-and-geese'
   | 'mancala'
   | 'go'
-  | 'ur-roguelike';
+  | 'ur-roguelike'
+  | 'bombermage';
 
 export interface GameManifest {
   type: GameType;
@@ -106,6 +107,13 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     description: '2 players · roguelike',
     playerColors: ['#2F6BAD', '#7A4A22'],
     supportsAnimation: true,
+  },
+  bombermage: {
+    type: 'bombermage',
+    title: 'Bombermage',
+    emoji: '💣',
+    description: '2 players · bomb tactics',
+    playerColors: ['#F97316', '#8B5CF6'],
   },
 };
 
