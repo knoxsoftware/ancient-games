@@ -1,13 +1,14 @@
 import { socketService } from '../../../services/socket';
 import { GameControlsProps } from '../../GameControls';
 
+const PLAYER_COLORS = ['#F97316', '#8B5CF6'];
+
 export default function BombermageControls({ session, gameState, playerId, isMyTurn }: GameControlsProps) {
   const board = gameState.board as any;
   const players: any[] = board.players ?? [];
   const myPlayer = session.players.find((p) => p.id === playerId);
   const myPN = myPlayer?.playerNumber ?? -1;
   const me = players[myPN];
-  const opponent = players[1 - myPN];
 
   const ap: number = board.actionPointsRemaining ?? 0;
   const diceRoll: number | null = board.diceRoll;
@@ -22,84 +23,119 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
     });
   }
 
+  function handleRollDice() {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('game:roll-dice', {
+      sessionCode: session.sessionCode,
+      playerId,
+    });
+  }
+
   if (!me) return null;
 
-  const inv = me.inventory;
-  const activeInventory = [
-    inv.blastRadius > 1 && `Blast +${inv.blastRadius - 1}`,
-    inv.maxBombs > 1 && `${inv.maxBombs} Bombs`,
-    inv.kickBomb && 'Kick Bomb',
-    inv.manualDetonation && 'Manual Det.',
-    inv.shield && 'Shield',
-    inv.speedBoostTurnsRemaining > 0 && `Speed (${inv.speedBoostTurnsRemaining})`,
-  ].filter(Boolean) as string[];
+  function renderPlayerPanel(player: any, playerNumber: number, isMe: boolean) {
+    if (!player) return <div className="flex-1" />;
+    const color = PLAYER_COLORS[playerNumber];
+    const inv = player.inventory;
+    const badges: string[] = [
+      inv.blastRadius > 1 ? `Blast +${inv.blastRadius - 1}` : '',
+      inv.maxBombs > 1 ? `${inv.maxBombs} Bombs` : '',
+      inv.kickBomb ? 'Kick' : '',
+      inv.manualDetonation ? 'Det.' : '',
+      inv.shield ? 'Shield' : '',
+      inv.speedBoostTurnsRemaining > 0 ? `Speed(${inv.speedBoostTurnsRemaining})` : '',
+    ].filter(Boolean);
 
-  return (
-    <div className="flex flex-col gap-3 p-3 text-sm">
-      <div className="flex items-center gap-2">
-        <span className="text-stone-400">Roll:</span>
-        <span className="text-yellow-300 font-bold text-lg">{diceRoll ?? '—'}</span>
-        <span className="text-stone-400 ml-3">AP remaining:</span>
-        <span className="text-green-400 font-bold text-lg">{diceRoll !== null ? ap : '—'}</span>
+    return (
+      <div className={`flex flex-col gap-1 px-2 ${isMe ? 'items-start' : 'items-end'}`}>
+        <div className="flex items-center gap-1.5">
+          <div
+            className="w-3 h-3 rounded-full border border-white/30 flex-shrink-0"
+            style={{ backgroundColor: color }}
+          />
+          <span className={`text-xs font-semibold truncate max-w-[80px] ${isMe ? 'text-white' : 'text-stone-400'}`}>
+            {isMe ? 'You' : (session.players.find(p => p.playerNumber === playerNumber)?.displayName ?? 'Opponent')}
+          </span>
+        </div>
+        <div className={`text-xs ${isMe ? 'text-stone-300' : 'text-stone-500'}`}>
+          {player.activeBombCount}/{inv.maxBombs} 💣
+        </div>
+        <div className={`flex flex-wrap gap-0.5 ${isMe ? '' : 'justify-end'}`}>
+          {badges.map(label => (
+            <span
+              key={label}
+              className={`text-[9px] px-1 py-0.5 rounded ${isMe ? 'bg-stone-700 text-stone-200' : 'bg-stone-800 text-stone-500'}`}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
+    );
+  }
 
-      <div className="text-xs text-stone-500 flex gap-3">
-        <span>Move: 1 AP</span>
-        <span>Bomb: 2 AP</span>
-        <span>Kick: 1 AP</span>
-      </div>
+  function renderCenter() {
+    const currentTurnName =
+      session.players.find(p => p.playerNumber === board.currentTurn)?.displayName ?? 'Opponent';
 
-      <div>
-        <div className="text-stone-400 text-xs mb-1">Your powerups</div>
-        {activeInventory.length === 0 ? (
-          <span className="text-stone-600 text-xs">None</span>
+    return (
+      <div className="flex flex-col items-center justify-center gap-1 px-2 min-w-0">
+        {diceRoll === null ? (
+          isMyTurn ? (
+            <button
+              onClick={handleRollDice}
+              className="px-3 py-1.5 rounded-lg font-bold text-sm transition-all active:scale-95"
+              style={{
+                background: 'linear-gradient(135deg, #f97316 0%, #c2410c 100%)',
+                color: '#fff',
+                border: '2px solid #f97316',
+              }}
+            >
+              Roll Dice
+            </button>
+          ) : (
+            <div className="text-xs text-stone-500 italic text-center">
+              Waiting for<br />
+              <span className="text-stone-300">{currentTurnName}</span>
+            </div>
+          )
         ) : (
-          <div className="flex flex-wrap gap-1">
-            {activeInventory.map((label) => (
-              <span key={label} className="bg-stone-700 text-stone-200 px-2 py-0.5 rounded text-xs">
-                {label}
-              </span>
-            ))}
-          </div>
+          <>
+            <div className="flex items-center gap-1.5">
+              <span className="text-yellow-300 font-bold text-lg">{diceRoll}</span>
+              <span className="text-stone-500 text-xs">roll</span>
+              <span className="text-stone-600">|</span>
+              <span className="text-green-400 font-bold text-lg">{ap}</span>
+              <span className="text-stone-500 text-xs">AP</span>
+            </div>
+            <div className="text-[9px] text-stone-600 flex gap-2">
+              <span>Move 1AP</span>
+              <span>Bomb 2AP</span>
+            </div>
+            {isMyTurn && (
+              <button
+                onClick={handleEndTurn}
+                className="mt-0.5 px-2 py-1 bg-stone-600 hover:bg-stone-500 text-white rounded text-xs font-medium"
+              >
+                End Turn
+              </button>
+            )}
+          </>
         )}
       </div>
+    );
+  }
 
-      {opponent && (
-        <div>
-          <div className="text-stone-400 text-xs mb-1">Opponent powerups</div>
-          <div className="flex flex-wrap gap-1">
-            {opponent.inventory.blastRadius > 1 && (
-              <span className="bg-stone-700 text-stone-400 px-2 py-0.5 rounded text-xs">Blast +{opponent.inventory.blastRadius - 1}</span>
-            )}
-            {opponent.inventory.maxBombs > 1 && (
-              <span className="bg-stone-700 text-stone-400 px-2 py-0.5 rounded text-xs">{opponent.inventory.maxBombs} Bombs</span>
-            )}
-            {opponent.inventory.kickBomb && (
-              <span className="bg-stone-700 text-stone-400 px-2 py-0.5 rounded text-xs">Kick Bomb</span>
-            )}
-            {opponent.inventory.shield && (
-              <span className="bg-stone-700 text-stone-400 px-2 py-0.5 rounded text-xs">Shield</span>
-            )}
-          </div>
-        </div>
-      )}
+  const opponent = players[1 - myPN];
 
-      <div className="text-xs text-stone-400">
-        Bombs: {me.activeBombCount}/{me.inventory.maxBombs} placed
+  return (
+    <div className="w-full h-full flex items-center">
+      <div className="w-full grid grid-cols-3 gap-1 py-2">
+        {renderPlayerPanel(me, myPN, true)}
+        {renderCenter()}
+        {renderPlayerPanel(opponent, 1 - myPN, false)}
       </div>
-
-      {isMyTurn && diceRoll !== null && (
-        <button
-          onClick={handleEndTurn}
-          className="mt-1 px-3 py-1.5 bg-stone-600 hover:bg-stone-500 text-white rounded text-sm font-medium"
-        >
-          End Turn
-        </button>
-      )}
-
-      {!isMyTurn && (
-        <div className="text-stone-500 text-xs italic">Opponent's turn...</div>
-      )}
     </div>
   );
 }
