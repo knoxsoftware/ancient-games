@@ -64,3 +64,86 @@ describe('BombermageGame - initializeBoard', () => {
 function getDimensions(terrain: string[][]): { rows: number; cols: number } {
   return { rows: terrain.length, cols: terrain[0].length };
 }
+
+describe('BombermageGame - bomb mechanics', () => {
+  const game = new BombermageGame();
+
+  it('places a bomb on player position', () => {
+    const board = game.initializeBoard() as any;
+    board.diceRoll = 4;
+    board.actionPointsRemaining = 4;
+    const move = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: { row: 0, col: 0 } } };
+    const after = game.applyMove(board, move) as any;
+    expect(after.bombs).toHaveLength(1);
+    expect(after.players[0].activeBombCount).toBe(1);
+    expect(after.actionPointsRemaining).toBe(2); // 4 - 2
+  });
+
+  it('blast destroys destructible terrain and reveals powerup', () => {
+    const board = game.initializeBoard() as any;
+    board.terrain[0][1] = 'destructible';
+    board.powerups[0][1] = 'blast-radius';
+    board.diceRoll = 4;
+    board.actionPointsRemaining = 4;
+    const placeBomb = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: { row: 0, col: 0 } } };
+    let after = game.applyMove(board, placeBomb) as any;
+    const endTurn = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'end-turn' } };
+    for (let i = 0; i < 3; i++) {
+      after.diceRoll = 1;
+      after.actionPointsRemaining = 1;
+      after = game.applyMove(after, endTurn);
+    }
+    expect(after.terrain[0][1]).toBe('empty');
+  });
+
+  it('blast eliminates a player in range', () => {
+    const board = game.initializeBoard() as any;
+    board.players[1].position = { row: 0, col: 1 };
+    board.terrain[0][1] = 'empty';
+    board.diceRoll = 4;
+    board.actionPointsRemaining = 4;
+    const placeBomb = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: { row: 0, col: 0 } } };
+    let after = game.applyMove(board, placeBomb) as any;
+    const endTurn = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'end-turn' } };
+    for (let i = 0; i < 3; i++) {
+      after.diceRoll = 1;
+      after.actionPointsRemaining = 1;
+      after = game.applyMove(after, endTurn);
+    }
+    expect(after.players[1].alive).toBe(false);
+  });
+
+  it('shield absorbs one blast', () => {
+    const board = game.initializeBoard() as any;
+    board.players[1].position = { row: 0, col: 1 };
+    board.players[1].inventory.shield = true;
+    board.terrain[0][1] = 'empty';
+    board.diceRoll = 4;
+    board.actionPointsRemaining = 4;
+    const placeBomb = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: { row: 0, col: 0 } } };
+    let after = game.applyMove(board, placeBomb) as any;
+    const endTurn = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'end-turn' } };
+    for (let i = 0; i < 3; i++) {
+      after.diceRoll = 1;
+      after.actionPointsRemaining = 1;
+      after = game.applyMove(after, endTurn);
+    }
+    expect(after.players[1].alive).toBe(true);
+    expect(after.players[1].inventory.shield).toBe(false);
+  });
+});
+
+describe('BombermageGame - checkWinCondition', () => {
+  const game = new BombermageGame();
+
+  it('returns null when both players alive', () => {
+    const board = game.initializeBoard();
+    expect(game.checkWinCondition(board)).toBeNull();
+  });
+
+  it('returns winner when one player dead', () => {
+    const board = game.initializeBoard() as any;
+    board.players[1].alive = false;
+    expect(game.checkWinCondition(board)).toBe(0);
+  });
+});
