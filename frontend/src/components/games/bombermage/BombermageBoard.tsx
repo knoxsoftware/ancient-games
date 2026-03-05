@@ -1,3 +1,4 @@
+import React from 'react';
 import { Session, GameState } from '@ancient-games/shared';
 import { socketService } from '../../../services/socket';
 
@@ -11,13 +12,76 @@ interface Props {
 type TerrainCell = 'empty' | 'indestructible' | 'destructible';
 interface Position { row: number; col: number; }
 
-const CELL_SIZE = 44; // px
-
-const TERRAIN_STYLE: Record<TerrainCell, string> = {
-  empty: 'bg-stone-800',
-  indestructible: 'bg-stone-600 border border-stone-500',
-  destructible: 'bg-amber-800 border border-amber-600',
-};
+function terrainStyle(cell: TerrainCell, exploding: boolean): React.CSSProperties {
+  if (exploding) {
+    return { background: '#f97316', border: '1px solid #ea580c' };
+  }
+  switch (cell) {
+    case 'empty':
+      return {
+        background: `
+          repeating-linear-gradient(
+            45deg,
+            rgba(255,255,255,0.025) 0px,
+            rgba(255,255,255,0.025) 1px,
+            transparent 1px,
+            transparent 8px
+          ),
+          repeating-linear-gradient(
+            -45deg,
+            rgba(255,255,255,0.025) 0px,
+            rgba(255,255,255,0.025) 1px,
+            transparent 1px,
+            transparent 8px
+          ),
+          #0f172a
+        `,
+        border: '1px solid #1e293b',
+      };
+    case 'indestructible':
+      return {
+        background: `
+          repeating-linear-gradient(
+            0deg,
+            rgba(0,0,0,0.3) 0px,
+            rgba(0,0,0,0.3) 1px,
+            transparent 1px,
+            transparent 12px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            rgba(0,0,0,0.2) 0px,
+            rgba(0,0,0,0.2) 1px,
+            transparent 1px,
+            transparent 24px
+          ),
+          #334155
+        `,
+        border: '1px solid #64748b',
+      };
+    case 'destructible':
+      return {
+        background: `
+          repeating-linear-gradient(
+            30deg,
+            rgba(0,0,0,0.2) 0px,
+            rgba(0,0,0,0.2) 2px,
+            transparent 2px,
+            transparent 10px
+          ),
+          repeating-linear-gradient(
+            -30deg,
+            rgba(255,255,255,0.06) 0px,
+            rgba(255,255,255,0.06) 1px,
+            transparent 1px,
+            transparent 10px
+          ),
+          #92400e
+        `,
+        border: '1px solid #d97706',
+      };
+  }
+}
 
 const POWERUP_ICON: Record<string, string> = {
   'blast-radius': '🔥',
@@ -84,10 +148,14 @@ export default function BombermageBoard({ session, gameState, playerId, isMyTurn
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4 w-full px-2">
       <div
-        className="relative border-2 border-stone-600 rounded"
-        style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)` }}
+        className="relative border-2 border-stone-600 rounded w-full"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          maxWidth: `${cols * 40}px`,
+        }}
       >
         {terrain.map((row, r) =>
           row.map((cell, c) => {
@@ -99,11 +167,8 @@ export default function BombermageBoard({ session, gameState, playerId, isMyTurn
             return (
               <div
                 key={`${r}-${c}`}
-                className={`relative flex items-center justify-center cursor-pointer select-none
-                  ${TERRAIN_STYLE[cell]}
-                  ${exploding ? 'bg-orange-500' : ''}
-                `}
-                style={{ width: CELL_SIZE, height: CELL_SIZE }}
+                className={`relative flex items-center justify-center cursor-pointer select-none aspect-square`}
+                style={terrainStyle(cell, exploding)}
                 onClick={() => handleCellClick(r, c)}
               >
                 {powerup && !player && !bomb && (
