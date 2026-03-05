@@ -477,7 +477,7 @@ export class SessionService {
     return this.toSession(session);
   }
 
-  async startGame(sessionCode: string, playerId: string): Promise<Session | null> {
+  async startGame(sessionCode: string, playerId: string, gameOptions?: any): Promise<Session | null> {
     const session = await SessionModel.findOne({ sessionCode });
     if (!session) return null;
 
@@ -490,7 +490,7 @@ export class SessionService {
       throw new Error(`Need exactly ${gameEngine.playerCount} players to start`);
     }
 
-    const initialBoard = gameEngine.initializeBoard();
+    const initialBoard = (gameEngine as any).initializeBoard(gameOptions);
 
     session.status = 'playing';
     session.gameState = {

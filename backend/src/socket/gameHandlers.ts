@@ -346,7 +346,8 @@ export function registerGameHandlers(
   });
 
   // Start the game (or tournament)
-  socket.on('game:start', async ({ sessionCode, playerId, tournamentFormat }) => {
+  socket.on('game:start', async (data: any) => {
+    const { sessionCode, playerId, tournamentFormat, gameOptions } = data;
     try {
       if (tournamentFormat) {
         const { hubSession, matchSessions } = await sessionService.startTournament(
@@ -385,7 +386,7 @@ export function registerGameHandlers(
         // Note: initial game states are relayed via relayGameStateToHub when each match's
         // game:start fires (Task 2 relay). No gameState exists at tournament creation time.
       } else {
-        const session = await sessionService.startGame(sessionCode, playerId);
+        const session = await sessionService.startGame(sessionCode, playerId, gameOptions);
         if (session) {
           io.to(sessionCode).emit('game:started', session);
           relayGameStateToHub(io, session, session.gameState!);

@@ -116,6 +116,14 @@ export default function SessionLobby() {
   const [botOllamaEnabled, setBotOllamaEnabled] = useState(false);
   const [addingBot, setAddingBot] = useState(false);
 
+  const [bombermageConfig, setBombermageConfig] = useState({
+    gridSize: '11x11' as '9x9' | '11x11' | '13x11',
+    barrierDensity: 'normal' as 'sparse' | 'normal' | 'dense',
+    powerupFrequency: 'normal' as 'rare' | 'normal' | 'common',
+    fuseLength: 3 as 2 | 3 | 4,
+    enabledPowerups: ['blast-radius', 'extra-bomb', 'kick-bomb', 'manual-detonation', 'speed-boost', 'shield'] as string[],
+  });
+
   const currentPlayerName =
     session?.players.find((p) => p.id === playerId)?.displayName ??
     localStorage.getItem(PLAYER_NAME_KEY) ??
@@ -284,7 +292,7 @@ export default function SessionLobby() {
     const socket = socketService.getSocket();
     if (!socket) return;
     if (format === 'single') {
-      socket.emit('game:start', { sessionCode, playerId });
+      socket.emit('game:start', { sessionCode, playerId, gameOptions: session?.gameType === 'bombermage' ? bombermageConfig : undefined } as any);
     } else {
       socket.emit('game:start', { sessionCode, playerId, tournamentFormat: format });
     }
@@ -947,6 +955,83 @@ export default function SessionLobby() {
               {' '}—{' '}
               <span className="opacity-70">{getTournamentInfo(format, session.players.length)}</span>
               {' '}— waiting for host to start
+            </div>
+          )}
+
+          {/* Bombermage settings — host only */}
+          {session?.gameType === 'bombermage' && isHost && (
+            <div className="flex flex-col gap-2 mt-3 mb-4 p-3 bg-stone-800 rounded text-sm">
+              <div className="font-semibold text-stone-300">Bombermage Settings</div>
+              <label className="flex items-center gap-2">
+                <span className="text-stone-400 w-32">Grid size</span>
+                <select
+                  value={bombermageConfig.gridSize}
+                  onChange={(e) => setBombermageConfig((c) => ({ ...c, gridSize: e.target.value as any }))}
+                  className="bg-stone-700 text-white rounded px-2 py-1"
+                >
+                  <option value="9x9">9×9</option>
+                  <option value="11x11">11×11 (default)</option>
+                  <option value="13x11">13×11</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-stone-400 w-32">Barrier density</span>
+                <select
+                  value={bombermageConfig.barrierDensity}
+                  onChange={(e) => setBombermageConfig((c) => ({ ...c, barrierDensity: e.target.value as any }))}
+                  className="bg-stone-700 text-white rounded px-2 py-1"
+                >
+                  <option value="sparse">Sparse</option>
+                  <option value="normal">Normal</option>
+                  <option value="dense">Dense</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-stone-400 w-32">Powerup drops</span>
+                <select
+                  value={bombermageConfig.powerupFrequency}
+                  onChange={(e) => setBombermageConfig((c) => ({ ...c, powerupFrequency: e.target.value as any }))}
+                  className="bg-stone-700 text-white rounded px-2 py-1"
+                >
+                  <option value="rare">Rare</option>
+                  <option value="normal">Normal</option>
+                  <option value="common">Common</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-stone-400 w-32">Fuse length</span>
+                <select
+                  value={bombermageConfig.fuseLength}
+                  onChange={(e) => setBombermageConfig((c) => ({ ...c, fuseLength: Number(e.target.value) as any }))}
+                  className="bg-stone-700 text-white rounded px-2 py-1"
+                >
+                  <option value={2}>2 turns (fast)</option>
+                  <option value={3}>3 turns (default)</option>
+                  <option value={4}>4 turns (slow)</option>
+                </select>
+              </label>
+              <div>
+                <div className="text-stone-400 mb-1">Enabled powerups</div>
+                <div className="flex flex-wrap gap-2">
+                  {(['blast-radius', 'extra-bomb', 'kick-bomb', 'manual-detonation', 'speed-boost', 'shield'] as const).map((pu) => (
+                    <label key={pu} className="flex items-center gap-1 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bombermageConfig.enabledPowerups.includes(pu)}
+                        onChange={(e) =>
+                          setBombermageConfig((c) => ({
+                            ...c,
+                            enabledPowerups: e.target.checked
+                              ? [...c.enabledPowerups, pu]
+                              : c.enabledPowerups.filter((p) => p !== pu),
+                          }))
+                        }
+                      />
+                      <span className="text-stone-300">{pu}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
