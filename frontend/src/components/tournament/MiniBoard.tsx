@@ -12,6 +12,7 @@ const boardComponents: Record<GameType, React.LazyExoticComponent<React.Componen
   mancala: lazy(() => import('../games/mancala/MancalaBoard')),
   go: lazy(() => import('../games/go/GoBoard')),
   'ur-roguelike': lazy(() => import('../games/ur-roguelike/UrRoguelikeBoard')),
+  bombermage: lazy(() => import('../games/bombermage/BombermageBoard')),
 };
 
 interface MiniBoardProps {

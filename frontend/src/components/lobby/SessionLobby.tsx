@@ -121,6 +121,9 @@ export default function SessionLobby() {
     barrierDensity: 'normal' as 'sparse' | 'normal' | 'dense',
     powerupFrequency: 'normal' as 'rare' | 'normal' | 'common',
     fuseLength: 3 as 2 | 3 | 4,
+    coinDensity: 0.25,
+    apMin: 5,
+    apMax: 5,
     enabledPowerups: ['blast-radius', 'extra-bomb', 'kick-bomb', 'manual-detonation', 'speed-boost', 'shield'] as string[],
   });
 
@@ -1008,6 +1011,39 @@ export default function SessionLobby() {
                   <option value={2}>2 turns (fast)</option>
                   <option value={3}>3 turns (default)</option>
                   <option value={4}>4 turns (slow)</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-stone-400 w-32">Coin density</span>
+                <select
+                  value={bombermageConfig.coinDensity}
+                  onChange={(e) => setBombermageConfig((c) => ({ ...c, coinDensity: parseFloat(e.target.value) }))}
+                  className="bg-stone-700 text-white rounded px-2 py-1"
+                >
+                  <option value={0}>None (0%)</option>
+                  <option value={0.1}>Rare (10%)</option>
+                  <option value={0.25}>Normal (25%)</option>
+                  <option value={0.4}>Common (40%)</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-stone-400 w-32">AP min</span>
+                <select
+                  value={bombermageConfig.apMin}
+                  onChange={(e) => setBombermageConfig((c) => ({ ...c, apMin: Number(e.target.value) }))}
+                  className="bg-stone-700 text-white rounded px-2 py-1"
+                >
+                  {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-stone-400 w-32">AP max</span>
+                <select
+                  value={bombermageConfig.apMax}
+                  onChange={(e) => setBombermageConfig((c) => ({ ...c, apMax: Number(e.target.value) }))}
+                  className="bg-stone-700 text-white rounded px-2 py-1"
+                >
+                  {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </label>
               <div>

@@ -452,7 +452,7 @@ function UrBoard({ session, gameState, playerId, isMyTurn, animatingPiece, board
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       {/* Royal Game of Ur Board */}
       <div
         className="rounded-xl p-3 border-2"

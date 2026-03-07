@@ -18,6 +18,9 @@ export interface BombermageConfig {
   powerupFrequency: 'rare' | 'normal' | 'common';
   enabledPowerups: BombermagePowerupType[];
   fuseLength: BombermageFuseLength;
+  coinDensity: number; // 0–1, fraction of destructible boxes that hide a coin
+  apMin: number; // minimum AP per turn (when equal to apMax, acts as static AP — no roll button)
+  apMax: number; // maximum AP per turn
 }
 
 export type SessionStatus = 'lobby' | 'playing' | 'finished';

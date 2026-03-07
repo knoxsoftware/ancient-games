@@ -18,4 +18,9 @@ export abstract class GameEngine implements IGameEngine {
   abstract getValidMoves(board: BoardState, playerNumber: number, diceRoll: number): Move[];
   abstract canMove(board: BoardState, playerNumber: number, diceRoll: number): boolean;
   abstract isCaptureMove(board: BoardState, move: Move): boolean;
+
+  /** Called after diceRoll is stored on the board. Override to apply game-specific side effects. */
+  afterDiceRoll(board: BoardState, roll: number): BoardState {
+    return board;
+  }
 }

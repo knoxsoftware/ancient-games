@@ -459,6 +459,7 @@ export function registerGameHandlers(
       }
 
       session.gameState.board.diceRoll = roll;
+      session.gameState.board = gameEngine.afterDiceRoll(session.gameState.board, roll);
       await sessionService.updateGameState(sessionCode, session.gameState);
 
       const canMove = gameEngine.canMove(session.gameState.board, player.playerNumber, roll);

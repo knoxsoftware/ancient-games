@@ -11,9 +11,11 @@ describe('BombermageGame - initializeBoard', () => {
     expect(state.terrain[0]).toHaveLength(11);
   });
 
-  it('places indestructible pillars at even row/col intersections', () => {
+  it('places indestructible pillars at even row/col intersections except player corners', () => {
     const board = game.initializeBoard() as any;
-    expect(board.terrain[0][0]).toBe('indestructible');
+    // Corner (0,0) is a player starting position — must be clear
+    expect(board.terrain[0][0]).toBe('empty');
+    // Non-corner even intersections are pillars
     expect(board.terrain[0][2]).toBe('indestructible');
     expect(board.terrain[2][2]).toBe('indestructible');
     expect(board.terrain[1][1]).not.toBe('indestructible');
@@ -76,7 +78,7 @@ describe('BombermageGame - bomb mechanics', () => {
     const after = game.applyMove(board, move) as any;
     expect(after.bombs).toHaveLength(1);
     expect(after.players[0].activeBombCount).toBe(1);
-    expect(after.actionPointsRemaining).toBe(2); // 4 - 2
+    expect(after.actionPointsRemaining).toBe(3); // 4 - 1
   });
 
   it('blast destroys destructible terrain and reveals powerup', () => {
@@ -133,6 +135,30 @@ describe('BombermageGame - bomb mechanics', () => {
   });
 });
 
+describe('BombermageGame - validateMove collision', () => {
+  const game = new BombermageGame();
+  const makePlayer = (playerNumber: number) => ({ id: `p${playerNumber}`, playerNumber, sessionId: '', name: `P${playerNumber}`, connected: true });
+
+  it('disallows moving onto a cell occupied by another alive player', () => {
+    const board = game.initializeBoard() as any;
+    board.players[1].position = { row: 0, col: 1 };
+    board.terrain[0][1] = 'empty';
+    board.diceRoll = 3;
+    board.actionPointsRemaining = 3;
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest: { row: 0, col: 1 } } };
+    expect(game.validateMove(board, move as any, makePlayer(0) as any)).toBe(false);
+  });
+
+  it('allows moving onto a cell that is empty', () => {
+    const board = game.initializeBoard() as any;
+    board.terrain[0][1] = 'empty';
+    board.diceRoll = 3;
+    board.actionPointsRemaining = 3;
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest: { row: 0, col: 1 } } };
+    expect(game.validateMove(board, move as any, makePlayer(0) as any)).toBe(true);
+  });
+});
+
 describe('BombermageGame - checkWinCondition', () => {
   const game = new BombermageGame();
 
@@ -145,5 +171,107 @@ describe('BombermageGame - checkWinCondition', () => {
     const board = game.initializeBoard() as any;
     board.players[1].alive = false;
     expect(game.checkWinCondition(board)).toBe(0);
+  });
+});
+
+describe('movement validation bugs', () => {
+  const makePlayer = (playerNumber: number) => ({ id: `p${playerNumber}`, playerNumber, sessionId: '', name: `P${playerNumber}`, connected: true });
+
+  it('rejects moving onto a cell that has a bomb', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    const p0 = board.players[0];
+    const dest = { row: p0.position.row + 1, col: p0.position.col };
+    board.terrain[dest.row][dest.col] = 'empty';
+    board.bombs = [{ position: dest, ownerPlayerNumber: 1, placedOnMove: 0, isManual: false }];
+    board.actionPointsRemaining = 3;
+    board.diceRoll = 3;
+
+    const move = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest } };
+    expect(engine.validateMove(board, move as any, makePlayer(0) as any)).toBe(false);
+  });
+
+  it('allows placing a bomb with exactly 1 AP remaining', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.actionPointsRemaining = 1;
+    board.diceRoll = 1;
+    const p0 = board.players[0];
+
+    const move = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: p0.position } };
+    expect(engine.validateMove(board, move as any, makePlayer(0) as any)).toBe(true);
+  });
+});
+
+describe('coin pickup', () => {
+  it('increments player score when walking onto a coin cell', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    const p0 = board.players[0];
+    const dest = { row: p0.position.row + 1, col: p0.position.col };
+    board.terrain[dest.row][dest.col] = 'empty';
+    board.coins[dest.row][dest.col] = true;
+    board.actionPointsRemaining = 3;
+    board.diceRoll = 3;
+
+    const move = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest } };
+    const next = engine.applyMove(board, move) as any;
+
+    expect(next.players[0].score).toBe(1);
+    expect(next.coins[dest.row][dest.col]).toBe(false);
+  });
+
+  it('does not increment score on empty cell without coin', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    const p0 = board.players[0];
+    const dest = { row: p0.position.row + 1, col: p0.position.col };
+    board.terrain[dest.row][dest.col] = 'empty';
+    board.coins[dest.row][dest.col] = false;
+    board.actionPointsRemaining = 3;
+    board.diceRoll = 3;
+
+    const move = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest } };
+    const next = engine.applyMove(board, move) as any;
+
+    expect(next.players[0].score).toBe(0);
+  });
+});
+
+describe('board-cleared win condition', () => {
+  it('returns higher-score player when no destructible cells remain and both alive', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    for (let r = 0; r < board.terrain.length; r++) {
+      for (let c = 0; c < board.terrain[r].length; c++) {
+        if (board.terrain[r][c] === 'destructible') board.terrain[r][c] = 'empty';
+      }
+    }
+    board.players[0].score = 3;
+    board.players[1].score = 1;
+
+    expect(engine.checkWinCondition(board)).toBe(0);
+  });
+
+  it('returns null when destructible cells still remain', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.terrain[2][1] = 'destructible';
+
+    expect(engine.checkWinCondition(board)).toBeNull();
+  });
+
+  it('player 0 wins tiebreak when scores equal and board cleared', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    for (let r = 0; r < board.terrain.length; r++) {
+      for (let c = 0; c < board.terrain[r].length; c++) {
+        if (board.terrain[r][c] === 'destructible') board.terrain[r][c] = 'empty';
+      }
+    }
+    board.players[0].score = 2;
+    board.players[1].score = 2;
+
+    expect(engine.checkWinCondition(board)).toBe(0);
   });
 });

@@ -35,6 +35,8 @@ export interface BombermagePlayer {
     speedBoostTurnsRemaining: number;
   };
   activeBombCount: number;
+  bankedAP: number;
+  score: number; // coins collected
 }
 
 export interface BombermageState {
@@ -44,7 +46,6 @@ export interface BombermageState {
   totalMoveCount: number;
   config: BombermageConfig;
   actionPointsRemaining: number | null;
-  pendingExplosions: Position[];
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -62,6 +63,9 @@ const DEFAULT_CONFIG: BombermageConfig = {
     'shield',
   ],
   fuseLength: 3,
+  coinDensity: 0.25,
+  apMin: 5,
+  apMax: 5,
 };
 
 const GRID_DIMS: Record<BombermageGridSize, [number, number]> = {
@@ -96,29 +100,48 @@ function generateTerrain(
   rows: number,
   cols: number,
   config: BombermageConfig,
-): { terrain: TerrainCell[][]; powerups: (BombermagePowerupType | null)[][] } {
+): { terrain: TerrainCell[][]; powerups: (BombermagePowerupType | null)[][]; coins: boolean[][] } {
   const terrain: TerrainCell[][] = [];
   const powerups: (BombermagePowerupType | null)[][] = [];
+  const coins: boolean[][] = [];
   const fillChance = BARRIER_FILL[config.barrierDensity];
   const powerupChance = POWERUP_CHANCE[config.powerupFrequency];
+  const coinDensity = config.coinDensity ?? 0.25;
+  let shieldPlaced = false;
 
   for (let r = 0; r < rows; r++) {
     terrain[r] = [];
     powerups[r] = [];
+    coins[r] = [];
     for (let c = 0; c < cols; c++) {
-      if (r % 2 === 0 && c % 2 === 0) {
-        terrain[r][c] = 'indestructible';
-        powerups[r][c] = null;
-      } else if (isClearZone(r, c, rows, cols)) {
+      coins[r][c] = false;
+      if (isClearZone(r, c, rows, cols)) {
         terrain[r][c] = 'empty';
+        powerups[r][c] = null;
+      } else if (r % 2 === 0 && c % 2 === 0) {
+        terrain[r][c] = 'indestructible';
         powerups[r][c] = null;
       } else if (Math.random() < fillChance) {
         terrain[r][c] = 'destructible';
         if (Math.random() < powerupChance && config.enabledPowerups.length > 0) {
-          const idx = Math.floor(Math.random() * config.enabledPowerups.length);
-          powerups[r][c] = config.enabledPowerups[idx];
+          let candidates = config.enabledPowerups;
+          if (shieldPlaced) {
+            candidates = candidates.filter(p => p !== 'shield');
+          }
+          if (candidates.length > 0) {
+            const idx = Math.floor(Math.random() * candidates.length);
+            const chosen = candidates[idx];
+            powerups[r][c] = chosen;
+            if (chosen === 'shield') shieldPlaced = true;
+          } else {
+            powerups[r][c] = null;
+          }
         } else {
           powerups[r][c] = null;
+        }
+        // Independently roll for coin (separate from powerup)
+        if (Math.random() < coinDensity) {
+          coins[r][c] = true;
         }
       } else {
         terrain[r][c] = 'empty';
@@ -127,7 +150,7 @@ function generateTerrain(
     }
   }
 
-  return { terrain, powerups };
+  return { terrain, powerups, coins };
 }
 
 function cornerPositions(rows: number, cols: number): Position[] {
@@ -156,7 +179,7 @@ export class BombermageGame extends GameEngine {
 
   initializeBoard(config: BombermageConfig = DEFAULT_CONFIG): BoardState {
     const [rows, cols] = GRID_DIMS[config.gridSize];
-    const { terrain, powerups } = generateTerrain(rows, cols, config);
+    const { terrain, powerups, coins } = generateTerrain(rows, cols, config);
     const corners = cornerPositions(rows, cols);
 
     const players: BombermagePlayer[] = [0, 1].map((pn) => ({
@@ -165,6 +188,8 @@ export class BombermageGame extends GameEngine {
       alive: true,
       inventory: defaultInventory(),
       activeBombCount: 0,
+      bankedAP: 0,
+      score: 0,
     }));
 
     const bombermage: BombermageState = {
@@ -174,7 +199,6 @@ export class BombermageGame extends GameEngine {
       totalMoveCount: 0,
       config,
       actionPointsRemaining: null,
-      pendingExplosions: [],
     };
 
     return {
@@ -185,6 +209,7 @@ export class BombermageGame extends GameEngine {
       ...(bombermage as any),
       terrain,
       powerups,
+      coins,
     };
   }
 
@@ -219,14 +244,26 @@ export class BombermageGame extends GameEngine {
       const dc = Math.abs(dest.col - p.position.col);
       if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
         const cell = bm.terrain[dest.row]?.[dest.col];
-        return cell === 'empty';
+        if (cell !== 'empty') return false;
+        const occupied = bm.players.some(
+          (other: BombermagePlayer) =>
+            other.alive &&
+            other.playerNumber !== player.playerNumber &&
+            other.position.row === dest.row &&
+            other.position.col === dest.col,
+        );
+        if (occupied) return false;
+        const hasBomb = bm.bombs.some(
+          (b: Bomb) => b.position.row === dest.row && b.position.col === dest.col
+        );
+        return !hasBomb;
       }
       return false;
     }
 
     if (type === 'place-bomb') {
       const ap = bm.actionPointsRemaining ?? 0;
-      if (ap < 2) return false;
+      if (ap < 1) return false;
       if (p.activeBombCount >= p.inventory.maxBombs) return false;
       const dest: Position = extra.dest ?? p.position;
       return dest.row === p.position.row && dest.col === p.position.col;
@@ -262,8 +299,8 @@ export class BombermageGame extends GameEngine {
     const playerNumber = board.currentTurn;
     const p = bm.players[playerNumber];
 
-    bm.explosions = bm.pendingExplosions ?? [];
-    bm.pendingExplosions = [];
+    // Clear explosions at the start of each action — they were shown last update
+    bm.explosions = [];
 
     if (type === 'move') {
       const dest: Position = extra.dest;
@@ -274,6 +311,11 @@ export class BombermageGame extends GameEngine {
         this._applyPowerup(p, powerup);
         bm.powerups[dest.row][dest.col] = null;
       }
+      // Collect coin if present
+      if (bm.coins?.[dest.row]?.[dest.col]) {
+        p.score = (p.score ?? 0) + 1;
+        bm.coins[dest.row][dest.col] = false;
+      }
     } else if (type === 'place-bomb') {
       const bomb: Bomb = {
         position: { ...p.position },
@@ -283,7 +325,7 @@ export class BombermageGame extends GameEngine {
       };
       bm.bombs.push(bomb);
       p.activeBombCount++;
-      bm.actionPointsRemaining = (bm.actionPointsRemaining ?? 0) - 2;
+      bm.actionPointsRemaining = (bm.actionPointsRemaining ?? 0) - 1;
     } else if (type === 'kick-bomb') {
       const bombIndex: number = extra.bombIndex;
       const dir: string = extra.direction;
@@ -308,20 +350,26 @@ export class BombermageGame extends GameEngine {
       const bombIndex: number = extra.bombIndex;
       this._detonateBomb(bm, bombIndex);
     } else if (type === 'end-turn') {
+      // Bank leftover AP for the current player before ending turn
+      p.bankedAP = bm.actionPointsRemaining ?? 0;
+      // Explosion phase: increment move count, resolve expired bombs, then advance turn
       bm.totalMoveCount++;
+      this._resolveExpiredBombs(bm);
       bm.currentTurn = 1 - playerNumber;
       bm.diceRoll = null;
       bm.actionPointsRemaining = null;
-      this._resolveExpiredBombs(bm);
       return state;
     }
 
     if ((bm.actionPointsRemaining ?? 1) <= 0) {
+      // Bank leftover AP (zero in this case) before ending turn
+      p.bankedAP = 0;
+      // Explosion phase: increment move count, resolve expired bombs, then advance turn
       bm.totalMoveCount++;
+      this._resolveExpiredBombs(bm);
       bm.currentTurn = 1 - playerNumber;
       bm.diceRoll = null;
       bm.actionPointsRemaining = null;
-      this._resolveExpiredBombs(bm);
     }
 
     return state;
@@ -332,11 +380,37 @@ export class BombermageGame extends GameEngine {
     const alivePlayers: BombermagePlayer[] = bm.players.filter((p: BombermagePlayer) => p.alive);
     if (alivePlayers.length === 1) return alivePlayers[0].playerNumber;
     if (alivePlayers.length === 0) return bm.currentTurn;
+
+    // Board-cleared win: if no destructible cells remain, highest score wins
+    const hasDestructible = bm.terrain?.some((row: TerrainCell[]) =>
+      row.some((cell: TerrainCell) => cell === 'destructible')
+    );
+    if (!hasDestructible) {
+      const scores = bm.players.map((p: BombermagePlayer) => p.score ?? 0);
+      if (scores[0] >= scores[1]) return 0;
+      return 1;
+    }
+
     return null;
   }
 
   isCaptureMove(board: BoardState, move: Move): boolean {
     return false;
+  }
+
+  afterDiceRoll(board: BoardState, _roll: number): BoardState {
+    const bm = board as any;
+    const apMin: number = bm.config?.apMin ?? 1;
+    const apMax: number = bm.config?.apMax ?? 6;
+    const actualRoll = apMin === apMax
+      ? apMin
+      : Math.floor(Math.random() * (apMax - apMin + 1)) + apMin;
+    const p: BombermagePlayer = bm.players[bm.currentTurn];
+    const banked = p?.bankedAP ?? 0;
+    const cap = apMax + Math.max(0, apMax - apMin); // bank cap scales with range
+    const total = Math.min(banked + actualRoll, cap);
+    if (p) p.bankedAP = 0;
+    return { ...board, diceRoll: actualRoll, players: bm.players, actionPointsRemaining: total } as BoardState;
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────
@@ -358,7 +432,7 @@ export class BombermageGame extends GameEngine {
     const owner: BombermagePlayer = bm.players[bomb.ownerPlayerNumber];
     const radius = owner?.inventory.blastRadius ?? 1;
     const blastCells = this._calcBlast(bm.terrain, bomb.position, radius);
-    bm.pendingExplosions.push(...blastCells);
+    bm.explosions.push(...blastCells);
     for (const cell of blastCells) {
       if (bm.terrain[cell.row][cell.col] === 'destructible') {
         bm.terrain[cell.row][cell.col] = 'empty';
