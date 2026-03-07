@@ -16,7 +16,8 @@ export interface GameManifest {
   title: string;
   emoji: string;
   description: string;
-  playerColors: [string, string];
+  playerColors: string[];
+  playerCount?: number;
   supportsAnimation?: boolean;
   supportsHistory?: boolean;
   disabled?: boolean;
@@ -112,8 +113,9 @@ export const GAME_MANIFESTS: Record<GameType, GameManifest> = {
     type: 'bombermage',
     title: 'Bombermage',
     emoji: '💣',
-    description: '2 players · bomb tactics',
-    playerColors: ['#F97316', '#8B5CF6'],
+    description: '4 players · bomb tactics',
+    playerColors: ['#F97316', '#8B5CF6', '#22C55E', '#EC4899'],
+    playerCount: 4,
   },
 };
 
