@@ -480,7 +480,7 @@ export function registerGameHandlers(
       relayGameStateToHub(io, session, session.gameState!);
 
       if (!canMove && !hasReroll) {
-        const nextTurn = (session.gameState.currentTurn + 1) % 2;
+        const nextTurn = gameEngine.getNextTurn(session.gameState.board, session.gameState.currentTurn);
         session.gameState.board.diceRoll = null;
         session.gameState.board.currentTurn = nextTurn;
         session.gameState.currentTurn = nextTurn;
@@ -742,7 +742,8 @@ export function registerGameHandlers(
         return;
       }
 
-      const nextTurn = (session.gameState.currentTurn + 1) % 2;
+      const gameEngine = GameRegistry.getGame(session.gameType);
+      const nextTurn = gameEngine.getNextTurn(session.gameState.board, session.gameState.currentTurn);
       session.gameState.board.diceRoll = null;
       session.gameState.board.currentTurn = nextTurn;
       session.gameState.currentTurn = nextTurn;
@@ -957,7 +958,7 @@ export function registerGameHandlers(
         io.to(sessionCode).emit('game:state-updated', gameState);
         // If still no moves after reroll, auto-skip
         if (!canMove) {
-          const nextTurn = (gameState.currentTurn + 1) % 2;
+          const nextTurn = engine.getNextTurn(gameState.board, gameState.currentTurn);
           gameState.board.diceRoll = null;
           gameState.board.currentTurn = nextTurn;
           gameState.currentTurn = nextTurn;
