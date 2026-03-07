@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Session, TournamentFormat, GameState, getGameTitle } from '@ancient-games/shared';
+import { Session, TournamentFormat, GameState, getGameTitle, GAME_MANIFESTS } from '@ancient-games/shared';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 import { PLAYER_ID_KEY, PLAYER_NAME_KEY } from '../../services/storage';
@@ -561,8 +561,9 @@ export default function SessionLobby() {
     session.spectators.some((s) => s.id === playerId);
   const isHost = session.hostId === playerId;
   const currentPlayer = session.players.find((p) => p.id === playerId);
+  const requiredPlayers = GAME_MANIFESTS[session.gameType]?.playerCount ?? 2;
   const canStart =
-    isHost && (format === 'single' ? session.players.length === 2 : session.players.length >= 2);
+    isHost && (format === 'single' ? session.players.length === requiredPlayers : session.players.length >= 2);
 
   // ── Tournament bracket view (tournament already started) ───────────────────
   if (session.tournamentState) {
@@ -814,13 +815,13 @@ export default function SessionLobby() {
               </div>
             ))}
 
-            {session.players.length < 2 && !showBotForm && (
+            {session.players.length < requiredPlayers && !showBotForm && (
               <div className="bg-gray-700/30 rounded-lg p-3 text-center text-gray-400">
                 Waiting for another player...
               </div>
             )}
 
-            {isHost && format === 'single' && session.players.length < 2 && (session.gameType == "ur" || session.gameType == "ur-roguelike" || session.gameType == "morris" ) && (
+            {isHost && format === 'single' && session.players.length < requiredPlayers && (session.gameType == "ur" || session.gameType == "ur-roguelike" || session.gameType == "morris" ) && (
               <div className="mt-3">
                 {!showBotForm ? (
                   <button
@@ -899,7 +900,7 @@ export default function SessionLobby() {
                         </span>
                       )}
                     </div>
-                    {isHost && session.players.length < (format === 'single' ? 2 : 8) && (
+                    {isHost && session.players.length < (format === 'single' ? requiredPlayers : 8) && (
                       <button
                         onClick={() => handleHostTakeSeat(spec.id)}
                         className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-600/50 transition-colors"
@@ -943,9 +944,9 @@ export default function SessionLobby() {
                   </button>
                 ))}
               </div>
-              {format === 'single' && session.players.length > 2 && (
+              {format === 'single' && session.players.length > requiredPlayers && (
                 <div className="text-xs mt-2" style={{ color: eg ? '#8A6A00' : '#E8A030' }}>
-                  Single Match requires exactly 2 players seated.
+                  Single Match requires exactly {requiredPlayers} players seated.
                 </div>
               )}
             </div>
@@ -1087,7 +1088,7 @@ export default function SessionLobby() {
                 Stand Up
               </button>
             )}
-            {isSpectator && session.players.length < (format === 'single' ? 2 : 8) && (
+            {isSpectator && session.players.length < (format === 'single' ? requiredPlayers : 8) && (
               <button onClick={handleTakeSeat} className="btn btn-secondary flex-1">
                 Take a Seat
               </button>
@@ -1096,10 +1097,10 @@ export default function SessionLobby() {
 
           {!isSpectator && isHost && !canStart && (
             <div className="text-sm text-gray-400 text-center mt-2">
-              {session.players.length < 2
-                ? 'Waiting for another player to join'
-                : format === 'single' && session.players.length > 2
-                  ? 'Single Match requires exactly 2 players'
+              {session.players.length < requiredPlayers
+                ? `Waiting for ${requiredPlayers - session.players.length} more player(s)...`
+                : format === 'single' && session.players.length > requiredPlayers
+                  ? `Single Match requires exactly ${requiredPlayers} players`
                   : ''}
             </div>
           )}
