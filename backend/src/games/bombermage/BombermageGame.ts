@@ -156,6 +156,8 @@ function generateTerrain(
 function cornerPositions(rows: number, cols: number): Position[] {
   return [
     { row: 0, col: 0 },
+    { row: 0, col: cols - 1 },
+    { row: rows - 1, col: 0 },
     { row: rows - 1, col: cols - 1 },
   ];
 }
@@ -175,14 +177,14 @@ function defaultInventory() {
 
 export class BombermageGame extends GameEngine {
   gameType: GameType = 'bombermage';
-  playerCount = 2;
+  playerCount = 4;
 
   initializeBoard(config: BombermageConfig = DEFAULT_CONFIG): BoardState {
     const [rows, cols] = GRID_DIMS[config.gridSize];
     const { terrain, powerups, coins } = generateTerrain(rows, cols, config);
     const corners = cornerPositions(rows, cols);
 
-    const players: BombermagePlayer[] = [0, 1].map((pn) => ({
+    const players: BombermagePlayer[] = [0, 1, 2, 3].map((pn) => ({
       playerNumber: pn,
       position: corners[pn],
       alive: true,
@@ -355,7 +357,7 @@ export class BombermageGame extends GameEngine {
       // Explosion phase: increment move count, resolve expired bombs, then advance turn
       bm.totalMoveCount++;
       this._resolveExpiredBombs(bm);
-      bm.currentTurn = 1 - playerNumber;
+      bm.currentTurn = this.getNextTurn(bm, playerNumber);
       bm.diceRoll = null;
       bm.actionPointsRemaining = null;
       return state;
@@ -367,7 +369,7 @@ export class BombermageGame extends GameEngine {
       // Explosion phase: increment move count, resolve expired bombs, then advance turn
       bm.totalMoveCount++;
       this._resolveExpiredBombs(bm);
-      bm.currentTurn = 1 - playerNumber;
+      bm.currentTurn = this.getNextTurn(bm, playerNumber);
       bm.diceRoll = null;
       bm.actionPointsRemaining = null;
     }
@@ -381,17 +383,28 @@ export class BombermageGame extends GameEngine {
     if (alivePlayers.length === 1) return alivePlayers[0].playerNumber;
     if (alivePlayers.length === 0) return bm.currentTurn;
 
-    // Board-cleared win: if no destructible cells remain, highest score wins
+    // Board-cleared win: if no destructible cells remain, highest score among alive players wins
     const hasDestructible = bm.terrain?.some((row: TerrainCell[]) =>
       row.some((cell: TerrainCell) => cell === 'destructible')
     );
     if (!hasDestructible) {
-      const scores = bm.players.map((p: BombermagePlayer) => p.score ?? 0);
-      if (scores[0] >= scores[1]) return 0;
-      return 1;
+      const winner = alivePlayers.reduce((best: BombermagePlayer, p: BombermagePlayer) =>
+        p.score > best.score ? p : best
+      );
+      return winner.playerNumber;
     }
 
     return null;
+  }
+
+  getNextTurn(board: BoardState, currentPlayer: number): number {
+    const players: BombermagePlayer[] = (board as any).players ?? [];
+    for (let i = 1; i <= this.playerCount; i++) {
+      const candidate = (currentPlayer + i) % this.playerCount;
+      const candidatePlayer = players.find((p) => p.playerNumber === candidate);
+      if (!candidatePlayer || candidatePlayer.alive) return candidate;
+    }
+    return (currentPlayer + 1) % this.playerCount;
   }
 
   isCaptureMove(board: BoardState, move: Move): boolean {

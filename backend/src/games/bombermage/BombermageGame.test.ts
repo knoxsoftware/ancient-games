@@ -162,15 +162,24 @@ describe('BombermageGame - validateMove collision', () => {
 describe('BombermageGame - checkWinCondition', () => {
   const game = new BombermageGame();
 
-  it('returns null when both players alive', () => {
+  it('returns null when multiple players alive', () => {
     const board = game.initializeBoard();
     expect(game.checkWinCondition(board)).toBeNull();
   });
 
-  it('returns winner when one player dead', () => {
+  it('returns winner when only one player alive', () => {
     const board = game.initializeBoard() as any;
+    board.players[0].alive = false;
     board.players[1].alive = false;
-    expect(game.checkWinCondition(board)).toBe(0);
+    board.players[2].alive = false;
+    expect(game.checkWinCondition(board)).toBe(3);
+  });
+
+  it('returns null when two players remain alive', () => {
+    const board = game.initializeBoard() as any;
+    board.players[0].alive = false;
+    board.players[1].alive = false;
+    expect(game.checkWinCondition(board)).toBeNull();
   });
 });
 
@@ -200,6 +209,34 @@ describe('movement validation bugs', () => {
 
     const move = { playerId: 'p1', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: p0.position } };
     expect(engine.validateMove(board, move as any, makePlayer(0) as any)).toBe(true);
+  });
+});
+
+describe('BombermageGame - getNextTurn', () => {
+  const game = new BombermageGame();
+
+  it('returns next player in round-robin for 4 players', () => {
+    const board = game.initializeBoard() as any;
+    expect(game.getNextTurn(board, 0)).toBe(1);
+    expect(game.getNextTurn(board, 1)).toBe(2);
+    expect(game.getNextTurn(board, 2)).toBe(3);
+    expect(game.getNextTurn(board, 3)).toBe(0);
+  });
+
+  it('skips eliminated players (alive === false)', () => {
+    const board = game.initializeBoard() as any;
+    board.players[1].alive = false;
+    expect(game.getNextTurn(board, 0)).toBe(2);
+    expect(game.getNextTurn(board, 2)).toBe(3);
+    expect(game.getNextTurn(board, 3)).toBe(0);
+  });
+
+  it('skips multiple eliminated players', () => {
+    const board = game.initializeBoard() as any;
+    board.players[1].alive = false;
+    board.players[2].alive = false;
+    expect(game.getNextTurn(board, 0)).toBe(3);
+    expect(game.getNextTurn(board, 3)).toBe(0);
   });
 });
 
