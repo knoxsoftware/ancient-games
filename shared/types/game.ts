@@ -250,4 +250,6 @@ export interface GameEngine {
   getValidMoves(board: BoardState, playerNumber: number, diceRoll: number): Move[];
   canMove(board: BoardState, playerNumber: number, diceRoll: number): boolean;
   isCaptureMove(board: BoardState, move: Move): boolean;
+  /** Returns the player number whose turn comes after currentPlayer. */
+  getNextTurn(board: BoardState, currentPlayer: number): number;
 }

@@ -23,4 +23,9 @@ export abstract class GameEngine implements IGameEngine {
   afterDiceRoll(board: BoardState, roll: number): BoardState {
     return board;
   }
+
+  /** Returns the player number whose turn comes after currentPlayer. Default: round-robin by playerCount. */
+  getNextTurn(board: BoardState, currentPlayer: number): number {
+    return (currentPlayer + 1) % this.playerCount;
+  }
 }
