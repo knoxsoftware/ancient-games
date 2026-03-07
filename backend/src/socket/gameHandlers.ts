@@ -256,7 +256,10 @@ export function registerGameHandlers(
         socket.emit('session:error', { message: 'Session not found' });
         return;
       }
-      const maxPlayers = (currentSession.lobbyFormat ?? 'single') === 'single' ? 2 : 8;
+      const gameEngine = GameRegistry.getGame(currentSession.gameType);
+      const maxPlayers = (currentSession.lobbyFormat ?? 'single') === 'single'
+        ? gameEngine.playerCount
+        : 8;
       if (currentSession.players.length >= maxPlayers) {
         socket.emit('session:error', { message: 'No seats available' });
         return;
@@ -303,7 +306,10 @@ export function registerGameHandlers(
         socket.emit('session:error', { message: 'Only the host can move players' });
         return;
       }
-      const maxPlayers = (currentSession.lobbyFormat ?? 'single') === 'single' ? 2 : 8;
+      const gameEngine = GameRegistry.getGame(currentSession.gameType);
+      const maxPlayers = (currentSession.lobbyFormat ?? 'single') === 'single'
+        ? gameEngine.playerCount
+        : 8;
       if (currentSession.players.length >= maxPlayers) {
         socket.emit('session:error', { message: 'No seats available' });
         return;
