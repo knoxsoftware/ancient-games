@@ -108,7 +108,7 @@ const POWERUP_ICON: Record<string, string> = {
   'shield': '🛡️',
 };
 
-const PLAYER_COLORS = ['#F97316', '#8B5CF6'];
+const PLAYER_COLORS = ['#F97316', '#8B5CF6', '#22C55E', '#EC4899'];
 
 export default function BombermageBoard({ session, gameState, playerId, isMyTurn }: Props) {
   const board = gameState.board as any;

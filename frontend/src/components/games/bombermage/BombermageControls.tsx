@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
+import React from 'react';
 import { socketService } from '../../../services/socket';
 import { GameControlsProps } from '../../GameControls';
 
-const PLAYER_COLORS = ['#F97316', '#8B5CF6'];
+const PLAYER_COLORS = ['#F97316', '#8B5CF6', '#22C55E', '#EC4899'];
 
 export default function BombermageControls({ session, gameState, playerId, isMyTurn }: GameControlsProps) {
   const board = gameState.board as any;
@@ -12,7 +13,6 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
   const myPlayer = session.players.find((p) => p.id === playerId);
   const myPN = myPlayer?.playerNumber ?? -1;
   const me = players[myPN];
-  const opponent = players[1 - myPN];
 
   const ap: number = board.actionPointsRemaining ?? 0;
   const diceRoll: number | null = board.diceRoll;
@@ -210,29 +210,30 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
   if (!me) return null;
 
   return (
-    <div className="w-full flex items-center justify-center gap-2 py-2">
-      {renderPlayerPanel(me, myPN, true)}
-
-      {/* Center: d-pad + bomb */}
-      <div className="flex flex-col items-center gap-1.5">
-        <div className="flex items-center gap-3">
-          {renderDpad()}
-          <button
-            className="w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all active:scale-90 disabled:opacity-30"
-            style={{
-              background: '#7c2d12',
-              border: `3px solid #c2410c`,
-            }}
-            disabled={!canBomb}
-            onClick={emitPlaceBomb}
-            onTouchEnd={(e) => { e.preventDefault(); if (canBomb) emitPlaceBomb(); }}
-          >
-            💣
-          </button>
-        </div>
+    <div className="w-full flex flex-col items-center gap-2 py-2">
+      {/* Player panels row */}
+      <div className="flex gap-1.5 justify-center flex-wrap">
+        {players.map((player: any) =>
+          renderPlayerPanel(player, player.playerNumber, player.playerNumber === myPN)
+        )}
       </div>
 
-      {renderPlayerPanel(opponent, 1 - myPN, false)}
+      {/* D-pad + bomb */}
+      <div className="flex items-center gap-3">
+        {renderDpad()}
+        <button
+          className="w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all active:scale-90 disabled:opacity-30"
+          style={{
+            background: '#7c2d12',
+            border: `3px solid #c2410c`,
+          }}
+          disabled={!canBomb}
+          onClick={emitPlaceBomb}
+          onTouchEnd={(e) => { e.preventDefault(); if (canBomb) emitPlaceBomb(); }}
+        >
+          💣
+        </button>
+      </div>
     </div>
   );
 }
