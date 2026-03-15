@@ -9,6 +9,7 @@ import TournamentBracket from '../tournament/TournamentBracket';
 import ChatPanel, { ChatMessage } from '../ChatPanel';
 import MatchSpectatorModal from '../tournament/MatchSpectatorModal';
 import FeedbackModal from '../FeedbackModal';
+import GameRules from '../GameRules';
 import { getTheme, toggleTheme, type Theme } from '../../services/theme';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -110,6 +111,7 @@ export default function SessionLobby() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
 
+  const [showRules, setShowRules] = useState(false);
   const [showBotForm, setShowBotForm] = useState(false);
   const [botDifficulty, setBotDifficulty] = useState('medium');
   const [botPersona, setBotPersona] = useState('Ancient Strategist');
@@ -562,8 +564,11 @@ export default function SessionLobby() {
   const isHost = session.hostId === playerId;
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const requiredPlayers = GAME_MANIFESTS[session.gameType]?.playerCount ?? 2;
+  const minRequiredPlayers = GAME_MANIFESTS[session.gameType]?.minPlayerCount ?? requiredPlayers;
   const canStart =
-    isHost && (format === 'single' ? session.players.length === requiredPlayers : session.players.length >= 2);
+    isHost && (format === 'single'
+      ? session.players.length >= minRequiredPlayers && session.players.length <= requiredPlayers
+      : session.players.length >= 2);
 
   // ── Tournament bracket view (tournament already started) ───────────────────
   if (session.tournamentState) {
@@ -815,7 +820,7 @@ export default function SessionLobby() {
               </div>
             ))}
 
-            {session.players.length < requiredPlayers && !showBotForm && (
+            {session.players.length < minRequiredPlayers && !showBotForm && (
               <div className="bg-gray-700/30 rounded-lg p-3 text-center text-gray-400">
                 Waiting for another player...
               </div>
@@ -1074,6 +1079,13 @@ export default function SessionLobby() {
 
           {/* Action buttons */}
           <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={() => setShowRules(true)}
+              className="btn px-4 py-2 text-sm font-medium"
+              style={{ background: 'rgba(196,160,48,0.1)', border: '1px solid rgba(196,160,48,0.3)', color: '#C4A030' }}
+            >
+              How to Play
+            </button>
             {!isSpectator && isHost && (
               <button
                 onClick={handleStartGame}
@@ -1097,10 +1109,10 @@ export default function SessionLobby() {
 
           {!isSpectator && isHost && !canStart && (
             <div className="text-sm text-gray-400 text-center mt-2">
-              {session.players.length < requiredPlayers
-                ? `Waiting for ${requiredPlayers - session.players.length} more player(s)...`
+              {session.players.length < minRequiredPlayers
+                ? `Waiting for ${minRequiredPlayers - session.players.length} more player(s)...`
                 : format === 'single' && session.players.length > requiredPlayers
-                  ? `Single Match requires exactly ${requiredPlayers} players`
+                  ? `Single Match requires at most ${requiredPlayers} players`
                   : ''}
             </div>
           )}
@@ -1132,6 +1144,30 @@ export default function SessionLobby() {
           playerName={currentPlayerName}
           onClose={() => setShowFeedback(false)}
         />
+      )}
+
+      {showRules && session && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowRules(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-xl p-6"
+            style={{ background: '#1A1008', border: '1px solid rgba(196,160,48,0.3)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowRules(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+              style={{ background: 'rgba(80,60,30,0.5)', color: '#E8C870', border: '1px solid rgba(196,160,48,0.25)' }}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#E8C870' }}>How to Play</h2>
+            <GameRules gameType={session.gameType} />
+          </div>
+        </div>
       )}
     </div>
   );
