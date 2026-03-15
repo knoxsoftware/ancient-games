@@ -49,6 +49,7 @@ import ChatPanel, { ChatMessage, ChatDestination } from './ChatPanel';
 import TournamentBracket from './tournament/TournamentBracket';
 import MatchSpectatorModal from './tournament/MatchSpectatorModal';
 import GameEndModal from './GameEndModal';
+import BombermageEndModal from './games/bombermage/BombermageEndModal';
 
 async function showNotification(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -696,7 +697,9 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
 
   const currentPlayer = session.players.find((p) => p.id === playerId);
   const isSpectator = !currentPlayer && session.spectators.some((s) => s.id === playerId);
-  const bothSeated = session.players.length === 2;
+  const manifest = GAME_MANIFESTS[session.gameType];
+  const minNeeded = manifest?.minPlayerCount ?? manifest?.playerCount ?? 2;
+  const bothSeated = session.players.length >= minNeeded;
   const isMyTurn =
     !isSpectator && gameState.currentTurn === currentPlayer?.playerNumber;
   const isTournamentMatch = !!session.tournamentHubCode;
@@ -898,7 +901,7 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
         {/* Game action strip — only shown for games with controls (e.g. dice rolling) */}
         {controlsComponents[session.gameType] && (
           <div
-            className="flex-shrink-0 h-24 sm:h-40 overflow-hidden flex items-center justify-center"
+            className="flex-shrink-0 min-h-24 sm:min-h-40 overflow-visible flex items-center justify-center"
             style={{ background: th.controlBg, borderRadius: '0.75rem', border: `1px solid ${th.controlBorder}`, margin: '0 0.5rem' }}
           >
             {bothSeated || currentPlayer ? (
@@ -1114,20 +1117,34 @@ const [showGameEndModal, setShowGameEndModal] = useState(false);
       })()}
 
       {showGameEndModal && gameState.finished && gameState.winner !== null && (
-        <GameEndModal
-          session={session}
-          gameState={gameState}
-          currentPlayer={currentPlayer}
-          isSpectator={isSpectator}
-          hubSession={hubSession}
-          onPlayAgain={() => {
-            setShowGameEndModal(false);
-            handleRematch();
-          }}
-          onReturnToBracket={handleReturnToBracket}
-          onLeave={handleLeave}
-          onDismiss={() => { setShowGameEndModal(false); setGameEndDismissed(true); }}
-        />
+        session.gameType === 'bombermage' ? (
+          <BombermageEndModal
+            session={session}
+            gameState={gameState}
+            currentPlayer={currentPlayer}
+            isSpectator={isSpectator}
+            hubSession={hubSession}
+            onPlayAgain={() => { setShowGameEndModal(false); handleRematch(); }}
+            onReturnToBracket={handleReturnToBracket}
+            onLeave={handleLeave}
+            onDismiss={() => { setShowGameEndModal(false); setGameEndDismissed(true); }}
+          />
+        ) : (
+          <GameEndModal
+            session={session}
+            gameState={gameState}
+            currentPlayer={currentPlayer}
+            isSpectator={isSpectator}
+            hubSession={hubSession}
+            onPlayAgain={() => {
+              setShowGameEndModal(false);
+              handleRematch();
+            }}
+            onReturnToBracket={handleReturnToBracket}
+            onLeave={handleLeave}
+            onDismiss={() => { setShowGameEndModal(false); setGameEndDismissed(true); }}
+          />
+        )
       )}
     </div>
   );
