@@ -185,15 +185,13 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
 
       if (diceRoll !== null) {
         return (
-          <button
-            className="w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-0 transition-all active:scale-90"
-            style={{ background: '#334155', color: '#e2e8f0', border: '2px solid #475569' }}
-            onClick={() => debounced(handleEndTurn)}
-            onTouchEnd={(e) => { e.preventDefault(); debounced(handleEndTurn); }}
+          <div
+            className="w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-0"
+            style={{ background: '#0f172a', border: '2px solid #1e293b' }}
           >
             <span className="text-green-400 font-bold text-sm leading-none">{ap}</span>
-            <span className="text-[8px] leading-none text-stone-400">end</span>
-          </button>
+            <span className="text-[8px] leading-none text-stone-500">AP</span>
+          </div>
         );
       }
 
@@ -228,21 +226,39 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
         )}
       </div>
 
-      {/* D-pad + bomb */}
-      <div className="flex items-center gap-3">
+      {/* D-pad + action buttons */}
+      <div className="flex items-end gap-3">
         {renderDpad()}
-        <button
-          className="w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all active:scale-90 disabled:opacity-30"
-          style={{
-            background: '#7c2d12',
-            border: `3px solid #c2410c`,
-          }}
-          disabled={!canBomb}
-          onClick={() => debounced(emitPlaceBomb)}
-          onTouchEnd={(e) => { e.preventDefault(); if (canBomb) debounced(emitPlaceBomb); }}
-        >
-          💣
-        </button>
+        {/* End Turn + Bomb column, aligned to bottom of dpad */}
+        <div className="flex flex-col items-center gap-2 pb-0.5">
+          {/* End Turn — only shown when it's my turn and dice has been rolled */}
+          {isMyTurn && diceRoll !== null ? (
+            <button
+              className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all active:scale-90"
+              style={{ background: '#334155', color: '#94a3b8', border: '1px solid #475569' }}
+              onClick={() => debounced(handleEndTurn)}
+              onTouchEnd={(e) => { e.preventDefault(); debounced(handleEndTurn); }}
+            >
+              End Turn
+            </button>
+          ) : (
+            <div className="h-[26px]" />
+          )}
+          {/* Bomb button */}
+          <button
+            className="w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all active:scale-90 disabled:opacity-30"
+            style={{
+              background: '#7c2d12',
+              border: `3px solid #c2410c`,
+              ...(canBomb ? { animation: 'bombGlow 2s ease-in-out infinite' } : {}),
+            }}
+            disabled={!canBomb}
+            onClick={() => debounced(emitPlaceBomb)}
+            onTouchEnd={(e) => { e.preventDefault(); if (canBomb) debounced(emitPlaceBomb); }}
+          >
+            💣
+          </button>
+        </div>
       </div>
     </div>
   );

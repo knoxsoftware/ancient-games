@@ -494,3 +494,8 @@
   --chat-badge-dm-border: rgba(120, 80, 180, 0.25);
   --chat-badge-dm-text: #6040A0;
 }
+
+@keyframes bombGlow {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(194, 65, 12, 0.4); }
+  50%       { box-shadow: 0 0 14px 5px rgba(249, 115, 22, 0.75); }
+}
