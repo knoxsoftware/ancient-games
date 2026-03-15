@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import React from 'react';
 import { socketService } from '../../../services/socket';
 import { GameControlsProps } from '../../GameControls';
@@ -80,6 +80,16 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
     isMyTurn && diceRoll !== null && ap >= 1 && !!me &&
     me.activeBombCount < me.inventory.maxBombs;
 
+  const lastEmitRef = useRef<number>(0);
+  const DEBOUNCE_MS = 350;
+
+  function debounced(fn: () => void) {
+    const now = Date.now();
+    if (now - lastEmitRef.current < DEBOUNCE_MS) return;
+    lastEmitRef.current = now;
+    fn();
+  }
+
   const currentTurnPN: number = board.currentTurn ?? 0;
 
   function renderPlayerPanel(player: any, playerNumber: number, isMe: boolean) {
@@ -132,8 +142,8 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
           className="w-11 h-11 rounded-lg flex items-center justify-center text-lg font-bold transition-all active:scale-90 disabled:opacity-30"
           style={{ background: enabled ? '#334155' : '#1e293b', color: '#e2e8f0', border: '2px solid #475569' }}
           disabled={!enabled}
-          onClick={() => { if (me) emitMove({ row: me.position.row + dr, col: me.position.col + dc }); }}
-          onTouchEnd={(e) => { e.preventDefault(); if (me && enabled) emitMove({ row: me.position.row + dr, col: me.position.col + dc }); }}
+          onClick={() => { if (me) debounced(() => emitMove({ row: me.position.row + dr, col: me.position.col + dc })); }}
+          onTouchEnd={(e) => { e.preventDefault(); if (me && enabled) debounced(() => emitMove({ row: me.position.row + dr, col: me.position.col + dc })); }}
         >{label}</button>
       );
     }
@@ -165,8 +175,8 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
           <button
             className="w-11 h-11 rounded-lg flex flex-col items-center justify-center text-[9px] font-bold transition-all active:scale-90"
             style={{ background: 'linear-gradient(135deg, #f97316 0%, #c2410c 100%)', color: '#fff', border: '2px solid #f97316' }}
-            onClick={handleRollDice}
-            onTouchEnd={(e) => { e.preventDefault(); handleRollDice(); }}
+            onClick={() => debounced(handleRollDice)}
+            onTouchEnd={(e) => { e.preventDefault(); debounced(handleRollDice); }}
           >
             🎲
           </button>
@@ -178,8 +188,8 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
           <button
             className="w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-0 transition-all active:scale-90"
             style={{ background: '#334155', color: '#e2e8f0', border: '2px solid #475569' }}
-            onClick={handleEndTurn}
-            onTouchEnd={(e) => { e.preventDefault(); handleEndTurn(); }}
+            onClick={() => debounced(handleEndTurn)}
+            onTouchEnd={(e) => { e.preventDefault(); debounced(handleEndTurn); }}
           >
             <span className="text-green-400 font-bold text-sm leading-none">{ap}</span>
             <span className="text-[8px] leading-none text-stone-400">end</span>
@@ -228,8 +238,8 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
             border: `3px solid #c2410c`,
           }}
           disabled={!canBomb}
-          onClick={emitPlaceBomb}
-          onTouchEnd={(e) => { e.preventDefault(); if (canBomb) emitPlaceBomb(); }}
+          onClick={() => debounced(emitPlaceBomb)}
+          onTouchEnd={(e) => { e.preventDefault(); if (canBomb) debounced(emitPlaceBomb); }}
         >
           💣
         </button>
