@@ -212,6 +212,51 @@ describe('movement validation bugs', () => {
   });
 });
 
+describe('win condition: items remaining', () => {
+  it('win condition: game ends when no destructible cells, powerups, or coins remain', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+
+    board.players[0].score = 10;
+    board.players[1].score = 5;
+
+    // Clear all destructible terrain
+    for (let r = 0; r < board.terrain.length; r++)
+      for (let c = 0; c < board.terrain[0].length; c++)
+        if (board.terrain[r][c] === 'destructible') board.terrain[r][c] = 'empty';
+
+    // Clear all powerups and coins
+    for (let r = 0; r < board.powerups.length; r++)
+      for (let c = 0; c < board.powerups[0].length; c++) {
+        board.powerups[r][c] = null;
+        board.coins[r][c] = false;
+      }
+
+    const winner = engine.checkWinCondition(board);
+    expect(winner).toBe(0); // player 0 has higher score
+  });
+
+  it('win condition: does NOT end while powerups remain', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+
+    board.players[0].score = 10;
+    board.players[1].score = 5;
+
+    // Clear all destructible terrain and coins, but leave one powerup
+    for (let r = 0; r < board.terrain.length; r++)
+      for (let c = 0; c < board.terrain[0].length; c++)
+        if (board.terrain[r][c] === 'destructible') board.terrain[r][c] = 'empty';
+    for (let r = 0; r < board.coins.length; r++)
+      for (let c = 0; c < board.coins[0].length; c++) board.coins[r][c] = false;
+
+    board.powerups[3][3] = 'blast-radius'; // one powerup remains
+
+    const winner = engine.checkWinCondition(board);
+    expect(winner).toBeNull();
+  });
+});
+
 describe('chain explosions', () => {
   it('chain explosion: bomb caught in blast triggers immediately', () => {
     const engine = new BombermageGame();
@@ -309,6 +354,8 @@ describe('board-cleared win condition', () => {
     for (let r = 0; r < board.terrain.length; r++) {
       for (let c = 0; c < board.terrain[r].length; c++) {
         if (board.terrain[r][c] === 'destructible') board.terrain[r][c] = 'empty';
+        board.powerups[r][c] = null;
+        board.coins[r][c] = false;
       }
     }
     board.players[0].score = 3;
@@ -331,6 +378,8 @@ describe('board-cleared win condition', () => {
     for (let r = 0; r < board.terrain.length; r++) {
       for (let c = 0; c < board.terrain[r].length; c++) {
         if (board.terrain[r][c] === 'destructible') board.terrain[r][c] = 'empty';
+        board.powerups[r][c] = null;
+        board.coins[r][c] = false;
       }
     }
     board.players[0].score = 2;

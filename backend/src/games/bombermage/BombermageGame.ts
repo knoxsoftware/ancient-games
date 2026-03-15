@@ -385,11 +385,18 @@ export class BombermageGame extends GameEngine {
     if (alivePlayers.length === 1) return alivePlayers[0].playerNumber;
     if (alivePlayers.length === 0) return bm.currentTurn;
 
-    // Board-cleared win: if no destructible cells remain, highest score among alive players wins
+    // Board-cleared win: no destructible cells, no powerups, no coins
     const hasDestructible = bm.terrain?.some((row: TerrainCell[]) =>
       row.some((cell: TerrainCell) => cell === 'destructible')
     );
-    if (!hasDestructible) {
+    const hasPowerup = bm.powerups?.some((row: any[]) =>
+      row.some((cell: any) => cell !== null)
+    );
+    const hasCoin = bm.coins?.some((row: boolean[]) =>
+      row.some((cell: boolean) => cell === true)
+    );
+
+    if (!hasDestructible && !hasPowerup && !hasCoin) {
       const winner = alivePlayers.reduce((best: BombermagePlayer, p: BombermagePlayer) =>
         p.score > best.score ? p : best
       );
