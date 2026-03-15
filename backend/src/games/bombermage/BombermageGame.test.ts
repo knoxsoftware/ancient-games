@@ -212,6 +212,33 @@ describe('movement validation bugs', () => {
   });
 });
 
+describe('chain explosions', () => {
+  it('chain explosion: bomb caught in blast triggers immediately', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+
+    // Clear terrain so blasts propagate freely
+    for (let r = 0; r < board.terrain.length; r++)
+      for (let c = 0; c < board.terrain[0].length; c++)
+        if (board.terrain[r][c] === 'destructible') board.terrain[r][c] = 'empty';
+
+    // Bomb A at (5,5) expires at totalMoveCount=10; bomb B at (5,6) would NOT expire on its own (fuse ends at 11)
+    board.bombs = [
+      { position: { row: 5, col: 5 }, ownerPlayerNumber: 0, placedOnMove: 0, isManual: false },
+      { position: { row: 5, col: 6 }, ownerPlayerNumber: 0, placedOnMove: 8, isManual: false },
+    ];
+    board.players[0].activeBombCount = 2;
+
+    // Bomb A expires (0+3<=10), bomb B does not (8+3=11>10) — chain only
+    board.totalMoveCount = 10;
+    board.explosions = [];
+    (engine as any)._resolveExpiredBombs(board);
+
+    // Both bombs should be gone (chained)
+    expect(board.bombs).toHaveLength(0);
+  });
+});
+
 describe('BombermageGame - getNextTurn', () => {
   const game = new BombermageGame();
 

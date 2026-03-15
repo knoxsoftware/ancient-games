@@ -178,13 +178,15 @@ function defaultInventory() {
 export class BombermageGame extends GameEngine {
   gameType: GameType = 'bombermage';
   playerCount = 4;
+  minPlayerCount = 2;
 
   initializeBoard(config: BombermageConfig = DEFAULT_CONFIG): BoardState {
+    const numPlayers: number = (config as any).numPlayers ?? 4;
     const [rows, cols] = GRID_DIMS[config.gridSize];
     const { terrain, powerups, coins } = generateTerrain(rows, cols, config);
     const corners = cornerPositions(rows, cols);
 
-    const players: BombermagePlayer[] = [0, 1, 2, 3].map((pn) => ({
+    const players: BombermagePlayer[] = Array.from({ length: numPlayers }, (_, pn) => ({
       playerNumber: pn,
       position: corners[pn],
       alive: true,
@@ -399,12 +401,13 @@ export class BombermageGame extends GameEngine {
 
   getNextTurn(board: BoardState, currentPlayer: number): number {
     const players: BombermagePlayer[] = (board as any).players ?? [];
-    for (let i = 1; i <= this.playerCount; i++) {
-      const candidate = (currentPlayer + i) % this.playerCount;
+    const count = players.length || this.playerCount;
+    for (let i = 1; i <= count; i++) {
+      const candidate = (currentPlayer + i) % count;
       const candidatePlayer = players.find((p) => p.playerNumber === candidate);
       if (!candidatePlayer || candidatePlayer.alive) return candidate;
     }
-    return (currentPlayer + 1) % this.playerCount;
+    return (currentPlayer + 1) % count;
   }
 
   isCaptureMove(board: BoardState, move: Move): boolean {
@@ -440,42 +443,70 @@ export class BombermageGame extends GameEngine {
   }
 
   private _detonateBomb(bm: any, bombIndex: number): void {
-    const bomb: Bomb = bm.bombs[bombIndex];
-    if (!bomb) return;
-    const owner: BombermagePlayer = bm.players[bomb.ownerPlayerNumber];
-    const radius = owner?.inventory.blastRadius ?? 1;
-    const blastCells = this._calcBlast(bm.terrain, bomb.position, radius);
-    bm.explosions.push(...blastCells);
-    for (const cell of blastCells) {
-      if (bm.terrain[cell.row][cell.col] === 'destructible') {
-        bm.terrain[cell.row][cell.col] = 'empty';
+    const posKey = (p: Position) => `${p.row},${p.col}`;
+    const pendingPositions: Position[] = [bm.bombs[bombIndex]?.position];
+    const detonatedPositions = new Set<string>();
+
+    while (pendingPositions.length > 0) {
+      const pos = pendingPositions.shift()!;
+      const key = posKey(pos);
+      if (detonatedPositions.has(key)) continue;
+      detonatedPositions.add(key);
+
+      const idx = bm.bombs.findIndex((b: Bomb) => b.position.row === pos.row && b.position.col === pos.col);
+      if (idx === -1) continue;
+
+      const bomb: Bomb = bm.bombs[idx];
+      const owner: BombermagePlayer = bm.players[bomb.ownerPlayerNumber];
+      const radius = owner?.inventory.blastRadius ?? 1;
+      const blastCells = this._calcBlast(bm.terrain, bomb.position, radius);
+      bm.explosions.push(...blastCells);
+
+      for (const cell of blastCells) {
+        if (bm.terrain[cell.row][cell.col] === 'destructible') {
+          bm.terrain[cell.row][cell.col] = 'empty';
+          if (bm.powerups?.[cell.row]?.[cell.col]) bm.powerups[cell.row][cell.col] = null;
+          if (bm.coins?.[cell.row]?.[cell.col]) bm.coins[cell.row][cell.col] = false;
+        }
       }
-    }
-    for (const player of bm.players) {
-      if (!player.alive) continue;
-      if (blastCells.some((c: Position) => c.row === player.position.row && c.col === player.position.col)) {
-        if (player.inventory.shield) {
-          player.inventory.shield = false;
-        } else {
-          player.alive = false;
+
+      for (const player of bm.players) {
+        if (!player.alive) continue;
+        if (blastCells.some((c: Position) => c.row === player.position.row && c.col === player.position.col)) {
+          if (player.inventory.shield) {
+            player.inventory.shield = false;
+          } else {
+            player.alive = false;
+            if (player.deathOrder === undefined) {
+              player.deathOrder = bm.deathCount ?? 0;
+              bm.deathCount = (bm.deathCount ?? 0) + 1;
+            }
+          }
+        }
+      }
+
+      bm.bombs.splice(idx, 1);
+      if (owner) owner.activeBombCount = Math.max(0, owner.activeBombCount - 1);
+
+      for (const b of bm.bombs) {
+        const bKey = posKey(b.position);
+        if (!detonatedPositions.has(bKey) && blastCells.some((c: Position) => c.row === b.position.row && c.col === b.position.col)) {
+          pendingPositions.push({ ...b.position });
         }
       }
     }
-    bm.bombs.splice(bombIndex, 1);
-    if (owner) owner.activeBombCount = Math.max(0, owner.activeBombCount - 1);
   }
 
   private _resolveExpiredBombs(bm: any): void {
     const fuseLength: number = bm.config?.fuseLength ?? 3;
-    const toDetonate: number[] = [];
-    for (let i = 0; i < bm.bombs.length; i++) {
+    let i = 0;
+    while (i < bm.bombs.length) {
       const bomb: Bomb = bm.bombs[i];
       if (!bomb.isManual && bm.totalMoveCount >= bomb.placedOnMove + fuseLength) {
-        toDetonate.push(i);
+        this._detonateBomb(bm, i);
+      } else {
+        i++;
       }
-    }
-    for (let i = toDetonate.length - 1; i >= 0; i--) {
-      this._detonateBomb(bm, toDetonate[i]);
     }
   }
 
