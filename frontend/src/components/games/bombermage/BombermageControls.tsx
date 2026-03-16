@@ -50,6 +50,18 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
     });
   }
 
+  function emitDetonate(bombIndex: number) {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('game:move', {
+      sessionCode: session.sessionCode,
+      playerId,
+      move: Object.assign({ playerId, pieceIndex: 0, from: 0, to: 0 }, {
+        extra: { type: 'detonate', bombIndex },
+      }),
+    });
+  }
+
   function handleEndTurn() {
     const socket = socketService.getSocket();
     if (!socket) return;
@@ -230,6 +242,25 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
       {/* D-pad + action buttons */}
       <div className="flex items-end gap-3">
         {renderDpad()}
+        {/* Detonate buttons — shown when player has manual detonation and has active bombs */}
+        {isMyTurn && diceRoll !== null && me.inventory?.manualDetonation && (
+          <div className="flex flex-col gap-1 items-center">
+            {bombs
+              .map((b: any, idx: number) => ({ bomb: b, idx }))
+              .filter(({ bomb }) => bomb.ownerPlayerNumber === myPN)
+              .map(({ bomb: _bomb, idx }) => (
+                <button
+                  key={idx}
+                  className="px-2 py-1 rounded-lg text-[11px] font-semibold transition-all active:scale-90"
+                  style={{ background: '#7c2d12', color: '#fca5a5', border: '1px solid #c2410c' }}
+                  onClick={() => debounced(() => emitDetonate(idx))}
+                  onTouchEnd={(e) => { e.preventDefault(); debounced(() => emitDetonate(idx)); }}
+                >
+                  💥 {idx + 1}
+                </button>
+              ))}
+          </div>
+        )}
         {/* End Turn + Bomb column, aligned to bottom of dpad */}
         <div className="flex flex-col items-center gap-2 pb-0.5">
           {/* End Turn — only shown when it's my turn and dice has been rolled */}
