@@ -347,6 +347,96 @@ describe('coin pickup', () => {
   });
 });
 
+describe('undo', () => {
+  const makePlayer = (playerNumber: number) => ({ id: `p${playerNumber}`, playerNumber, sessionId: '', name: `P${playerNumber}`, connected: true });
+
+  function freshBoard(engine: BombermageGame) {
+    const board = engine.initializeBoard() as any;
+    board.diceRoll = 5;
+    board.actionPointsRemaining = 5;
+    board.terrain[0][1] = 'empty';
+    board.terrain[1][0] = 'empty';
+    return board;
+  }
+
+  it('applyMove pushes state to undoStack before a move', () => {
+    const engine = new BombermageGame();
+    const board = freshBoard(engine);
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest: { row: 0, col: 1 } } };
+    const after = engine.applyMove(board, move) as any;
+    expect(after.undoStack).toHaveLength(1);
+  });
+
+  it('undo move restores previous position and AP', () => {
+    const engine = new BombermageGame();
+    const board = freshBoard(engine);
+    const origPos = { ...board.players[0].position };
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest: { row: 0, col: 1 } } };
+    const after = engine.applyMove(board, move) as any;
+
+    const undoMove = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'undo' } };
+    const restored = engine.applyMove(after, undoMove) as any;
+    expect(restored.players[0].position).toEqual(origPos);
+    expect(restored.actionPointsRemaining).toBe(5);
+    expect(restored.undoStack).toHaveLength(0);
+  });
+
+  it('undo restores coin to board if it was picked up', () => {
+    const engine = new BombermageGame();
+    const board = freshBoard(engine);
+    board.coins[0][1] = true;
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest: { row: 0, col: 1 } } };
+    const after = engine.applyMove(board, move) as any;
+    expect(after.players[0].score).toBe(1);
+
+    const undoMove = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'undo' } };
+    const restored = engine.applyMove(after, undoMove) as any;
+    expect(restored.players[0].score).toBe(0);
+    expect(restored.coins[0][1]).toBe(true);
+  });
+
+  it('undo restores bomb to board if place-bomb was undone', () => {
+    const engine = new BombermageGame();
+    const board = freshBoard(engine);
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: board.players[0].position } };
+    const after = engine.applyMove(board, move) as any;
+    expect(after.bombs).toHaveLength(1);
+
+    const undoMove = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'undo' } };
+    const restored = engine.applyMove(after, undoMove) as any;
+    expect(restored.bombs).toHaveLength(0);
+    expect(restored.players[0].activeBombCount).toBe(0);
+  });
+
+  it('end-turn clears the undo stack', () => {
+    const engine = new BombermageGame();
+    const board = freshBoard(engine);
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest: { row: 0, col: 1 } } };
+    const after = engine.applyMove(board, move) as any;
+    expect(after.undoStack).toHaveLength(1);
+
+    after.diceRoll = 4; // end-turn needs diceRoll set
+    const endTurn = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'end-turn' } };
+    const ended = engine.applyMove(after, endTurn) as any;
+    expect(ended.undoStack).toHaveLength(0);
+  });
+});
+
+describe('no auto-end-turn', () => {
+  it('does NOT auto-end-turn when AP reaches 0 — player must explicitly end turn', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.diceRoll = 1;
+    board.actionPointsRemaining = 1;
+    board.terrain[0][1] = 'empty';
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest: { row: 0, col: 1 } } };
+    const after = engine.applyMove(board, move) as any;
+    // Turn should NOT have advanced — currentTurn still 0
+    expect(after.currentTurn).toBe(0);
+    expect(after.actionPointsRemaining).toBe(0);
+  });
+});
+
 describe('manual detonation', () => {
   const makePlayer = (playerNumber: number) => ({ id: `p${playerNumber}`, playerNumber, sessionId: '', name: `P${playerNumber}`, connected: true });
 

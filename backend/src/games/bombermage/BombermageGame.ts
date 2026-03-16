@@ -300,6 +300,17 @@ export class BombermageGame extends GameEngine {
     const playerNumber = board.currentTurn;
     const p = bm.players[playerNumber];
 
+    // Ensure undoStack exists
+    if (!bm.undoStack) bm.undoStack = [];
+
+    // Snapshot before action (not for end-turn or undo itself)
+    const UNDO_CAP = 10;
+    if (type !== 'end-turn' && type !== 'undo') {
+      const snapshot = JSON.parse(JSON.stringify(board));
+      if (bm.undoStack.length >= UNDO_CAP) bm.undoStack.shift();
+      bm.undoStack.push(snapshot);
+    }
+
     // Clear explosions at the start of each action — they were shown last update
     bm.explosions = [];
 
@@ -354,9 +365,18 @@ export class BombermageGame extends GameEngine {
     } else if (type === 'detonate') {
       const bombIndex: number = extra.bombIndex;
       this._detonateBomb(bm, bombIndex);
+    } else if (type === 'undo') {
+      const stack: any[] = bm.undoStack ?? [];
+      if (stack.length > 0) {
+        const prev = stack.pop();
+        prev.undoStack = stack;
+        return prev;
+      }
+      return state;
     } else if (type === 'end-turn') {
       // Bank leftover AP for the current player before ending turn
       p.bankedAP = bm.actionPointsRemaining ?? 0;
+      bm.undoStack = []; // clear undo history on end turn
       // Explosion phase: increment move count, resolve expired bombs, then advance turn
       bm.totalMoveCount++;
       this._resolveExpiredBombs(bm);
@@ -364,17 +384,6 @@ export class BombermageGame extends GameEngine {
       bm.diceRoll = null;
       bm.actionPointsRemaining = null;
       return state;
-    }
-
-    if ((bm.actionPointsRemaining ?? 1) <= 0) {
-      // Bank leftover AP (zero in this case) before ending turn
-      p.bankedAP = 0;
-      // Explosion phase: increment move count, resolve expired bombs, then advance turn
-      bm.totalMoveCount++;
-      this._resolveExpiredBombs(bm);
-      bm.currentTurn = this.getNextTurn(bm, playerNumber);
-      bm.diceRoll = null;
-      bm.actionPointsRemaining = null;
     }
 
     return state;
