@@ -181,7 +181,9 @@ export class BombermageGame extends GameEngine {
   minPlayerCount = 2;
 
   initializeBoard(config: BombermageConfig = DEFAULT_CONFIG): BoardState {
+    const merged: BombermageConfig = { ...DEFAULT_CONFIG, ...config };
     const numPlayers: number = (config as any).numPlayers ?? 4;
+    config = merged;
     const [rows, cols] = GRID_DIMS[config.gridSize];
     const { terrain, powerups, coins } = generateTerrain(rows, cols, config);
     const corners = cornerPositions(rows, cols);
@@ -260,7 +262,10 @@ export class BombermageGame extends GameEngine {
         const hasBomb = bm.bombs.some(
           (b: Bomb) => b.position.row === dest.row && b.position.col === dest.col
         );
-        return !hasBomb;
+        if (hasBomb) {
+          return p.inventory.kickBomb === true;
+        }
+        return true;
       }
       return false;
     }
@@ -271,14 +276,6 @@ export class BombermageGame extends GameEngine {
       if (p.activeBombCount >= p.inventory.maxBombs) return false;
       const dest: Position = extra.dest ?? p.position;
       return dest.row === p.position.row && dest.col === p.position.col;
-    }
-
-    if (type === 'kick-bomb') {
-      if (!p.inventory.kickBomb) return false;
-      const ap = bm.actionPointsRemaining ?? 0;
-      if (ap < 1) return false;
-      const bombIndex: number = extra.bombIndex;
-      return bm.bombs[bombIndex]?.ownerPlayerNumber === player.playerNumber;
     }
 
     if (type === 'detonate') {
@@ -308,8 +305,32 @@ export class BombermageGame extends GameEngine {
 
     if (type === 'move') {
       const dest: Position = extra.dest;
+      const origPos = { ...p.position };
       p.position = dest;
       bm.actionPointsRemaining = (bm.actionPointsRemaining ?? 0) - 1;
+
+      // Kick: slide any bomb that was on the destination in the direction of travel
+      const bombOnDestIdx = bm.bombs.findIndex(
+        (b: Bomb) => b.position.row === dest.row && b.position.col === dest.col
+      );
+      if (bombOnDestIdx !== -1 && p.inventory.kickBomb) {
+        const dRow = dest.row - origPos.row;
+        const dCol = dest.col - origPos.col;
+        const bomb = bm.bombs[bombOnDestIdx];
+        let nr = bomb.position.row + dRow;
+        let nc = bomb.position.col + dCol;
+        while (
+          nr >= 0 && nr < bm.terrain.length &&
+          nc >= 0 && nc < bm.terrain[0].length &&
+          bm.terrain[nr][nc] === 'empty' &&
+          !bm.bombs.some((b: Bomb) => b !== bomb && b.position.row === nr && b.position.col === nc)
+        ) {
+          bomb.position = { row: nr, col: nc };
+          nr += dRow;
+          nc += dCol;
+        }
+      }
+
       const powerup = bm.powerups[dest.row][dest.col];
       if (powerup && bm.terrain[dest.row][dest.col] === 'empty') {
         this._applyPowerup(p, powerup);
@@ -329,26 +350,6 @@ export class BombermageGame extends GameEngine {
       };
       bm.bombs.push(bomb);
       p.activeBombCount++;
-      bm.actionPointsRemaining = (bm.actionPointsRemaining ?? 0) - 1;
-    } else if (type === 'kick-bomb') {
-      const bombIndex: number = extra.bombIndex;
-      const dir: string = extra.direction;
-      const bomb = bm.bombs[bombIndex];
-      if (bomb) {
-        const delta = dirToDelta(dir);
-        let nr = bomb.position.row + delta[0];
-        let nc = bomb.position.col + delta[1];
-        while (
-          nr >= 0 && nr < bm.terrain.length &&
-          nc >= 0 && nc < bm.terrain[0].length &&
-          bm.terrain[nr][nc] === 'empty' &&
-          !bm.bombs.some((b: Bomb) => b.position.row === nr && b.position.col === nc)
-        ) {
-          bomb.position = { row: nr, col: nc };
-          nr += delta[0];
-          nc += delta[1];
-        }
-      }
       bm.actionPointsRemaining = (bm.actionPointsRemaining ?? 0) - 1;
     } else if (type === 'detonate') {
       const bombIndex: number = extra.bombIndex;
@@ -472,8 +473,7 @@ export class BombermageGame extends GameEngine {
       for (const cell of blastCells) {
         if (bm.terrain[cell.row][cell.col] === 'destructible') {
           bm.terrain[cell.row][cell.col] = 'empty';
-          if (bm.powerups?.[cell.row]?.[cell.col]) bm.powerups[cell.row][cell.col] = null;
-          if (bm.coins?.[cell.row]?.[cell.col]) bm.coins[cell.row][cell.col] = false;
+          // Coins and powerups remain on the cell for players to collect
         }
       }
 

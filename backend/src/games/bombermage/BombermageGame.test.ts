@@ -347,6 +347,62 @@ describe('coin pickup', () => {
   });
 });
 
+describe('kick bomb', () => {
+  const makePlayer = (playerNumber: number) => ({ id: `p${playerNumber}`, playerNumber, sessionId: '', name: `P${playerNumber}`, connected: true });
+
+  it('validateMove: allows moving onto bomb cell when player has kickBomb', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    const p0 = board.players[0];
+    const dest = { row: p0.position.row + 1, col: p0.position.col };
+    board.terrain[dest.row][dest.col] = 'empty';
+    board.terrain[dest.row + 1][dest.col] = 'empty'; // room to slide
+    board.bombs = [{ position: dest, ownerPlayerNumber: 1, placedOnMove: 0, isManual: false }];
+    board.actionPointsRemaining = 3;
+    board.diceRoll = 3;
+    p0.inventory.kickBomb = true;
+
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest } };
+    expect(engine.validateMove(board, move as any, makePlayer(0) as any)).toBe(true);
+  });
+
+  it('validateMove: still blocks move onto bomb cell when player lacks kickBomb', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    const p0 = board.players[0];
+    const dest = { row: p0.position.row + 1, col: p0.position.col };
+    board.terrain[dest.row][dest.col] = 'empty';
+    board.bombs = [{ position: dest, ownerPlayerNumber: 1, placedOnMove: 0, isManual: false }];
+    board.actionPointsRemaining = 3;
+    board.diceRoll = 3;
+    // kickBomb defaults to false
+
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest } };
+    expect(engine.validateMove(board, move as any, makePlayer(0) as any)).toBe(false);
+  });
+
+  it('applyMove: kick slides bomb in direction of travel', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    const p0 = board.players[0];
+    // p0 at (0,0), dest (1,0), bomb at (1,0) should slide to (2,0)
+    const dest = { row: 1, col: 0 };
+    board.terrain[1][0] = 'empty';
+    board.terrain[2][0] = 'empty';
+    board.terrain[3][0] = 'indestructible'; // stops slide at row 2
+    board.bombs = [{ position: { row: 1, col: 0 }, ownerPlayerNumber: 1, placedOnMove: 0, isManual: false }];
+    board.actionPointsRemaining = 3;
+    board.diceRoll = 3;
+    p0.inventory.kickBomb = true;
+
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'move', dest } };
+    const after = engine.applyMove(board, move) as any;
+
+    expect(after.players[0].position).toEqual({ row: 1, col: 0 });
+    expect(after.bombs[0].position).toEqual({ row: 2, col: 0 });
+  });
+});
+
 describe('board-cleared win condition', () => {
   it('returns higher-score player when no destructible cells remain and both alive', () => {
     const engine = new BombermageGame();
