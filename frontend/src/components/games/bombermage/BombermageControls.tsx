@@ -62,6 +62,16 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
     });
   }
 
+  function handleUndo() {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+    socket.emit('game:move', {
+      sessionCode: session.sessionCode,
+      playerId,
+      move: Object.assign({ playerId, pieceIndex: 0, from: 0, to: 0 }, { extra: { type: 'undo' } }),
+    });
+  }
+
   function handleEndTurn() {
     const socket = socketService.getSocket();
     if (!socket) return;
@@ -88,6 +98,9 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
     if (cellHasBomb && me.inventory?.kickBomb !== true) return false;
     return true;
   }
+
+  const undoStack: any[] = board.undoStack ?? [];
+  const canUndo = isMyTurn && diceRoll !== null && undoStack.length > 0;
 
   const canBomb =
     isMyTurn && diceRoll !== null && ap >= 1 && !!me &&
@@ -263,18 +276,29 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
         )}
         {/* End Turn + Bomb column, aligned to bottom of dpad */}
         <div className="flex flex-col items-center gap-2 pb-0.5">
-          {/* End Turn — only shown when it's my turn and dice has been rolled */}
+          {/* End Turn + Undo — only shown when it's my turn and dice has been rolled */}
           {isMyTurn && diceRoll !== null ? (
-            <button
-              className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all active:scale-90"
-              style={{ background: '#334155', color: '#94a3b8', border: '1px solid #475569' }}
-              onClick={() => debounced(handleEndTurn)}
-              onTouchEnd={(e) => { e.preventDefault(); debounced(handleEndTurn); }}
-            >
-              End Turn
-            </button>
+            <div className="flex flex-col items-center gap-1">
+              <button
+                className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all active:scale-90"
+                style={{ background: '#334155', color: '#94a3b8', border: '1px solid #475569' }}
+                onClick={() => debounced(handleEndTurn)}
+                onTouchEnd={(e) => { e.preventDefault(); debounced(handleEndTurn); }}
+              >
+                End Turn
+              </button>
+              <button
+                className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all active:scale-90 disabled:opacity-30"
+                style={{ background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}
+                disabled={!canUndo}
+                onClick={() => { if (canUndo) debounced(handleUndo); }}
+                onTouchEnd={(e) => { e.preventDefault(); if (canUndo) debounced(handleUndo); }}
+              >
+                ↩ Undo
+              </button>
+            </div>
           ) : (
-            <div className="h-[26px]" />
+            <div className="h-[52px]" />
           )}
           {/* Bomb button */}
           <button
