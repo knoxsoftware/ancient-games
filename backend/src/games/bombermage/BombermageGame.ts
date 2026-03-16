@@ -346,7 +346,7 @@ export class BombermageGame extends GameEngine {
         position: { ...p.position },
         ownerPlayerNumber: playerNumber,
         placedOnMove: bm.totalMoveCount,
-        isManual: false,
+        isManual: p.inventory.manualDetonation === true,
       };
       bm.bombs.push(bomb);
       p.activeBombCount++;
@@ -432,8 +432,14 @@ export class BombermageGame extends GameEngine {
     const p: BombermagePlayer = bm.players[bm.currentTurn];
     const banked = p?.bankedAP ?? 0;
     const cap = apMax + Math.max(0, apMax - apMin); // bank cap scales with range
-    const total = Math.min(banked + actualRoll, cap);
-    if (p) p.bankedAP = 0;
+    let total = Math.min(banked + actualRoll, cap);
+    if (p) {
+      p.bankedAP = 0;
+      if (p.inventory.speedBoostTurnsRemaining > 0) {
+        total += 2;
+        p.inventory.speedBoostTurnsRemaining--;
+      }
+    }
     return { ...board, diceRoll: actualRoll, players: bm.players, actionPointsRemaining: total } as BoardState;
   }
 

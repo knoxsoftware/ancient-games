@@ -347,6 +347,88 @@ describe('coin pickup', () => {
   });
 });
 
+describe('manual detonation', () => {
+  const makePlayer = (playerNumber: number) => ({ id: `p${playerNumber}`, playerNumber, sessionId: '', name: `P${playerNumber}`, connected: true });
+
+  it('place-bomb sets isManual=true when player has manualDetonation', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.players[0].inventory.manualDetonation = true;
+    board.diceRoll = 3;
+    board.actionPointsRemaining = 3;
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: board.players[0].position } };
+    const after = engine.applyMove(board, move) as any;
+    expect(after.bombs[0].isManual).toBe(true);
+  });
+
+  it('place-bomb sets isManual=false when player lacks manualDetonation', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.diceRoll = 3;
+    board.actionPointsRemaining = 3;
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'place-bomb', dest: board.players[0].position } };
+    const after = engine.applyMove(board, move) as any;
+    expect(after.bombs[0].isManual).toBe(false);
+  });
+
+  it('validateMove: allows detonate when player has manualDetonation and bomb is manual', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.players[0].inventory.manualDetonation = true;
+    board.diceRoll = 3;
+    board.actionPointsRemaining = 3;
+    board.bombs = [{ position: { row: 2, col: 2 }, ownerPlayerNumber: 0, placedOnMove: 0, isManual: true }];
+    board.players[0].activeBombCount = 1;
+    const move = { playerId: 'p0', pieceIndex: 0, from: 0, to: 0, extra: { type: 'detonate', bombIndex: 0 } };
+    expect(engine.validateMove(board, move as any, makePlayer(0) as any)).toBe(true);
+  });
+
+  it('manual bomb does not auto-detonate on fuse expiry', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.bombs = [{ position: { row: 5, col: 5 }, ownerPlayerNumber: 0, placedOnMove: 0, isManual: true }];
+    board.players[0].activeBombCount = 1;
+    board.totalMoveCount = 10; // far past fuse length
+    board.explosions = [];
+    (engine as any)._resolveExpiredBombs(board);
+    // Manual bomb should still be there
+    expect(board.bombs).toHaveLength(1);
+  });
+});
+
+describe('speed boost', () => {
+  it('afterDiceRoll grants +2 bonus AP when speedBoostTurnsRemaining > 0', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.players[0].inventory.speedBoostTurnsRemaining = 2;
+    board.config.apMin = 5;
+    board.config.apMax = 5;
+    const after = engine.afterDiceRoll(board, 5) as any;
+    // 5 base AP + 2 bonus = 7
+    expect(after.actionPointsRemaining).toBe(7);
+  });
+
+  it('afterDiceRoll decrements speedBoostTurnsRemaining', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.players[0].inventory.speedBoostTurnsRemaining = 2;
+    board.config.apMin = 5;
+    board.config.apMax = 5;
+    const after = engine.afterDiceRoll(board, 5) as any;
+    expect(after.players[0].inventory.speedBoostTurnsRemaining).toBe(1);
+  });
+
+  it('afterDiceRoll grants no bonus AP when speedBoostTurnsRemaining is 0', () => {
+    const engine = new BombermageGame();
+    const board = engine.initializeBoard() as any;
+    board.players[0].inventory.speedBoostTurnsRemaining = 0;
+    board.config.apMin = 5;
+    board.config.apMax = 5;
+    const after = engine.afterDiceRoll(board, 5) as any;
+    expect(after.actionPointsRemaining).toBe(5);
+  });
+});
+
 describe('kick bomb', () => {
   const makePlayer = (playerNumber: number) => ({ id: `p${playerNumber}`, playerNumber, sessionId: '', name: `P${playerNumber}`, connected: true });
 
