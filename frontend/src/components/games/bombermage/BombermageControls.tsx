@@ -72,7 +72,8 @@ export default function BombermageControls({ session, gameState, playerId, isMyT
     const c = me.position.col + dc;
     if (r < 0 || r >= terrain.length || c < 0 || c >= (terrain[0]?.length ?? 0)) return false;
     if (terrain[r]?.[c] !== 'empty') return false;
-    if (bombs.some((b: any) => b.position.row === r && b.position.col === c)) return false;
+    const cellHasBomb = bombs.some((b: any) => b.position.row === r && b.position.col === c);
+    if (cellHasBomb && me.inventory?.kickBomb !== true) return false;
     return true;
   }
 

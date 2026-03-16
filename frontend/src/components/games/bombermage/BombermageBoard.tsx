@@ -195,7 +195,8 @@ export default function BombermageBoard({ session, gameState, playerId, isMyTurn
       return;
     }
 
-    if (isAdjacent && terrain[r]?.[c] === 'empty' && !destHasBomb && ap >= 1) {
+    const canKick = me.inventory?.kickBomb === true && destHasBomb;
+    if (isAdjacent && terrain[r]?.[c] === 'empty' && (!destHasBomb || canKick) && ap >= 1) {
       emitMove({ row: r, col: c });
     }
   }
